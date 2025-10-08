@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+env/
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.orig
+*.pickle
+*.hdf5
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+db.sqlite3
+
+# Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+*.dockerignore
+docker-compose.override.yml # If you use overrides
+!docker-compose.yml # Do not ignore the main compose file
+.docker
+build/
+dist/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.next/ # Next.js build output
+out/ # Next.js static export
+build/ # React build output
+
+# ML Specific
+ml_models/artifacts/ # Directory for saved models, checkpoints, logs
+ml_models/data/processed/ # Processed data (if not committed)
+ml_models/data/synthetic/ # Generated synthetic data
+ml_models/data/raw/ # Raw data (if too large or sensitive to commit)
+mlruns/ # MLflow artifacts
+.dvc/cache/ # DVC cache if using
