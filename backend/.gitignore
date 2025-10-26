@@ -1,0 +1,74 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+wheels/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+htmlcov/
+.tox/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables / local settings
+.env
+.env.*
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# SQLite
+*.sqlite3
+
+# Mypy
+.mypy_cache/
+
+# Logs
+logs/
+*.log
+
+# Build artifacts
+*.egg
+*.wheel
+
+# Keys, certs
+*.pem
+*.key
+
+# Misc
+.pytest_cache/
+
+# Ignore Python package cache directories
+__pypackages__/
+
+# Ignore node modules if present
+node_modules/
