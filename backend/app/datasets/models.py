@@ -1,11 +1,43 @@
-"""Dataset schemas and models (pydantic/sqlalchemy as needed)."""
+"""Dataset models (SQLModel) matching the DB schema.
 
-from pydantic import BaseModel
-from typing import Optional
+Includes `Dataset` and `DatasetFile` models.
+"""
+
+from typing import Optional, List
+import uuid
+import datetime
+
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 
 
-class Dataset(BaseModel):
-    id: Optional[int]
+class Dataset(SQLModel, table=True):
+    __tablename__ = "datasets"
+
+    id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    project_id: uuid.UUID = Field(foreign_key="projects.id")
     name: str
-    description: Optional[str] = None
+    original_filename: Optional[str] = None
+    size_bytes: Optional[int] = None
+    row_count: Optional[int] = None
+    schema_json: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    status: str = Field(default="uploaded")
+    checksum: str
+    pii_flags: Optional[List[str]] = Field(default_factory=list, sa_column=Column(JSONB))
+    version: int = Field(default=1)
+    uploaded_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    deleted_at: Optional[datetime.datetime] = None
+
+
+class DatasetFile(SQLModel, table=True):
+    __tablename__ = "dataset_files"
+
+    id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    dataset_id: uuid.UUID = Field(foreign_key="datasets.id")
+    uploader_id: uuid.UUID = Field(foreign_key="users.id")
+    file_path: str
+    size_bytes: int
+    checksum: str
+    metadata: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    uploaded_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
 
