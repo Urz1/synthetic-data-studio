@@ -3,7 +3,7 @@ import uuid
 import datetime
 
 from sqlmodel import SQLModel, Field, Column
-from sqlalchemy.dialects.postgresql import JSONB
+from app.database.database import JSONType
 
 
 class Generator(SQLModel, table=True):
@@ -13,7 +13,7 @@ class Generator(SQLModel, table=True):
     dataset_id: uuid.UUID = Field(foreign_key="datasets.id")
     model_version_id: Optional[uuid.UUID] = Field(default=None, foreign_key="model_versions.id")
     type: str
-    parameters_json: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    parameters_json: dict = Field(default_factory=dict, sa_column=Column(JSONType))
     name: str
     created_by: uuid.UUID = Field(foreign_key="users.id")
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)

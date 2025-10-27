@@ -1,13 +1,13 @@
+from sqlmodel import Session
 from .models import Project
 
-_PROJECTS = []
+
+def get_projects(db: Session):
+    return db.query(Project).all()
 
 
-def list_projects():
-    return _PROJECTS
-
-
-def create_project(p: Project):
-    p.id = len(_PROJECTS) + 1
-    _PROJECTS.append(p)
-    return p
+def create_project(db: Session, project: Project):
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return project

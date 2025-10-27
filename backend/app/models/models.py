@@ -5,7 +5,7 @@ import uuid
 import datetime
 
 from sqlmodel import SQLModel, Field, Column
-from sqlalchemy.dialects.postgresql import JSONB
+from app.database.database import JSONType
 
 
 class Model(SQLModel, table=True):
@@ -21,5 +21,6 @@ class ModelVersion(SQLModel, table=True):
     model_id: uuid.UUID = Field(foreign_key="models.id")
     version_number: int
     created_by: uuid.UUID = Field(foreign_key="users.id")
-    metadata: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    # Renamed from 'metadata' to 'meta' to avoid SQLAlchemy reserved word conflict
+    meta: dict = Field(default_factory=dict, sa_column=Column(JSONType))
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)

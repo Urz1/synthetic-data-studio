@@ -63,6 +63,7 @@ logs/
 # Keys, certs
 *.pem
 *.key
+.env
 
 # Misc
 .pytest_cache/

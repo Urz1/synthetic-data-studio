@@ -5,11 +5,9 @@ import datetime
 from sqlmodel import SQLModel, Field
 
 
-class SyntheticDataset(SQLModel, table=True):
-    __tablename__ = "datasets"
-
+class SyntheticDataset(SQLModel, table=False):
     # Note: synthetic datasets reuse the `datasets` table in the SQL schema
-    # The table is shared; here we provide a typed model for synthetic datasets.
+    # This is a Pydantic model for typing, not a table definition.
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     project_id: uuid.UUID = Field(foreign_key="projects.id")
     name: str

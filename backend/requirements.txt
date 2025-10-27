@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 sqlalchemy
+sqlmodel
 psycopg2-binary
 pydantic
 python-dotenv
+passlib[bcrypt]
 celery[redis]
 mlflow

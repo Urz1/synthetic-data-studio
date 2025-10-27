@@ -1,5 +1,6 @@
 """Datasets module package."""
 
-from . import models, crud, services, routes
+# Lazy imports to avoid circular dependencies and metadata conflicts
+# Import explicitly when needed rather than in __init__
 
 __all__ = ["models", "crud", "services", "routes"]

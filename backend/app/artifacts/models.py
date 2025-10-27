@@ -5,7 +5,7 @@ import uuid
 import datetime
 
 from sqlmodel import SQLModel, Field, Column
-from sqlalchemy.dialects.postgresql import JSONB
+from app.database.database import JSONType
 
 
 class Artifact(SQLModel, table=True):
@@ -18,5 +18,6 @@ class Artifact(SQLModel, table=True):
     file_path: str
     size_bytes: int
     checksum: str
-    metadata: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    # Renamed from 'metadata' to 'meta' to avoid SQLAlchemy reserved word conflict
+    meta: dict = Field(default_factory=dict, sa_column=Column(JSONType))
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
