@@ -1,17 +1,16 @@
-"""CRUD operations for datasets (in-memory stub)."""
+"""CRUD operations for datasets."""
 
+from sqlmodel import Session
 from .models import Dataset
-from typing import List
-
-_DB: List[Dataset] = []
 
 
-def list_datasets():
-    return _DB
+def get_datasets(db: Session):
+    return db.query(Dataset).all()
 
 
-def create_dataset(ds: Dataset):
-    ds.id = len(_DB) + 1
-    _DB.append(ds)
-    return ds
+def create_dataset(db: Session, dataset: Dataset):
+    db.add(dataset)
+    db.commit()
+    db.refresh(dataset)
+    return dataset
 

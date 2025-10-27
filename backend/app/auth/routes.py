@@ -3,8 +3,9 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session
 from app.core.dependencies import get_db
-from .models import UserCreate, UserResponse
-from .crud import create_user, get_user_by_email
+from .models import UserCreate, UserResponse, UserLogin, Token
+from .crud import create_user, get_user_by_email, authenticate_user
+from .services import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -42,3 +43,47 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     # Create new user
     new_user = create_user(db, user)
     return new_user
+
+
+@router.post(
+    "/login",
+    response_model=Token,
+    summary="Login user",
+    description="Authenticate user and return access token"
+)
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    """
+    Login with email and password.
+
+    Returns a JWT access token for authenticated requests.
+    """
+    db_user = authenticate_user(db, user.email, user.password)
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect email or password"
+        )
+    access_token = create_access_token(data={"sub": db_user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post(
+    "/login",
+    response_model=Token,
+    summary="Login user",
+    description="Authenticate user and return access token"
+)
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    """
+    Login with email and password.
+    
+    Returns a JWT access token for authenticated requests.
+    """
+    db_user = authenticate_user(db, user.email, user.password)
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect email or password"
+        )
+    access_token = create_access_token(data={"sub": db_user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
