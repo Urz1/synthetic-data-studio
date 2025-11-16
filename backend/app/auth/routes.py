@@ -65,25 +65,3 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         )
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-@router.post(
-    "/login",
-    response_model=Token,
-    summary="Login user",
-    description="Authenticate user and return access token"
-)
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    """
-    Login with email and password.
-    
-    Returns a JWT access token for authenticated requests.
-    """
-    db_user = authenticate_user(db, user.email, user.password)
-    if not db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect email or password"
-        )
-    access_token = create_access_token(data={"sub": db_user.email})
-    return {"access_token": access_token, "token_type": "bearer"}

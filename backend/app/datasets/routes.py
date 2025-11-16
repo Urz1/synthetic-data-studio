@@ -22,6 +22,34 @@ def list_datasets(db: Session = Depends(get_db), current_user=Depends(get_curren
     return get_all_datasets(db)
 
 
+@router.get("/{dataset_id}")
+def get_dataset(dataset_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    from .crud import get_dataset_by_id
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return dataset
+
+
+@router.get("/{dataset_id}/download")
+def download_dataset(dataset_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Download synthetic dataset as CSV."""
+    from fastapi.responses import FileResponse
+    from .crud import get_dataset_by_id
+
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    # For now, assume synthetic data is stored as CSV in uploads
+    # TODO: Implement proper file storage and retrieval
+    file_path = UPLOAD_DIR / f"{dataset.name}.csv"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(path=file_path, filename=f"{dataset.name}.csv", media_type='text/csv')
+
+
 @router.post("/upload", response_model=Dataset)
 async def upload_dataset(
     project_id: str,

@@ -8,3 +8,9 @@ python-dotenv
 passlib[bcrypt]
 celery[redis]
 mlflow
+sdv
+opacus
+pandas
+scipy
+scikit-learn
+python-jose[cryptography]

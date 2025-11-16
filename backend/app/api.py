@@ -15,6 +15,7 @@ try:
         "app.datasets.routes",
         "app.projects.routes",
         "app.generators.routes",
+        "app.models.routes",
         # "app.synthetic_datasets.routes",  # Temporarily commented
         "app.compliance.routes",
         "app.jobs.routes",
