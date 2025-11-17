@@ -48,6 +48,7 @@ desktop.ini
 
 # SQLite
 *.sqlite3
+*.db
 
 # Mypy
 .mypy_cache/
@@ -55,6 +56,19 @@ desktop.ini
 # Logs
 logs/
 *.log
+
+# Uploads directory (generated datasets and models)
+uploads/
+!uploads/.gitkeep
+
+# Migration scripts (after applied)
+*_migration.py
+!app/database/migrations/
+
+# Standalone test scripts
+test_*.py
+!tests/
+!app/**/tests/
 
 # Build artifacts
 *.egg

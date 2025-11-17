@@ -147,11 +147,15 @@ class DataProfiler:
         return "unknown"
     
     def _profile_numeric_column(self, series: pd.Series) -> Dict[str, Any]:
-        """Profile numeric column with statistics and outlier detection."""
+        """Profile numeric column with comprehensive statistics."""
         clean_series = series.dropna()
         
         if len(clean_series) == 0:
             return {"error": "No non-null values"}
+        
+        # Convert boolean to int if needed for numeric operations
+        if clean_series.dtype == 'bool':
+            clean_series = clean_series.astype(int)
         
         # Basic statistics
         profile = {
