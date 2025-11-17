@@ -1,0 +1,16 @@
+age,income,category,spending_score
+25,45000,Student,65
+30,55000,Professional,78
+35,65000,Manager,82
+28,38000,Student,45
+42,85000,Executive,95
+33,52000,Professional,71
+29,41000,Student,58
+38,72000,Manager,88
+26,48000,Student,62
+45,95000,Executive,98
+31,58000,Professional,75
+36,68000,Manager,85
+27,42000,Student,52
+40,78000,Manager,90
+34,61000,Professional,79

@@ -4,11 +4,16 @@ import pandas as pd
 import json
 import hashlib
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 import uuid
 from sqlmodel import Session
 from .models import Dataset, DatasetFile
-from .crud import get_datasets, create_dataset
+from .crud import get_datasets, create_dataset, get_dataset_by_id
+from app.services.profiling import profile_dataset
+from app.services.pii_detector import detect_pii, get_pii_recommendations
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 async def process_uploaded_file(file_path: Path, filename: str, project_id: uuid.UUID, uploader_id: uuid.UUID, db: Session):
@@ -80,4 +85,92 @@ async def process_uploaded_file(file_path: Path, filename: str, project_id: uuid
 def get_all_datasets(db: Session):
     """Get all datasets for current user."""
     return get_datasets(db)
+
+
+def profile_uploaded_dataset(dataset_id: str, db: Session) -> Dict[str, Any]:
+    """
+    Generate comprehensive profile for an uploaded dataset.
+    
+    Args:
+        dataset_id: UUID of the dataset to profile
+        db: Database session
+        
+    Returns:
+        Profiling results dictionary
+    """
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    
+    # Load the dataset file
+    from app.datasets.routes import UPLOAD_DIR
+    file_path = UPLOAD_DIR / dataset.original_filename
+    
+    if not file_path.exists():
+        raise FileNotFoundError(f"Dataset file not found: {file_path}")
+    
+    # Load data based on file type
+    if dataset.original_filename.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    elif dataset.original_filename.endswith('.json'):
+        df = pd.read_json(file_path)
+    else:
+        raise ValueError("Unsupported file format")
+    
+    # Generate profile
+    logger.info(f"Profiling dataset {dataset_id}")
+    profiling_results = profile_dataset(df)
+    
+    # Store profiling results in dataset
+    dataset.profiling_data = profiling_results
+    db.commit()
+    db.refresh(dataset)
+    
+    return profiling_results
+
+
+def detect_dataset_pii(dataset_id: str, db: Session) -> Dict[str, Any]:
+    """
+    Detect PII/PHI in an uploaded dataset.
+    
+    Args:
+        dataset_id: UUID of the dataset to analyze
+        db: Database session
+        
+    Returns:
+        PII detection results dictionary
+    """
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    
+    # Load the dataset file
+    from app.datasets.routes import UPLOAD_DIR
+    file_path = UPLOAD_DIR / dataset.original_filename
+    
+    if not file_path.exists():
+        raise FileNotFoundError(f"Dataset file not found: {file_path}")
+    
+    # Load data based on file type
+    if dataset.original_filename.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    elif dataset.original_filename.endswith('.json'):
+        df = pd.read_json(file_path)
+    else:
+        raise ValueError("Unsupported file format")
+    
+    # Detect PII
+    logger.info(f"Detecting PII in dataset {dataset_id}")
+    pii_results = detect_pii(df)
+    recommendations = get_pii_recommendations(df)
+    
+    # Add recommendations to results
+    pii_results["recommendations"] = recommendations
+    
+    # Store PII flags in dataset
+    dataset.pii_flags = pii_results
+    db.commit()
+    db.refresh(dataset)
+    
+    return pii_results
 

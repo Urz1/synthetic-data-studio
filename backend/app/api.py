@@ -4,6 +4,10 @@ This module attempts to import APIRouter and submodule routers when
 FastAPI is available; otherwise it provides a safe placeholder.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 try:
     from fastapi import APIRouter
 
@@ -24,8 +28,13 @@ try:
             m = __import__(modul, fromlist=["router"])
             if hasattr(m, "router") and m.router is not None:
                 router.include_router(m.router)
-        except Exception:
+                logger.info(f"✅ Loaded router from {modul}")
+            else:
+                logger.warning(f"⚠️  Module {modul} has no router attribute")
+        except Exception as e:
             # ignore missing routers during refactor
+            logger.warning(f"⚠️  Failed to load {modul}: {e}")
             pass
-except Exception:
+except Exception as e:
+    logger.error(f"❌ Failed to initialize API router: {e}")
     router = None

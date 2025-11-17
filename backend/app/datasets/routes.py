@@ -9,7 +9,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlmodel import Session
 from app.core.dependencies import get_db, get_current_user
 from .models import Dataset
-from .services import get_all_datasets, process_uploaded_file
+from .services import get_all_datasets, process_uploaded_file, profile_uploaded_dataset, detect_dataset_pii
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -89,4 +89,108 @@ async def upload_dataset(
         if file_path.exists():
             file_path.unlink()
         raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
+
+
+@router.post("/{dataset_id}/profile")
+def create_dataset_profile(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Generate comprehensive statistical profile for a dataset.
+    
+    Includes:
+    - Column-level statistics (mean, median, std, etc.)
+    - Outlier detection (IQR and Isolation Forest)
+    - Correlation analysis
+    - Missing value patterns
+    - Distribution histograms
+    """
+    try:
+        profiling_results = profile_uploaded_dataset(dataset_id, db)
+        return profiling_results
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Profiling failed: {str(e)}")
+
+
+@router.get("/{dataset_id}/profile")
+def get_dataset_profile(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Retrieve existing profiling results for a dataset.
+    """
+    from .crud import get_dataset_by_id
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    if not dataset.profiling_data:
+        raise HTTPException(
+            status_code=404,
+            detail="No profiling data available. Run POST /{dataset_id}/profile first."
+        )
+    
+    return dataset.profiling_data
+
+
+@router.post("/{dataset_id}/pii-detection")
+def detect_pii_in_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Detect PII/PHI in a dataset using heuristic pattern matching.
+    
+    Detects:
+    - Email addresses
+    - Phone numbers
+    - Social Security Numbers
+    - Credit card numbers
+    - Names and identifiers
+    - Medical record numbers
+    
+    Returns flagged columns with confidence levels and redaction recommendations.
+    """
+    try:
+        pii_results = detect_dataset_pii(dataset_id, db)
+        return pii_results
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PII detection failed: {str(e)}")
+
+
+@router.get("/{dataset_id}/pii-flags")
+def get_pii_flags(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Retrieve existing PII detection results for a dataset.
+    """
+    from .crud import get_dataset_by_id
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    if not dataset.pii_flags:
+        raise HTTPException(
+            status_code=404,
+            detail="No PII flags available. Run POST /{dataset_id}/pii-detection first."
+        )
+    
+    return dataset.pii_flags
+
 

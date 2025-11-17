@@ -5,6 +5,7 @@ from .models import Generator, SchemaInput
 from .crud import get_generators, create_generator, get_generator_by_id, update_generator_status
 from .services import generate_synthetic_data, _generate_from_schema
 from app.datasets.models import Dataset
+import uuid
 
 router = APIRouter(prefix="/generators", tags=["generators"])
 
@@ -68,6 +69,56 @@ def start_generation(
     background_tasks.add_task(_generate_in_background, generator_id, db)
 
     return {"message": "Generation started", "generator_id": generator_id}
+
+
+@router.post("/dataset/{dataset_id}/generate")
+def generate_from_dataset(
+    dataset_id: str,
+    generator_type: str = "ctgan",
+    num_rows: int = 1000,
+    epochs: int = 50,
+    batch_size: int = 500,
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Generate synthetic data from an existing dataset."""
+    # Verify dataset exists
+    from app.datasets.crud import get_dataset_by_id
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    # Create a generator record
+    generator = Generator(
+        dataset_id=uuid.UUID(dataset_id),
+        type=generator_type,
+        parameters_json={
+            "num_rows": num_rows,
+            "epochs": epochs,
+            "batch_size": batch_size
+        },
+        name=f"{dataset.name}_{generator_type}_gen",
+        created_by=current_user.id
+    )
+
+    generator = create_generator(db, generator)
+
+    # Start generation
+    update_generator_status(db, str(generator.id), "running")
+
+    if background_tasks:
+        background_tasks.add_task(_generate_in_background, str(generator.id), db)
+        return {"message": "Generation started", "generator_id": str(generator.id)}
+    else:
+        # Synchronous generation for testing
+        try:
+            output_dataset = generate_synthetic_data(generator, db)
+            update_generator_status(db, str(generator.id), "completed", str(output_dataset.id))
+            return {"message": "Generation completed", "generator_id": str(generator.id), "output_dataset_id": str(output_dataset.id)}
+        except Exception as e:
+            update_generator_status(db, str(generator.id), "failed")
+            raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
 def _generate_in_background(generator_id: str, db: Session):

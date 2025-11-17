@@ -1,6 +1,7 @@
 """CRUD operations for ML models."""
 
 import datetime
+import uuid
 from sqlmodel import Session, select
 from .models import Model, ModelVersion
 
@@ -21,7 +22,8 @@ def create_model(db: Session, model: Model):
 
 
 def get_model_versions(db: Session, model_id: str):
-    return db.exec(select(ModelVersion).where(ModelVersion.model_id == model_id)).all()
+    model_uuid = uuid.UUID(model_id) if isinstance(model_id, str) else model_id
+    return db.exec(select(ModelVersion).where(ModelVersion.model_id == model_uuid)).all()
 
 
 def create_model_version(db: Session, version: ModelVersion):

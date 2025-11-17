@@ -25,7 +25,10 @@ class Dataset(SQLModel, table=True):
     schema_data: dict = Field(default_factory=dict, sa_column=Column(JSONType))
     status: str = Field(default="uploaded")
     checksum: str
-    pii_flags: Optional[List[str]] = Field(default_factory=list, sa_column=Column(JSONType))
+    # Store PII detection results (full dictionary with confidence, types, recommendations)
+    pii_flags: Optional[dict] = Field(default=None, sa_column=Column(JSONType))
+    # Store comprehensive profiling results (statistics, distributions, correlations)
+    profiling_data: Optional[dict] = Field(default=None, sa_column=Column(JSONType))
     version: int = Field(default=1)
     uploaded_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     deleted_at: Optional[datetime.datetime] = None
