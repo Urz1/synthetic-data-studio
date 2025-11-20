@@ -41,13 +41,12 @@ def download_dataset(dataset_id: str, db: Session = Depends(get_db), current_use
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    # For now, assume synthetic data is stored as CSV in uploads
-    # TODO: Implement proper file storage and retrieval
-    file_path = UPLOAD_DIR / f"{dataset.name}.csv"
+    # Use the original_filename stored in the database
+    file_path = UPLOAD_DIR / dataset.original_filename
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail=f"File not found: {dataset.original_filename}")
 
-    return FileResponse(path=file_path, filename=f"{dataset.name}.csv", media_type='text/csv')
+    return FileResponse(path=file_path, filename=dataset.original_filename, media_type='text/csv')
 
 
 @router.post("/upload", response_model=Dataset)

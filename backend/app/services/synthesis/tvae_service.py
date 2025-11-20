@@ -30,8 +30,9 @@ class TVAEService:
         embedding_dim: int = 128,
         compress_dims: tuple = (128, 128),
         decompress_dims: tuple = (128, 128),
-        learning_rate: float = 1e-3,
-        verbose: bool = True
+        l2scale: float = 1e-5,
+        loss_factor: int = 2,
+        verbose: bool = False
     ):
         """
         Initialize TVAE service with hyperparameters.
@@ -42,7 +43,8 @@ class TVAEService:
             embedding_dim: Size of latent space (default: 128)
             compress_dims: Encoder network dimensions (default: (128, 128))
             decompress_dims: Decoder network dimensions (default: (128, 128))
-            learning_rate: Learning rate for optimizer (default: 1e-3)
+            l2scale: L2 regularization scale (default: 1e-5)
+            loss_factor: Multiplier for reconstruction loss (default: 2)
             verbose: Whether to show training progress
         """
         self.epochs = epochs
@@ -50,7 +52,8 @@ class TVAEService:
         self.embedding_dim = embedding_dim
         self.compress_dims = compress_dims
         self.decompress_dims = decompress_dims
-        self.learning_rate = learning_rate
+        self.l2scale = l2scale
+        self.loss_factor = loss_factor
         self.verbose = verbose
         
         self.synthesizer: Optional[TVAESynthesizer] = None
@@ -121,7 +124,8 @@ class TVAEService:
             embedding_dim=self.embedding_dim,
             compress_dims=self.compress_dims,
             decompress_dims=self.decompress_dims,
-            learning_rate=self.learning_rate,
+            l2scale=self.l2scale,
+            loss_factor=self.loss_factor,
             verbose=self.verbose
         )
         

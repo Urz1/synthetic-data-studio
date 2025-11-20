@@ -16,6 +16,7 @@ wheels/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+1.0.0
 
 # Unit test / coverage
 .coverage
@@ -46,9 +47,10 @@ env/
 Thumbs.db
 desktop.ini
 
-# SQLite
+# SQLite databases
 *.sqlite3
 *.db
+synth_studio.db
 
 # Mypy
 .mypy_cache/
@@ -60,8 +62,16 @@ logs/
 # Uploads directory (generated datasets and models)
 uploads/
 !uploads/.gitkeep
+!uploads/README.md
 
-# Migration scripts (after applied)
+# Sample/demo data files (keep in repo for testing)
+# Uncomment if you want to ignore them:
+# sample_data.csv
+# demo_*.csv
+# demo_*.json
+
+# Migration scripts (standalone, not in migrations folder)
+add_*_migration.py
 *_migration.py
 !app/database/migrations/
 
@@ -77,7 +87,6 @@ test_*.py
 # Keys, certs
 *.pem
 *.key
-.env
 
 # Misc
 .pytest_cache/
@@ -87,3 +96,14 @@ __pypackages__/
 
 # Ignore node modules if present
 node_modules/
+
+# Jupyter notebooks (if any)
+*.ipynb_checkpoints/
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

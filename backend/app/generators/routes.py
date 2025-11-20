@@ -121,6 +121,159 @@ def generate_from_dataset(
             raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
+@router.get("/{generator_id}/privacy-report")
+def get_privacy_report(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Get comprehensive privacy report for a DP-enabled generator."""
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # Check if this is a DP model
+    if not generator.type.startswith('dp-'):
+        raise HTTPException(
+            status_code=400,
+            detail="Privacy reports are only available for DP-enabled generators (dp-ctgan, dp-tvae)"
+        )
+    
+    # Check if training has completed
+    if not generator.privacy_spent:
+        return {
+            "status": "not_trained",
+            "message": "Model not trained yet. No privacy budget spent.",
+            "generator_id": generator_id,
+            "model_type": generator.type
+        }
+    
+    # Generate comprehensive privacy report
+    from app.services.privacy.privacy_report_service import PrivacyReportService
+    
+    report = PrivacyReportService.generate_privacy_report(
+        generator_id=generator.id,
+        model_type=generator.type,
+        privacy_config=generator.privacy_config or {},
+        privacy_spent=generator.privacy_spent or {},
+        training_metadata=generator.training_metadata or {}
+    )
+    
+    return report
+
+
+@router.post("/dp/validate-config")
+def validate_dp_config(
+    dataset_id: str,
+    generator_type: str,
+    epochs: int,
+    batch_size: int,
+    target_epsilon: float = 10.0,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Validate DP configuration before training to prevent privacy failures.
+    Returns validation results and recommendations.
+    """
+    # Verify dataset exists
+    from app.datasets.crud import get_dataset_by_id
+    import pandas as pd
+    from pathlib import Path
+    from app.core.config import settings
+    
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Load dataset to get size
+    file_path = Path(settings.upload_dir) / dataset.original_filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Dataset file not found")
+    
+    df = pd.read_csv(file_path)
+    dataset_size = len(df)
+    
+    # Validate configuration
+    from app.services.privacy.dp_config_validator import DPConfigValidator
+    
+    is_valid, errors, warnings = DPConfigValidator.validate_config(
+        dataset_size=dataset_size,
+        epochs=epochs,
+        batch_size=batch_size,
+        target_epsilon=target_epsilon
+    )
+    
+    # Get recommended config
+    recommended = DPConfigValidator.get_recommended_config(
+        dataset_size=dataset_size,
+        target_epsilon=target_epsilon,
+        desired_quality="balanced"
+    )
+    
+    return {
+        "is_valid": is_valid,
+        "errors": errors,
+        "warnings": warnings,
+        "requested_config": {
+            "dataset_size": dataset_size,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "target_epsilon": target_epsilon,
+            "sampling_rate": f"{batch_size / dataset_size:.1%}"
+        },
+        "recommended_config": recommended
+    }
+
+
+@router.get("/dp/recommended-config")
+def get_recommended_config(
+    dataset_id: str,
+    target_epsilon: float = 10.0,
+    desired_quality: str = "balanced",  # "high_privacy", "balanced", "high_quality"
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Get recommended DP configuration for a dataset.
+    Quality options: high_privacy (ε<5), balanced (ε≈10), high_quality (ε≈15)
+    """
+    # Verify dataset exists
+    from app.datasets.crud import get_dataset_by_id
+    import pandas as pd
+    from pathlib import Path
+    from app.core.config import settings
+    
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Load dataset to get size
+    file_path = Path(settings.upload_dir) / dataset.original_filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Dataset file not found")
+    
+    df = pd.read_csv(file_path)
+    dataset_size = len(df)
+    
+    # Get recommended config
+    from app.services.privacy.dp_config_validator import DPConfigValidator
+    
+    recommended = DPConfigValidator.get_recommended_config(
+        dataset_size=dataset_size,
+        target_epsilon=target_epsilon,
+        desired_quality=desired_quality
+    )
+    
+    return {
+        "dataset_id": dataset_id,
+        "dataset_name": dataset.name,
+        "dataset_size": dataset_size,
+        "desired_quality": desired_quality,
+        "recommended_config": recommended
+    }
+
+
 def _generate_in_background(generator_id: str, db: Session):
     """Background task to generate synthetic data."""
     try:

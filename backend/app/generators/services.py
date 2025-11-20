@@ -15,6 +15,9 @@ from sqlmodel import Session
 from app.datasets.crud import create_dataset, get_dataset_by_id
 from app.datasets.models import Dataset
 from app.services.synthesis import CTGANService, TVAEService
+from app.services.synthesis.dp_ctgan_service import DPCTGANService
+from app.services.synthesis.dp_tvae_service import DPTVAEService
+from app.services.privacy.privacy_report_service import PrivacyReportService
 from .models import Generator, MLGenerationConfig
 
 logger = logging.getLogger(__name__)
@@ -83,6 +86,10 @@ def _generate_from_dataset(generator: Generator, db: Session) -> Dataset:
         return _run_ctgan(generator, real_data, db)
     elif generator_type == 'tvae':
         return _run_tvae(generator, real_data, db)
+    elif generator_type == 'dp-ctgan':
+        return _run_dp_ctgan(generator, real_data, db)
+    elif generator_type == 'dp-tvae':
+        return _run_dp_tvae(generator, real_data, db)
     elif generator_type == 'timegan':
         return _run_timegan(generator, real_data, db)
     else:
@@ -106,7 +113,8 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
 
     # Save to file
     from app.datasets.routes import UPLOAD_DIR
-    file_path = UPLOAD_DIR / f"{generator.name}_copula_synthetic.csv"
+    unique_filename = f"{generator.id}_copula_synthetic.csv"
+    file_path = UPLOAD_DIR / unique_filename
     df.to_csv(file_path, index=False)    # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
@@ -114,7 +122,7 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
     output_dataset = Dataset(
         project_id=uuid.uuid4(),  # TODO: Get from generator or user
         name=f"{generator.name}_copula_synthetic",
-        original_filename=f"{generator.name}_copula_synthetic.csv",
+        original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
         row_count=len(df),
         schema_data={
@@ -180,7 +188,8 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     synthetic_data = ctgan_service.generate(num_rows, conditions=conditions)
     
     # Save synthetic data
-    file_path = UPLOAD_DIR / f"{generator.name}_ctgan_synthetic.csv"
+    unique_filename = f"{generator.id}_ctgan_synthetic.csv"
+    file_path = UPLOAD_DIR / unique_filename
     synthetic_data.to_csv(file_path, index=False)
     
     # Calculate checksum
@@ -190,7 +199,7 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     output_dataset = Dataset(
         project_id=uuid.uuid4(),  # TODO: Get from generator or user
         name=f"{generator.name}_ctgan_synthetic",
-        original_filename=f"{generator.name}_ctgan_synthetic.csv",
+        original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
@@ -230,8 +239,9 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
         embedding_dim=params.get('embedding_dim', 128),
         compress_dims=tuple(params.get('compress_dims', [128, 128])),
         decompress_dims=tuple(params.get('decompress_dims', [128, 128])),
-        learning_rate=params.get('learning_rate', 1e-3),
-        verbose=True
+        l2scale=params.get('l2scale', 1e-5),
+        loss_factor=params.get('loss_factor', 2),
+        verbose=False
     )
     
     # Train model
@@ -257,7 +267,8 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     synthetic_data = tvae_service.generate(num_rows, conditions=conditions)
     
     # Save synthetic data
-    file_path = UPLOAD_DIR / f"{generator.name}_tvae_synthetic.csv"
+    unique_filename = f"{generator.id}_tvae_synthetic.csv"
+    file_path = UPLOAD_DIR / unique_filename
     synthetic_data.to_csv(file_path, index=False)
     
     # Calculate checksum
@@ -267,7 +278,7 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     output_dataset = Dataset(
         project_id=uuid.uuid4(),  # TODO: Get from generator or user
         name=f"{generator.name}_tvae_synthetic",
-        original_filename=f"{generator.name}_tvae_synthetic.csv",
+        original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
@@ -281,6 +292,201 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     
     created_dataset = create_dataset(db, output_dataset)
     logger.info(f"✓ TVAE synthesis complete. Generated dataset: {created_dataset.id}")
+    return created_dataset
+
+
+def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dataset:
+    """Run DP-CTGAN synthesis with differential privacy guarantees."""
+    if not SDV_AVAILABLE:
+        logger.error("SDV library not available for DP-CTGAN synthesis")
+        raise RuntimeError("SDV library required for DP-CTGAN. Install with: pip install sdv opacus")
+    
+    logger.info(f"Starting DP-CTGAN synthesis for generator {generator.id}")
+    
+    # Extract parameters
+    params = generator.parameters_json
+    epochs = params.get('epochs', 300)
+    batch_size = params.get('batch_size', 500)
+    num_rows = params.get('num_rows', len(real_data))
+    column_types = params.get('column_types')
+    conditions = params.get('conditions')
+    
+    # Privacy parameters
+    target_epsilon = params.get('target_epsilon', 10.0)
+    target_delta = params.get('target_delta')
+    max_grad_norm = params.get('max_grad_norm', 1.0)
+    noise_multiplier = params.get('noise_multiplier')
+    
+    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}")
+    
+    # Initialize DP-CTGAN service
+    dp_ctgan_service = DPCTGANService(
+        epochs=epochs,
+        batch_size=batch_size,
+        generator_dim=tuple(params.get('generator_dim', [256, 256])),
+        discriminator_dim=tuple(params.get('discriminator_dim', [256, 256])),
+        generator_lr=params.get('generator_lr', 2e-4),
+        discriminator_lr=params.get('discriminator_lr', 2e-4),
+        target_epsilon=target_epsilon,
+        target_delta=target_delta,
+        max_grad_norm=max_grad_norm,
+        noise_multiplier=noise_multiplier,
+        verbose=True
+    )
+    
+    # Train model with DP
+    logger.info(f"Training DP-CTGAN on {len(real_data)} rows with privacy guarantees...")
+    training_summary = dp_ctgan_service.train(real_data, column_types=column_types)
+    
+    # Get privacy report
+    privacy_report = dp_ctgan_service.get_privacy_report()
+    
+    # Save model
+    from app.datasets.routes import UPLOAD_DIR
+    model_dir = UPLOAD_DIR / "models"
+    model_dir.mkdir(exist_ok=True)
+    model_path = model_dir / f"{generator.id}_dp_ctgan.pkl"
+    dp_ctgan_service.save_model(str(model_path))
+    
+    # Update generator with privacy information
+    generator.model_path = str(model_path)
+    generator.training_metadata = training_summary
+    generator.privacy_config = training_summary.get("privacy_config")
+    generator.privacy_spent = training_summary.get("privacy_spent")
+    generator.status = "generating"
+    db.add(generator)
+    db.commit()
+    
+    # Generate synthetic data
+    logger.info(f"Generating {num_rows} synthetic rows with DP-CTGAN...")
+    synthetic_data = dp_ctgan_service.generate(num_rows, conditions=conditions)
+    
+    # Save synthetic data
+    unique_filename = f"{generator.id}_dp_ctgan_synthetic.csv"
+    file_path = UPLOAD_DIR / unique_filename
+    synthetic_data.to_csv(file_path, index=False)
+    
+    # Calculate checksum
+    checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    
+    # Create output dataset
+    output_dataset = Dataset(
+        project_id=uuid.uuid4(),
+        name=f"{generator.name}_dp_ctgan_synthetic",
+        original_filename=unique_filename,
+        size_bytes=file_path.stat().st_size,
+        row_count=len(synthetic_data),
+        schema_data={
+            "generation_method": "dp-ctgan",
+            "training_summary": training_summary,
+            "privacy_report": privacy_report,
+            "source_dataset_id": str(generator.dataset_id)
+        },
+        checksum=checksum,
+        uploader_id=generator.created_by
+    )
+    
+    created_dataset = create_dataset(db, output_dataset)
+    logger.info(f"✓ DP-CTGAN synthesis complete. Generated dataset: {created_dataset.id}")
+    logger.info(f"✓ Privacy spent: ε={privacy_report['privacy_budget']['epsilon']:.2f}")
+    return created_dataset
+
+
+def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dataset:
+    """Run DP-TVAE synthesis with differential privacy guarantees."""
+    if not SDV_AVAILABLE:
+        logger.error("SDV library not available for DP-TVAE synthesis")
+        raise RuntimeError("SDV library required for DP-TVAE. Install with: pip install sdv opacus")
+    
+    logger.info(f"Starting DP-TVAE synthesis for generator {generator.id}")
+    
+    # Extract parameters
+    params = generator.parameters_json
+    epochs = params.get('epochs', 300)
+    batch_size = params.get('batch_size', 500)
+    num_rows = params.get('num_rows', len(real_data))
+    column_types = params.get('column_types')
+    conditions = params.get('conditions')
+    
+    # Privacy parameters
+    target_epsilon = params.get('target_epsilon', 10.0)
+    target_delta = params.get('target_delta')
+    max_grad_norm = params.get('max_grad_norm', 1.0)
+    noise_multiplier = params.get('noise_multiplier')
+    
+    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}")
+    
+    # Initialize DP-TVAE service
+    dp_tvae_service = DPTVAEService(
+        epochs=epochs,
+        batch_size=batch_size,
+        embedding_dim=params.get('embedding_dim', 128),
+        compress_dims=tuple(params.get('compress_dims', [128, 128])),
+        decompress_dims=tuple(params.get('decompress_dims', [128, 128])),
+        l2scale=params.get('l2scale', 1e-5),
+        loss_factor=params.get('loss_factor', 2),
+        target_epsilon=target_epsilon,
+        target_delta=target_delta,
+        max_grad_norm=max_grad_norm,
+        noise_multiplier=noise_multiplier,
+        verbose=False
+    )
+    
+    # Train model with DP
+    logger.info(f"Training DP-TVAE on {len(real_data)} rows with privacy guarantees...")
+    training_summary = dp_tvae_service.train(real_data, column_types=column_types)
+    
+    # Get privacy report
+    privacy_report = dp_tvae_service.get_privacy_report()
+    
+    # Save model
+    from app.datasets.routes import UPLOAD_DIR
+    model_dir = UPLOAD_DIR / "models"
+    model_dir.mkdir(exist_ok=True)
+    model_path = model_dir / f"{generator.id}_dp_tvae.pkl"
+    dp_tvae_service.save_model(str(model_path))
+    
+    # Update generator with privacy information
+    generator.model_path = str(model_path)
+    generator.training_metadata = training_summary
+    generator.privacy_config = training_summary.get("privacy_config")
+    generator.privacy_spent = training_summary.get("privacy_spent")
+    generator.status = "generating"
+    db.add(generator)
+    db.commit()
+    
+    # Generate synthetic data
+    logger.info(f"Generating {num_rows} synthetic rows with DP-TVAE...")
+    synthetic_data = dp_tvae_service.generate(num_rows, conditions=conditions)
+    
+    # Save synthetic data
+    unique_filename = f"{generator.id}_dp_tvae_synthetic.csv"
+    file_path = UPLOAD_DIR / unique_filename
+    synthetic_data.to_csv(file_path, index=False)
+    
+    # Calculate checksum
+    checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    
+    # Create output dataset
+    output_dataset = Dataset(
+        project_id=uuid.uuid4(),
+        name=f"{generator.name}_dp_tvae_synthetic",
+        original_filename=unique_filename,
+        size_bytes=file_path.stat().st_size,
+        row_count=len(synthetic_data),
+        schema_data={
+            "generation_method": "dp-tvae",
+            "training_summary": training_summary,
+            "privacy_report": privacy_report,
+            "source_dataset_id": str(generator.dataset_id)
+        },
+        checksum=checksum,
+        uploader_id=generator.created_by
+    )
+    
+    created_dataset = create_dataset(db, output_dataset)
+    logger.info(f"✓ DP-TVAE synthesis complete. Generated dataset: {created_dataset.id}")
+    logger.info(f"✓ Privacy spent: ε={privacy_report['privacy_budget']['epsilon']:.2f}")
     return created_dataset
 
 
