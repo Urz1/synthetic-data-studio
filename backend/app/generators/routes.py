@@ -6,6 +6,7 @@ from .crud import get_generators, create_generator, get_generator_by_id, update_
 from .services import generate_synthetic_data, _generate_from_schema
 from app.datasets.models import Dataset
 import uuid
+from typing import Optional
 
 router = APIRouter(prefix="/generators", tags=["generators"])
 
@@ -75,19 +76,50 @@ def start_generation(
 def generate_from_dataset(
     dataset_id: str,
     generator_type: str = "ctgan",
-    num_rows: int = 1000,
+    num_rows: Optional[int] = None,
     epochs: int = 50,
     batch_size: int = 500,
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Generate synthetic data from an existing dataset."""
+    """Generate synthetic data from an existing dataset.
+    
+    Args:
+        dataset_id: ID of the dataset to use for training
+        generator_type: Type of generator (ctgan, tvae, dp-ctgan, dp-tvae, etc.)
+        num_rows: Number of synthetic rows to generate. If None, matches original dataset size.
+        epochs: Number of training epochs
+        batch_size: Batch size for training
+    
+    Note:
+        num_rows validation:
+        - Minimum: 100 rows
+        - Maximum: 1,000,000 rows
+        - If None: matches original dataset row count
+    """
     # Verify dataset exists
     from app.datasets.crud import get_dataset_by_id
+    import pandas as pd
+    
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Determine num_rows
+    if num_rows is None:
+        # Match original dataset size
+        try:
+            df = pd.read_csv(dataset.file_path)
+            num_rows = len(df)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Could not read dataset: {str(e)}")
+    
+    # Validate num_rows
+    if num_rows < 100:
+        raise HTTPException(status_code=400, detail="num_rows must be at least 100")
+    if num_rows > 1_000_000:
+        raise HTTPException(status_code=400, detail="num_rows cannot exceed 1,000,000")
 
     # Create a generator record
     generator = Generator(

@@ -16,8 +16,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def process_uploaded_file(file_path: Path, filename: str, project_id: uuid.UUID, uploader_id: uuid.UUID, db: Session):
-    """Process uploaded file, detect schema, and create dataset record."""
+async def process_uploaded_file(file_path: Path, filename: str, unique_filename: str, project_id: uuid.UUID, uploader_id: uuid.UUID, db: Session):
+    """Process uploaded file, detect schema, and create dataset record.
+    
+    Args:
+        file_path: Full path to uploaded file
+        filename: Original filename from user
+        unique_filename: Unique filename with UUID prefix (what's actually on disk)
+        project_id: Project ID
+        uploader_id: User ID who uploaded
+        db: Database session
+    """
 
     # Read file and detect schema
     if filename.endswith('.csv'):
@@ -42,7 +51,7 @@ async def process_uploaded_file(file_path: Path, filename: str, project_id: uuid
         if dtype == 'object':
             # Check if looks like date
             try:
-                pd.to_datetime(df[col].head())
+                pd.to_datetime(df[col].head(), errors='coerce')
                 schema[col] = 'datetime'
             except:
                 schema[col] = 'string'
@@ -54,10 +63,12 @@ async def process_uploaded_file(file_path: Path, filename: str, project_id: uuid
             schema[col] = dtype
 
     # Create dataset record
+    # IMPORTANT: Store unique_filename so we can find the file later!
     dataset = Dataset(
         project_id=project_id,
         name=filename,
-        original_filename=filename,
+        original_filename=unique_filename,  # Store the UUID-prefixed filename
+        file_path=str(file_path),  # Store full path
         size_bytes=file_path.stat().st_size,
         row_count=len(df),
         schema_data=schema,

@@ -18,7 +18,8 @@ class Dataset(SQLModel, table=True):
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     project_id: uuid.UUID = Field(foreign_key="projects.id")
     name: str
-    original_filename: Optional[str] = None
+    original_filename: Optional[str] = None  # UUID-prefixed filename on disk
+    file_path: Optional[str] = None  # Full path to file
     size_bytes: Optional[int] = None
     row_count: Optional[int] = None
     # Renamed from 'schema_json' to 'schema_data' to avoid SQLModel reserved word warning

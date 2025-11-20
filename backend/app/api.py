@@ -23,6 +23,7 @@ try:
         # "app.synthetic_datasets.routes",  # Temporarily commented
         "app.compliance.routes",
         "app.jobs.routes",
+        "app.evaluations.routes",
     ):
         try:
             m = __import__(modul, fromlist=["router"])

@@ -51,14 +51,21 @@ def download_dataset(dataset_id: str, db: Session = Depends(get_db), current_use
 
 @router.post("/upload", response_model=Dataset)
 async def upload_dataset(
-    project_id: str,
     file: UploadFile = File(...),
+    project_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
     """
     Upload a dataset file (CSV/JSON) and create dataset record.
+    
+    Args:
+        file: CSV or JSON file to upload
+        project_id: Optional project ID (defaults to 'default-project')
     """
+    # Use default project if not provided
+    if not project_id:
+        project_id = "00000000-0000-0000-0000-000000000001"  # Default project UUID
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
@@ -68,8 +75,9 @@ async def upload_dataset(
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail="Only CSV and JSON files allowed")
 
-    # Save file
-    file_path = UPLOAD_DIR / f"{current_user.id}_{file.filename}"
+    # Save file with UUID prefix for uniqueness
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    file_path = UPLOAD_DIR / unique_filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -78,6 +86,7 @@ async def upload_dataset(
         dataset = await process_uploaded_file(
             file_path=file_path,
             filename=file.filename,
+            unique_filename=unique_filename,
             project_id=uuid.UUID(project_id),
             uploader_id=current_user.id,
             db=db

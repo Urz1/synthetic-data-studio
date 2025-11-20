@@ -24,6 +24,9 @@
 - [PHASE3_SAFETY_ARCHITECTURE.md](phase3/PHASE3_SAFETY_ARCHITECTURE.md) - System architecture and flow diagrams
 - [PHASE3_SAFETY_API_EXAMPLES.md](phase3/PHASE3_SAFETY_API_EXAMPLES.md) - Ready-to-run API test examples
 
+#### Phase 4: Evaluation Suite
+- [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) - Comprehensive synthetic data quality evaluation
+
 ### Testing & Development Guides
 - [TESTING.md](guides/TESTING.md) - General testing guidelines
 - [GENERATOR_TESTS.md](guides/GENERATOR_TESTS.md) - Generator-specific test cases
@@ -62,7 +65,10 @@
 | 3 | DP-TVAE | ✅ Complete | [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md) |
 | 3 | Privacy Reports | ✅ Complete | [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md) |
 | 3 | Safety System | ✅ Complete | [PHASE3_SAFETY_SUMMARY.md](phase3/PHASE3_SAFETY_SUMMARY.md) |
-| 4 | Evaluation Suite | 🔄 Planned | TBD |
+| 4 | Statistical Tests | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
+| 4 | ML Utility Tests | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
+| 4 | Privacy Tests | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
+| 4 | Quality Reports | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
 | 5 | Compliance System | 🔄 Planned | TBD |
 | 6 | Production Ready | 🔄 Planned | TBD |
 
@@ -84,6 +90,12 @@
 - `POST /generators/dp/validate-config` - Validate DP configuration
 - `GET /generators/dp/recommended-config` - Get safe DP parameters
 - `GET /generators/{id}/privacy-report` - Get privacy report
+
+### Evaluation
+- `POST /evaluations/run` - Run comprehensive evaluation
+- `GET /evaluations/{id}` - Get evaluation results
+- `GET /evaluations/generator/{id}` - List generator evaluations
+- `POST /evaluations/quick/{id}` - Quick statistical evaluation
 
 ---
 
