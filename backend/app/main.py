@@ -61,14 +61,19 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# Configure CORS
+# Configure CORS (environment-aware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if settings.debug:
+    logger.warning("⚠️  CORS: Allowing all origins (DEBUG mode)")
+else:
+    logger.info(f"🔒 CORS: Allowing origins: {settings.allowed_origins}")
 
 
 # Root endpoint

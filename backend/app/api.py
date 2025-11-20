@@ -5,6 +5,7 @@ FastAPI is available; otherwise it provides a safe placeholder.
 """
 
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,11 @@ try:
             else:
                 logger.warning(f"⚠️  Module {modul} has no router attribute")
         except Exception as e:
-            # ignore missing routers during refactor
-            logger.warning(f"⚠️  Failed to load {modul}: {e}")
-            pass
+            # Log router loading failures
+            logger.error(f"❌ CRITICAL: Failed to load router from {modul}: {e}", exc_info=True)
+            # In production, this should potentially fail hard
+            if not os.getenv("DEBUG", "false").lower() == "true":
+                raise RuntimeError(f"Failed to load required router: {modul}") from e
 except Exception as e:
     logger.error(f"❌ Failed to initialize API router: {e}")
     router = None
