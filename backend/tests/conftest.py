@@ -8,7 +8,20 @@ from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.core.dependencies import get_db
-from app.database.database import Base
+from sqlmodel import SQLModel
+
+# Import all model modules so classes are registered with SQLModel metadata
+from app.auth.models import User, APIKey  # noqa: F401
+from app.projects.models import Project  # noqa: F401
+from app.datasets.models import Dataset, DatasetFile  # noqa: F401
+from app.generators.models import Generator  # noqa: F401
+from app.jobs.models import Job  # noqa: F401
+from app.models.models import Model, ModelVersion  # noqa: F401
+from app.artifacts.models import Artifact  # noqa: F401
+from app.evaluations.models import Evaluation  # noqa: F401
+from app.compliance.models import ComplianceReport  # noqa: F401
+from app.billing.models import UsageRecord, Quota  # noqa: F401
+from app.audit.models import AuditLog  # noqa: F401
 
 
 # Create test database engine (in-memory SQLite)
@@ -24,13 +37,13 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="function")
 def db_session():
     """Create a fresh database session for each test."""
-    Base.metadata.create_all(bind=engine)
+    SQLModel.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
+        SQLModel.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")

@@ -93,7 +93,7 @@ class StatisticalEvaluator:
             "p_value": float(p_value),
             "similarity": similarity,
             "interpretation": interpretation,
-            "passed": p_value > 0.05
+            "passed": bool(p_value > 0.05)
         }
     
     def chi_square_test(self, column: str, bins: int = 10) -> Dict[str, Any]:
@@ -167,7 +167,7 @@ class StatisticalEvaluator:
             "degrees_of_freedom": int(dof),
             "similarity": similarity,
             "interpretation": interpretation,
-            "passed": p_value > 0.05
+            "passed": bool(p_value > 0.05)
         }
     
     def wasserstein_distance_test(self, column: str) -> Dict[str, Any]:
