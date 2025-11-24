@@ -323,3 +323,214 @@ def _generate_in_background(generator_id: str, db: Session):
         # Update status to failed
         update_generator_status(db, generator_id, "failed")
         print(f"Generation failed for {generator_id}: {str(e)}")
+
+
+# ============================================================================
+# COMPLIANCE DOCUMENTATION ENDPOINTS (Phase 3: LLM Integration)
+# ============================================================================
+
+@router.post("/{generator_id}/model-card")
+async def generate_model_card(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Generate comprehensive model card for a generator
+    
+    Uses LLM to create professional, compliance-ready documentation including:
+    - Model details and purpose
+    - Intended use cases and limitations
+    - Performance metrics
+    - Privacy and ethical considerations
+    - Compliance framework mappings
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Generating model card for generator {generator_id}")
+    
+    # Get generator
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # Get dataset info
+    from app.datasets.crud import get_dataset_by_id
+    dataset = get_dataset_by_id(db, str(generator.dataset_id)) if generator.dataset_id else None
+    
+    # Get latest evaluation if available
+    from app.evaluations.crud import list_evaluations_by_generator
+    evaluations = list_evaluations_by_generator(db, generator_id)
+    latest_eval = evaluations[0] if evaluations else None
+    
+    # Build metadata
+    metadata = {
+        "generator_id": str(generator.id),
+        "type": generator.type,
+        "name": generator.name,
+        "created_at": generator.created_at.isoformat() if generator.created_at else None,
+        "dataset_info": {
+            "name": dataset.name if dataset else "Unknown",
+            "rows": dataset.row_count if dataset else None,
+            "columns": len(dataset.schema_data) if dataset and dataset.schema_data else None
+        } if dataset else {},
+        "training_config": generator.parameters_json or {},
+        "privacy_config": generator.privacy_config or {},
+        "privacy_spent": generator.privacy_spent or {},
+        "evaluation_results": latest_eval.report if latest_eval else None
+    }
+    
+    # Generate model card using LLM
+    from app.services.llm.compliance_writer import ComplianceWriter
+    
+    try:
+        writer = ComplianceWriter()
+        model_card = await writer.generate_model_card(metadata)
+        
+        logger.info(f"✓ Model card generated for {generator_id}")
+        
+        return {
+            "generator_id": generator_id,
+            "model_card": model_card,
+            "format": "markdown",
+            "requires_review": True,
+            "disclaimer": "AI-generated content. Requires legal review before distribution."
+        }
+    
+    except Exception as e:
+        logger.error(f"Model card generation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Model card generation failed: {str(e)}"
+        )
+
+
+@router.get("/{generator_id}/audit-narrative")
+async def generate_audit_narrative(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Generate human-readable audit narrative for a generator
+    
+    Converts technical audit logs into a professional narrative suitable
+    for compliance documentation and auditor review.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Generating audit narrative for generator {generator_id}")
+    
+    # Get generator
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # Build audit log from generator history
+    audit_log = [
+        {
+            "timestamp": generator.created_at.strftime("%Y-%m-%d %H:%M:%S") if generator.created_at else "Unknown",
+            "action": "generator_created",
+            "details": {
+                "type": generator.type,
+                "name": generator.name
+            }
+        }
+    ]
+    
+    # Add training event if completed
+    if generator.status == "completed":
+        audit_log.append({
+            "timestamp": generator.updated_at.strftime("%Y-%m-%d %H:%M:%S") if generator.updated_at else "Unknown",
+            "action": "training_completed",
+            "details": {
+                "output_dataset_id": str(generator.output_dataset_id) if generator.output_dataset_id else None,
+                "privacy_spent": generator.privacy_spent
+            }
+        })
+    
+    # Generate narrative using LLM
+    from app.services.llm.compliance_writer import ComplianceWriter
+    
+    try:
+        writer = ComplianceWriter()
+        narrative = await writer.generate_audit_narrative(audit_log)
+        
+        logger.info(f"✓ Audit narrative generated for {generator_id}")
+        
+        return {
+            "generator_id": generator_id,
+            "narrative": narrative,
+            "format": "markdown",
+            "events_count": len(audit_log)
+        }
+    
+    except Exception as e:
+        logger.error(f"Audit narrative generation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Audit narrative generation failed: {str(e)}"
+        )
+
+
+@router.post("/{generator_id}/compliance-report")
+async def generate_compliance_report(
+    generator_id: str,
+    framework: str = "GDPR",  # GDPR, HIPAA, CCPA, SOC2
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Generate compliance framework mapping for a generator
+    
+    Maps generator configuration to specific compliance requirements
+    for frameworks like GDPR, HIPAA, CCPA, or SOC 2.
+    
+    Args:
+        generator_id: Generator ID
+        framework: Compliance framework (GDPR, HIPAA, CCPA, SOC2)
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Validate framework
+    valid_frameworks = ["GDPR", "HIPAA", "CCPA", "SOC2"]
+    if framework.upper() not in valid_frameworks:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid framework. Must be one of: {', '.join(valid_frameworks)}"
+        )
+    
+    logger.info(f"Generating {framework} compliance report for generator {generator_id}")
+    
+    # Get generator
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # Build metadata
+    metadata = {
+        "generator_id": str(generator.id),
+        "type": generator.type,
+        "privacy_config": generator.privacy_config or {},
+        "privacy_spent": generator.privacy_spent or {},
+        "training_config": generator.parameters_json or {}
+    }
+    
+    # Generate compliance report using LLM
+    from app.services.llm.compliance_writer import ComplianceWriter
+    
+    try:
+        writer = ComplianceWriter()
+        report = await writer.generate_compliance_report(metadata, framework.upper())
+        
+        logger.info(f"✓ {framework} compliance report generated for {generator_id}")
+        
+        return report
+    
+    except Exception as e:
+        logger.error(f"Compliance report generation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Compliance report generation failed: {str(e)}"
+        )
+

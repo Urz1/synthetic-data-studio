@@ -308,3 +308,134 @@ async def quick_evaluation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Quick evaluation failed: {str(e)}"
         )
+
+
+@router.post("/{evaluation_id}/explain", response_model=dict)
+async def explain_evaluation(
+    evaluation_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate natural language explanation of evaluation results.
+    
+    Uses LLM to translate technical metrics into business insights:
+    - Executive summary
+    - Key findings
+    - Actionable recommendations
+    - Business impact statement
+    
+    Args:
+        evaluation_id: Evaluation ID
+        db: Database session
+    
+    Returns:
+        Natural language insights with metadata
+    """
+    logger.info(f"Generating natural language insights for evaluation {evaluation_id}")
+    
+    # Get evaluation
+    evaluation = evaluations_crud.get_evaluation(db, evaluation_id)
+    if not evaluation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Evaluation {evaluation_id} not found"
+        )
+    
+    # Check if insights already exist
+    if hasattr(evaluation, 'insights') and evaluation.insights:
+        logger.info("Returning cached insights")
+        return evaluation.insights
+    
+    try:
+        # Generate insights using LLM
+        from app.services.llm.report_translator import ReportTranslator
+        
+        translator = ReportTranslator()
+        insights = await translator.translate_evaluation(evaluation.report)
+        
+        # Save insights to database (if insights column exists)
+        try:
+            evaluation.insights = insights
+            db.commit()
+            logger.info(f"✓ Insights generated and cached using {insights['_metadata']['provider']}")
+        except Exception as e:
+            logger.warning(f"Could not save insights to database: {e}")
+        
+        return insights
+        
+    except Exception as e:
+        logger.error(f"Failed to generate insights: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate insights: {str(e)}"
+        )
+
+
+@router.post("/compare", response_model=dict)
+async def compare_evaluations(
+    evaluation_ids: List[str],
+    db: Session = Depends(get_db)
+):
+    """
+    Compare multiple evaluations and provide recommendations.
+    
+    Helps users choose the best synthetic data generation approach
+    by comparing quality, privacy, and utility trade-offs.
+    
+    Args:
+        evaluation_ids: List of evaluation IDs to compare
+        db: Database session
+    
+    Returns:
+        Comparative analysis with recommendations
+    """
+    logger.info(f"Comparing {len(evaluation_ids)} evaluations")
+    
+    if len(evaluation_ids) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least 2 evaluations required for comparison"
+        )
+    
+    if len(evaluation_ids) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 5 evaluations can be compared at once"
+        )
+    
+    # Load all evaluations
+    evaluations_data = []
+    for eval_id in evaluation_ids:
+        evaluation = evaluations_crud.get_evaluation(db, eval_id)
+        if not evaluation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Evaluation {eval_id} not found"
+            )
+        
+        # Get generator info
+        generator = generators_crud.get_generator_by_id(db, str(evaluation.generator_id))
+        
+        evaluations_data.append({
+            "evaluation_id": str(evaluation.id),
+            "generator_type": generator.type if generator else "unknown",
+            "metrics": evaluation.report
+        })
+    
+    try:
+        # Generate comparison using LLM
+        from app.services.llm.report_translator import ReportTranslator
+        
+        translator = ReportTranslator()
+        comparison = await translator.compare_evaluations(evaluations_data)
+        
+        logger.info("✓ Comparison generated successfully")
+        return comparison
+        
+    except Exception as e:
+        logger.error(f"Failed to generate comparison: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate comparison: {str(e)}"
+        )
+

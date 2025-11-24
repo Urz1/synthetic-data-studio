@@ -15,4 +15,5 @@ class Evaluation(SQLModel, table=True):
     generator_id: uuid.UUID = Field(foreign_key="generators.id")
     dataset_id: uuid.UUID = Field(foreign_key="datasets.id")
     report: dict = Field(default_factory=dict, sa_column=Column(JSONType))
+    insights: Optional[dict] = Field(default=None, sa_column=Column(JSONType))  # LLM-generated insights
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
