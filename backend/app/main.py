@@ -71,7 +71,7 @@ app.add_middleware(
 )
 
 if settings.debug:
-    logger.warning("⚠️  CORS: Allowing all origins (DEBUG mode)")
+    logger.warning("CORS: Allowing all origins (DEBUG mode)")
 else:
     logger.info(f"🔒 CORS: Allowing origins: {settings.allowed_origins}")
 
@@ -106,7 +106,7 @@ def health_check():
 if api_module.router is not None:
     app.include_router(api_module.router)
 else:
-    logger.warning("⚠️  API router is None - no module routers were loaded")
+    logger.warning("API router is None - no module routers were loaded")
 
 # Log registered routes on startup
 @app.on_event("startup")

@@ -1,0 +1,317 @@
+{
+  "info": {
+    "name": "Synth Studio - LLM Integration API Tests",
+    "description": "Complete test collection for all 11 new LLM-powered endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. LLM Chat & Interactive",
+      "item": [
+        {
+          "name": "Chat - Ask about Evaluation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What's the overall quality of this synthetic data?\",\n  \"evaluation_id\": \"YOUR_EVALUATION_ID_HERE\",\n  \"history\": []\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/llm/chat",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["llm", "chat"]
+            },
+            "description": "Interactive chat about evaluation results. Replace YOUR_EVALUATION_ID_HERE with actual ID."
+          }
+        },
+        {
+          "name": "Chat - With Conversation History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"How can I improve the privacy level?\",\n  \"evaluation_id\": \"YOUR_EVALUATION_ID_HERE\",\n  \"history\": [\n    {\n      \"user\": \"What's the overall quality?\",\n      \"assistant\": \"The quality is Excellent with a score of 0.91\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/llm/chat",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["llm", "chat"]
+            },
+            "description": "Chat with conversation history for context-aware responses."
+          }
+        },
+        {
+          "name": "Get Improvement Suggestions",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/llm/suggest-improvements/YOUR_EVALUATION_ID_HERE",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["llm", "suggest-improvements", "YOUR_EVALUATION_ID_HERE"]
+            },
+            "description": "Get 3-5 AI-powered improvement suggestions based on evaluation results."
+          }
+        },
+        {
+          "name": "Explain Metric - KS Statistic",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/llm/explain-metric?metric_name=ks_statistic&metric_value=0.087",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["llm", "explain-metric"],
+              "query": [
+                {
+                  "key": "metric_name",
+                  "value": "ks_statistic"
+                },
+                {
+                  "key": "metric_value",
+                  "value": "0.087"
+                }
+              ]
+            },
+            "description": "Get plain English explanation of technical metrics."
+          }
+        },
+        {
+          "name": "Explain Metric - Utility Ratio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/llm/explain-metric?metric_name=utility_ratio&metric_value=0.89",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["llm", "explain-metric"],
+              "query": [
+                {
+                  "key": "metric_name",
+                  "value": "utility_ratio"
+                },
+                {
+                  "key": "metric_value",
+                  "value": "0.89"
+                }
+              ]
+            },
+            "description": "Explain ML utility ratio metric."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Evaluation Intelligence",
+      "item": [
+        {
+          "name": "Get Natural Language Insights",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/evaluations/YOUR_EVALUATION_ID_HERE/explain",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["evaluations", "YOUR_EVALUATION_ID_HERE", "explain"]
+            },
+            "description": "Convert technical evaluation metrics into business-friendly insights with executive summary, key findings, and recommendations."
+          }
+        },
+        {
+          "name": "Compare Multiple Evaluations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"EVALUATION_ID_1\",\n  \"EVALUATION_ID_2\",\n  \"EVALUATION_ID_3\"\n]"
+            },
+            "url": {
+              "raw": "http://localhost:8000/evaluations/compare",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["evaluations", "compare"]
+            },
+            "description": "Compare 2-5 evaluations and get recommendations on which approach is best."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Compliance Documentation",
+      "item": [
+        {
+          "name": "Generate Model Card",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/generators/YOUR_GENERATOR_ID_HERE/model-card",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["generators", "YOUR_GENERATOR_ID_HERE", "model-card"]
+            },
+            "description": "Generate comprehensive ML model card with purpose, use cases, performance, privacy considerations, and compliance mappings."
+          }
+        },
+        {
+          "name": "Generate Audit Narrative",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/generators/YOUR_GENERATOR_ID_HERE/audit-narrative",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["generators", "YOUR_GENERATOR_ID_HERE", "audit-narrative"]
+            },
+            "description": "Convert technical audit logs into human-readable professional narrative."
+          }
+        },
+        {
+          "name": "GDPR Compliance Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/generators/YOUR_GENERATOR_ID_HERE/compliance-report?framework=GDPR",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["generators", "YOUR_GENERATOR_ID_HERE", "compliance-report"],
+              "query": [
+                {
+                  "key": "framework",
+                  "value": "GDPR"
+                }
+              ]
+            },
+            "description": "Map generator to GDPR requirements with controls addressed, gaps, and recommendations."
+          }
+        },
+        {
+          "name": "HIPAA Compliance Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/generators/YOUR_GENERATOR_ID_HERE/compliance-report?framework=HIPAA",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["generators", "YOUR_GENERATOR_ID_HERE", "compliance-report"],
+              "query": [
+                {
+                  "key": "framework",
+                  "value": "HIPAA"
+                }
+              ]
+            },
+            "description": "Map generator to HIPAA requirements."
+          }
+        },
+        {
+          "name": "CCPA Compliance Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/generators/YOUR_GENERATOR_ID_HERE/compliance-report?framework=CCPA",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["generators", "YOUR_GENERATOR_ID_HERE", "compliance-report"],
+              "query": [
+                {
+                  "key": "framework",
+                  "value": "CCPA"
+                }
+              ]
+            },
+            "description": "Map generator to CCPA requirements."
+          }
+        },
+        {
+          "name": "SOC2 Compliance Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/generators/YOUR_GENERATOR_ID_HERE/compliance-report?framework=SOC2",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["generators", "YOUR_GENERATOR_ID_HERE", "compliance-report"],
+              "query": [
+                {
+                  "key": "framework",
+                  "value": "SOC2"
+                }
+              ]
+            },
+            "description": "Map generator to SOC 2 requirements."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Enhanced PII Detection",
+      "item": [
+        {
+          "name": "Enhanced PII Detection",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/datasets/YOUR_DATASET_ID_HERE/pii-detection-enhanced",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["datasets", "YOUR_DATASET_ID_HERE", "pii-detection-enhanced"]
+            },
+            "description": "LLM-powered contextual PII detection that identifies encoded, obfuscated, and indirect identifiers beyond regex patterns."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}

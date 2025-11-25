@@ -107,3 +107,9 @@ node_modules/
 *.swp
 *.swo
 *~
+
+# Debug and cleanup files
+*_debug.log
+router_debug.log
+check_*.py
+CLEANUP_*.md

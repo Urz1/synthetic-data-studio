@@ -4,6 +4,8 @@ A production-ready synthetic data generation platform with differential privacy 
 
 ## 🎯 Features
 
+### Core Capabilities
+
 - **Data Profiling**: Statistical analysis, outlier detection, correlation matrices
 - **PII/PHI Detection**: Automated sensitive data identification with recommendations
 - **Multiple Synthesis Methods**:
@@ -15,6 +17,17 @@ A production-ready synthetic data generation platform with differential privacy 
 - **Privacy Guarantees**: (ε, δ)-differential privacy with RDP accounting
 - **Compliance**: HIPAA, GDPR, CCPA, SOC-2 compliance reporting
 - **Safety System**: 3-layer validation to prevent privacy failures
+
+### 🤖 AI-Powered Features (NEW)
+
+- **Interactive Chat**: Ask questions about your synthetic data quality
+- **Smart Suggestions**: AI-powered recommendations to improve data quality
+- **Metric Explanations**: Plain English explanations of technical metrics
+- **Auto-Documentation**: Generate model cards and audit narratives
+- **Compliance Mapping**: Automated GDPR/HIPAA/CCPA/SOC2 compliance reports
+- **Enhanced PII Detection**: Context-aware identification of sensitive data
+
+> **See [LLM_IMPLEMENTATION_PLAN.md](LLM_IMPLEMENTATION_PLAN.md) for complete AI features documentation**
 
 ## 🚀 Quick Start
 
@@ -55,15 +68,18 @@ start_server.bat
 ## 📚 Documentation
 
 ### Complete Documentation Index
+
 See [docs/INDEX.md](docs/INDEX.md) for full documentation structure
 
 ### Quick Links
+
 - **Getting Started**: [docs/guides/TESTING.md](docs/guides/TESTING.md)
 - **DP Quick Reference**: [docs/phase3/PHASE3_SAFETY_QUICKREF.md](docs/phase3/PHASE3_SAFETY_QUICKREF.md)
 - **API Examples**: [docs/phase3/PHASE3_SAFETY_API_EXAMPLES.md](docs/phase3/PHASE3_SAFETY_API_EXAMPLES.md)
 - **Implementation Plan**: [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)
 
 ### Phase Documentation
+
 - [Phase 1: Data Profiling](docs/phase1/PHASE1_SUMMARY.md)
 - [Phase 2: Synthesis Models](docs/phase2/PHASE2_SUMMARY.md)
 - [Phase 3: Differential Privacy](docs/phase3/PHASE3_SUMMARY.md)
@@ -100,6 +116,7 @@ pytest --cov=app
 ## 🔒 Differential Privacy Usage
 
 ### Validate Configuration First
+
 ```bash
 curl -X POST http://localhost:8000/generators/dp/validate-config \
   -H "Content-Type: application/json" \
@@ -112,6 +129,7 @@ curl -X POST http://localhost:8000/generators/dp/validate-config \
 ```
 
 ### Generate with DP
+
 ```bash
 curl -X POST http://localhost:8000/generators/dataset/{id}/generate \
   -H "Content-Type: application/json" \
@@ -124,6 +142,7 @@ curl -X POST http://localhost:8000/generators/dataset/{id}/generate \
 ```
 
 ### Get Privacy Report
+
 ```bash
 curl http://localhost:8000/generators/{generator_id}/privacy-report
 ```
@@ -131,17 +150,20 @@ curl http://localhost:8000/generators/{generator_id}/privacy-report
 ## 📊 API Endpoints
 
 ### Datasets
+
 - `POST /datasets/upload` - Upload dataset
 - `GET /datasets/` - List datasets
 - `POST /datasets/{id}/profile` - Generate profile
 - `POST /datasets/{id}/detect-pii` - Detect sensitive data
 
 ### Generators
+
 - `POST /generators/dataset/{id}/generate` - Generate synthetic data
 - `GET /generators/{id}` - Get generator details
 - `GET /generators/{id}/privacy-report` - Get privacy report
 
 ### Differential Privacy
+
 - `POST /generators/dp/validate-config` - Validate DP config
 - `GET /generators/dp/recommended-config` - Get safe parameters
 
@@ -157,13 +179,13 @@ See [docs/phase3/PHASE3_SAFETY_SUMMARY.md](docs/phase3/PHASE3_SAFETY_SUMMARY.md)
 
 ## 🌟 Privacy Levels
 
-| Epsilon | Level | Use Case |
-|---------|-------|----------|
-| <1.0 | Very Strong | Clinical trials, genomic data |
-| 1-5 | Strong | Healthcare, financial records |
-| 5-10 | Moderate | Customer data, HR records |
-| 10-20 | Weak | Aggregated analytics |
-| >20 | Minimal | Non-sensitive data |
+| Epsilon | Level       | Use Case                      |
+| ------- | ----------- | ----------------------------- |
+| <1.0    | Very Strong | Clinical trials, genomic data |
+| 1-5     | Strong      | Healthcare, financial records |
+| 5-10    | Moderate    | Customer data, HR records     |
+| 10-20   | Weak        | Aggregated analytics          |
+| >20     | Minimal     | Non-sensitive data            |
 
 ## 🔧 Configuration
 
@@ -190,6 +212,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 ## 📦 Dependencies
 
 Core packages:
+
 - `fastapi` - Web framework
 - `sqlmodel` - ORM
 - `sdv>=1.29.0` - Synthetic data generation

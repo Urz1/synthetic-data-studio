@@ -202,3 +202,90 @@ def get_pii_flags(
     return dataset.pii_flags
 
 
+@router.post("/{dataset_id}/pii-detection-enhanced")
+async def detect_pii_enhanced(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Enhanced PII detection using LLM for contextual analysis
+    
+    Goes beyond regex patterns to identify:
+    - Encoded or obfuscated PII
+    - Indirect identifiers (user codes, customer IDs)
+    - Quasi-identifiers that could enable re-identification
+    - Context-based PII detection
+    
+    Returns detailed risk assessment with recommendations.
+    """
+    import logging
+    import pandas as pd
+    from .crud import get_dataset_by_id
+    from app.services.llm.enhanced_pii_detector import EnhancedPIIDetector
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running enhanced PII detection for dataset {dataset_id}")
+    
+    # Get dataset
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Load data
+    try:
+        if dataset.file_path:
+            df = pd.read_csv(dataset.file_path)
+        else:
+            file_path = UPLOAD_DIR / dataset.original_filename
+            df = pd.read_csv(file_path)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load dataset: {str(e)}"
+        )
+    
+    # Prepare column data for analysis
+    columns_data = {}
+    for col in df.columns:
+        # Get sample values (first 10, non-null)
+        samples = df[col].dropna().head(10).tolist()
+        
+        # Get basic stats
+        stats = {
+            "dtype": str(df[col].dtype),
+            "null_count": int(df[col].isnull().sum()),
+            "unique_count": int(df[col].nunique()),
+            "total_count": len(df)
+        }
+        
+        # Add numeric stats if applicable
+        if pd.api.types.is_numeric_dtype(df[col]):
+            stats.update({
+                "mean": float(df[col].mean()) if not df[col].isnull().all() else None,
+                "std": float(df[col].std()) if not df[col].isnull().all() else None
+            })
+        
+        columns_data[col] = {
+            "samples": samples,
+            "stats": stats
+        }
+    
+    # Run enhanced PII detection
+    try:
+        detector = EnhancedPIIDetector()
+        analysis = await detector.analyze_dataset(columns_data)
+        
+        logger.info(f"✓ Enhanced PII detection complete: {analysis['overall_risk_level']} risk")
+        
+        return {
+            "dataset_id": dataset_id,
+            "analysis": analysis,
+            "disclaimer": "AI-generated analysis. Manual review recommended for production use."
+        }
+    
+    except Exception as e:
+        logger.error(f"Enhanced PII detection failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Enhanced PII detection failed: {str(e)}"
+        )
