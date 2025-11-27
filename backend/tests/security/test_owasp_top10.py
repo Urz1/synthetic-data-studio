@@ -2,19 +2,30 @@
 Security tests covering OWASP API Top 10 vulnerabilities.
 """
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
+import uuid
+
+# Third-party
 import pytest
 from fastapi.testclient import TestClient
+
+# Local - Services
 from app.auth.services import create_access_token
+
+# Local - Models
 from app.datasets.models import Dataset
-import uuid
 
 class TestBOLA:
     """Broken Object Level Authorization (BOLA) tests"""
 
     @pytest.fixture
     def user_a(self, session):
-        from app.auth.crud import create_user
-        from app.auth.models import UserCreate
+        from app.auth.repositories import create_user
+        from app.auth.schemas import UserCreate
         user_data = UserCreate(email="user_a@example.com", password="Password123!", username="user_a")
         user = create_user(session, user_data)
         session.commit()
@@ -23,8 +34,8 @@ class TestBOLA:
 
     @pytest.fixture
     def user_b(self, session):
-        from app.auth.crud import create_user
-        from app.auth.models import UserCreate
+        from app.auth.repositories import create_user
+        from app.auth.schemas import UserCreate
         user_data = UserCreate(email="user_b@example.com", password="Password123!", username="user_b")
         user = create_user(session, user_data)
         session.commit()

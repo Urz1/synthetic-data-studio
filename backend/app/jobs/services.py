@@ -1,17 +1,35 @@
+```python
 """Business logic for async job processing."""
 
+# Standard library
+import logging
+
+# Third-party
 from sqlmodel import Session
+
+# Local - Module
 from .models import Job
-from .crud import update_job_status
+from .repositories import update_job_status, get_job_by_id
+
+logger = logging.getLogger(__name__)
 
 
-def process_job(job: Job, db: Session):
-    """Process a job based on its type."""
+def process_job(db: Session, job_id: str):
+    """
+    Process a job based on its type.
+    This is a placeholder for actual job processing logic.
+    """
+    job = get_job_by_id(db, job_id)
+    if not job:
+        logger.error(f"Job with ID {job_id} not found.")
+        return
+
     try:
         if job.type == "generation":
             # Call generator service
+            # Local imports to avoid circular dependencies
             from app.generators.services import generate_synthetic_data
-            from app.generators.crud import get_generator_by_id
+            from app.generators.repositories import get_generator_by_id
 
             generator = get_generator_by_id(db, str(job.generator_id))
             if generator:

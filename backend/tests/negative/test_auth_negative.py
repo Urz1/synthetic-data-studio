@@ -8,6 +8,7 @@ Tests invalid inputs, boundary conditions, and error handling for:
 - GET /auth/me
 """
 
+# Third-party
 import pytest
 from fastapi.testclient import TestClient
 

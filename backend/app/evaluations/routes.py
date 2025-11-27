@@ -1,67 +1,56 @@
-"""
-API routes for synthetic data evaluation.
-"""
+"""Evaluation API endpoints."""
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
 import logging
 import uuid
-from typing import Optional, List
+from pathlib import Path
+from typing import Optional, List, Dict, Any
+
+# Third-party
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
-from ..core.dependencies import get_db, get_current_user
-from ..generators import crud as generators_crud
-from ..datasets import crud as datasets_crud
+# Local - Core
+from app.core.dependencies import get_db, get_current_user
+from app.core.validators import validate_uuid
+
+# Local - Services
+from app.datasets.repositories import get_dataset_by_id
+from app.generators.repositories import get_generator_by_id
+from app.services.llm.report_translator import ReportTranslator
+
+# Local - Module
 from .quality_report import QualityReportGenerator
-from . import crud as evaluations_crud
+from .repositories import (
+    get_evaluation,
+    create_evaluation,
+    list_evaluations_by_generator
+)
+from .schemas import EvaluationRequest, EvaluationResponse, ComparisonRequest
+
+# ============================================================================
+# SETUP
+# ============================================================================
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 
-
-def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
-    """Validate and convert string to UUID, raising HTTPException if invalid."""
-    try:
-        return uuid.UUID(uuid_str)
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
-
-
-class EvaluationRequest(BaseModel):
-    """Request model for evaluation."""
-    generator_id: str
-    dataset_id: str
-    target_column: Optional[str] = None
-    sensitive_columns: Optional[List[str]] = None
-    include_statistical: bool = True
-    include_ml_utility: bool = True
-    include_privacy: bool = True
-
-
-class EvaluationResponse(BaseModel):
-    """Response model for evaluation."""
-    evaluation_id: str
-    generator_id: str
-    dataset_id: str
-    status: str
-    report: dict
-    
-    class Config:
-        from_attributes = True
-
-
-class ComparisonRequest(BaseModel):
-    """Request model for comparison."""
-    evaluation_ids: List[str]
-
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
 @router.post("/run", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
 async def run_evaluation(
     request: EvaluationRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> EvaluationResponse:
     """
     Run comprehensive quality evaluation on generated synthetic data.
     
@@ -85,7 +74,7 @@ async def run_evaluation(
     validate_uuid(request.dataset_id, "dataset_id")
     
     # Load generator
-    generator = generators_crud.get_generator_by_id(db, request.generator_id)
+    generator = get_generator_by_id(db, request.generator_id)
     if not generator:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -93,7 +82,7 @@ async def run_evaluation(
         )
     
     # Load dataset
-    dataset = datasets_crud.get_dataset_by_id(db, request.dataset_id)
+    dataset = get_dataset_by_id(db, request.dataset_id)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -116,27 +105,20 @@ async def run_evaluation(
     
     try:
         # Load real data
-        import pandas as pd
-        
-        # Get file path from dataset
         if dataset.file_path:
             real_data = pd.read_csv(dataset.file_path)
         else:
-            # Fallback to constructing path
-            from pathlib import Path
             file_path = Path("uploads") / dataset.original_filename
             real_data = pd.read_csv(file_path)
         
         # Load synthetic data from output dataset
-        output_dataset = datasets_crud.get_dataset_by_id(db, str(generator.output_dataset_id))
+        output_dataset = get_dataset_by_id(db, str(generator.output_dataset_id))
         if not output_dataset:
             raise FileNotFoundError(f"Output dataset {generator.output_dataset_id} not found")
         
         if output_dataset.file_path:
             synthetic_data = pd.read_csv(output_dataset.file_path)
         else:
-            # Fallback
-            from pathlib import Path
             synth_file_path = Path("uploads") / output_dataset.original_filename
             synthetic_data = pd.read_csv(synth_file_path)
         
@@ -157,7 +139,7 @@ async def run_evaluation(
         )
         
         # Save evaluation to database
-        evaluation = evaluations_crud.create_evaluation(
+        evaluation = create_evaluation(
             db=db,
             generator_id=request.generator_id,
             dataset_id=request.dataset_id,
@@ -183,6 +165,25 @@ async def run_evaluation(
     except Exception as e:
         logger.error(f"Evaluation failed: {e}", exc_info=True)
         raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Evaluation failed: {str(e)}"
+        )
+
+
+@router.get("/{evaluation_id}", response_model=EvaluationResponse)
+def get_evaluation_endpoint(
+    evaluation_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> EvaluationResponse:
+    """Get a specific evaluation by ID."""
+    # Validate UUID format
+    eval_uuid = validate_uuid(evaluation_id, "evaluation_id")
+    
+    evaluation = get_evaluation(db, str(eval_uuid))
+    if not evaluation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Evaluation {evaluation_id} not found"
         )
     
@@ -195,28 +196,12 @@ async def run_evaluation(
     )
 
 
-@router.get("/{evaluation_id}", response_model=EvaluationResponse)
-def get_evaluation(
-    evaluation_id: str,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Get a specific evaluation by ID."""
-    # Validate UUID format
-    eval_uuid = validate_uuid(evaluation_id, "evaluation_id")
-    
-    evaluation = evaluations_crud.get_evaluation(db, str(eval_uuid))
-    if not evaluation:
-        raise HTTPException(status_code=404, detail="Evaluation not found")
-    return evaluation
-
-
 @router.get("/generator/{generator_id}", response_model=List[EvaluationResponse])
 async def list_generator_evaluations(
     generator_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> List[EvaluationResponse]:
     """
     List all evaluations for a specific generator.
     
@@ -231,7 +216,7 @@ async def list_generator_evaluations(
     # Validate UUID
     validate_uuid(generator_id, "generator_id")
     
-    evaluations = evaluations_crud.list_evaluations_by_generator(db, generator_id)
+    evaluations = list_evaluations_by_generator(db, generator_id)
     
     return [
         EvaluationResponse(
@@ -245,12 +230,12 @@ async def list_generator_evaluations(
     ]
 
 
-@router.post("/quick/{generator_id}", response_model=dict)
+@router.post("/quick/{generator_id}", response_model=Dict[str, Any])
 async def quick_evaluation(
     generator_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Run quick statistical evaluation (no ML utility or privacy tests).
     
@@ -270,7 +255,7 @@ async def quick_evaluation(
     validate_uuid(generator_id, "generator_id")
     
     # Load generator
-    generator = generators_crud.get_generator_by_id(db, generator_id)
+    generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -290,18 +275,15 @@ async def quick_evaluation(
         )
     
     try:
-        import pandas as pd
-        from pathlib import Path
-        
         # Load data
-        dataset = datasets_crud.get_dataset_by_id(db, str(generator.dataset_id))
+        dataset = get_dataset_by_id(db, str(generator.dataset_id))
         if dataset.file_path:
             real_data = pd.read_csv(dataset.file_path)
         else:
             real_data = pd.read_csv(Path("uploads") / dataset.original_filename)
         
         # Load synthetic data
-        output_dataset = datasets_crud.get_dataset_by_id(db, str(generator.output_dataset_id))
+        output_dataset = get_dataset_by_id(db, str(generator.output_dataset_id))
         if not output_dataset:
             raise FileNotFoundError(f"Output dataset {generator.output_dataset_id} not found")
         
@@ -332,12 +314,12 @@ async def quick_evaluation(
         )
 
 
-@router.post("/{evaluation_id}/explain", response_model=dict)
+@router.post("/{evaluation_id}/explain", response_model=Dict[str, Any])
 async def explain_evaluation(
     evaluation_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Generate natural language explanation of evaluation results.
     
@@ -361,7 +343,7 @@ async def explain_evaluation(
     validate_uuid(evaluation_id, "evaluation_id")
     
     # Get evaluation
-    evaluation = evaluations_crud.get_evaluation(db, evaluation_id)
+    evaluation = get_evaluation(db, evaluation_id)
     if not evaluation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -375,8 +357,6 @@ async def explain_evaluation(
     
     try:
         # Generate insights using LLM
-        from app.services.llm.report_translator import ReportTranslator
-        
         translator = ReportTranslator()
         insights = await translator.translate_evaluation(evaluation.report)
         
@@ -398,12 +378,12 @@ async def explain_evaluation(
         )
 
 
-@router.post("/compare", response_model=dict)
+@router.post("/compare", response_model=Dict[str, Any])
 async def compare_evaluations(
     request: ComparisonRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Compare multiple evaluations and provide recommendations.
     
@@ -440,7 +420,7 @@ async def compare_evaluations(
     # Load all evaluations
     evaluations_data = []
     for eval_id in evaluation_ids:
-        evaluation = evaluations_crud.get_evaluation(db, eval_id)
+        evaluation = get_evaluation(db, eval_id)
         if not evaluation:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -448,7 +428,7 @@ async def compare_evaluations(
             )
         
         # Get generator info
-        generator = generators_crud.get_generator_by_id(db, str(evaluation.generator_id))
+        generator = get_generator_by_id(db, str(evaluation.generator_id))
         
         evaluations_data.append({
             "evaluation_id": str(evaluation.id),
@@ -458,8 +438,6 @@ async def compare_evaluations(
     
     try:
         # Generate comparison using LLM
-        from app.services.llm.report_translator import ReportTranslator
-        
         translator = ReportTranslator()
         comparison = await translator.compare_evaluations(evaluations_data)
         

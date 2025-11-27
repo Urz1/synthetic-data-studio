@@ -1,5 +1,5 @@
 """Projects module package."""
 
-from . import routes
+from . import models, repositories, schemas, routes
 
 __all__ = ["routes"]

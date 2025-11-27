@@ -1,84 +1,112 @@
-"""Routes for dataset endpoints."""
+"""Dataset API endpoints."""
 
-import os
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
+import logging
 import shutil
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Any, Optional
+
+# Third-party
+import pandas as pd
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlmodel import Session
+
+# Local - Core
 from app.core.dependencies import get_db, get_current_user
+from app.core.security import check_resource_ownership
+from app.core.validators import validate_uuid, validate_filename, validate_file_extension
+
+# Local - Services
+from app.services.llm.enhanced_pii_detector import EnhancedPIIDetector
+
+# Local - Module
 from .models import Dataset
-from .services import get_all_datasets, process_uploaded_file, profile_uploaded_dataset, detect_dataset_pii
+from .repositories import get_dataset_by_id, delete_dataset as delete_dataset_repo
+from .schemas import DatasetResponse, DatasetDeleteResponse
+from .services import (
+    get_all_datasets,
+    process_uploaded_file,
+    profile_uploaded_dataset,
+    detect_dataset_pii
+)
+
+# ============================================================================
+# SETUP
+# ============================================================================
+
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
-
-def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
-    """Validate and convert string to UUID, raising HTTPException if invalid."""
-    try:
-        return uuid.UUID(uuid_str)
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
-
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
 @router.get("/", response_model=list[Dataset])
-def list_datasets(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def list_datasets(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> list[Dataset]:
+    """List all datasets for the current user."""
     return get_all_datasets(db)
 
 
 @router.get("/{dataset_id}")
-def get_dataset(dataset_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    from .crud import get_dataset_by_id
-    # Validate UUID format
+def get_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dataset:
+    """Get a specific dataset by ID."""
     dataset_uuid = validate_uuid(dataset_id, "dataset_id")
     dataset = get_dataset_by_id(db, str(dataset_uuid))
+    
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    # SECURITY: Check ownership
-    if dataset.uploader_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied: You don't own this dataset")
+    # Security: Verify ownership
+    check_resource_ownership(dataset, current_user.id)
     
     return dataset
 
 
 @router.get("/{dataset_id}/download")
-def download_dataset(dataset_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    """Download synthetic dataset as CSV."""
-    from fastapi.responses import FileResponse
-    from .crud import get_dataset_by_id
-
-    # Validate UUID format
+def download_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> FileResponse:
+    """Download a dataset file."""
     dataset_uuid = validate_uuid(dataset_id, "dataset_id")
     dataset = get_dataset_by_id(db, str(dataset_uuid))
+    
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Security: Verify ownership
+    check_resource_ownership(dataset, current_user.id)
 
-    # Use the original_filename stored in the database
     file_path = UPLOAD_DIR / dataset.original_filename
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {dataset.original_filename}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"File not found: {dataset.original_filename}"
+        )
 
-    return FileResponse(path=file_path, filename=dataset.original_filename, media_type='text/csv')
-
-
-import re
-
-def sanitize_filename(filename: str) -> str:
-    """Sanitize filename to be safe for filesystem."""
-    # Remove path separators and null bytes
-    filename = os.path.basename(filename)
-    # Replace invalid characters (Windows/Linux safe)
-    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-    # Truncate to reasonable length (e.g. 200 chars) to allow for UUID prefix
-    if len(filename) > 200:
-        name, ext = os.path.splitext(filename)
-        filename = name[:200-len(ext)] + ext
-    return filename
+    return FileResponse(
+        path=file_path,
+        filename=dataset.original_filename,
+        media_type='text/csv'
+    )
 
 
 @router.post("/upload", response_model=Dataset)
@@ -86,33 +114,35 @@ async def upload_dataset(
     file: UploadFile = File(...),
     project_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dataset:
     """
     Upload a dataset file (CSV/JSON) and create dataset record.
     
     Args:
         file: CSV or JSON file to upload
         project_id: Optional project ID (defaults to 'default-project')
+        db: Database session
+        current_user: Authenticated user
+        
+    Returns:
+        Created dataset object
     """
     # Use default project if not provided
     if not project_id:
-        project_id = "00000000-0000-0000-0000-000000000001"  # Default project UUID
+        project_id = "00000000-0000-0000-0000-000000000001"
+    
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
-    # Sanitize filename
-    safe_filename = sanitize_filename(file.filename)
-
-    # Validate file extension
-    allowed_extensions = {".csv", ".json"}
-    file_ext = Path(safe_filename).suffix.lower()
-    if file_ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="Only CSV and JSON files allowed")
+    # Validate and sanitize filename
+    safe_filename = validate_filename(file.filename)
+    validate_file_extension(safe_filename, {".csv", ".json"})
 
     # Save file with UUID prefix for uniqueness
     unique_filename = f"{uuid.uuid4()}_{safe_filename}"
     file_path = UPLOAD_DIR / unique_filename
+    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -131,15 +161,18 @@ async def upload_dataset(
         # Clean up file on error
         if file_path.exists():
             file_path.unlink()
-        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process file: {str(e)}"
+        )
 
 
 @router.post("/{dataset_id}/profile")
 def create_dataset_profile(
     dataset_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Generate comprehensive statistical profile for a dataset.
     
@@ -165,12 +198,9 @@ def create_dataset_profile(
 def get_dataset_profile(
     dataset_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """
-    Retrieve existing profiling results for a dataset.
-    """
-    from .crud import get_dataset_by_id
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Retrieve existing profiling results for a dataset."""
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -188,8 +218,8 @@ def get_dataset_profile(
 def detect_pii_in_dataset(
     dataset_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Detect PII/PHI in a dataset using heuristic pattern matching.
     
@@ -218,12 +248,9 @@ def detect_pii_in_dataset(
 def get_pii_flags(
     dataset_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """
-    Retrieve existing PII detection results for a dataset.
-    """
-    from .crud import get_dataset_by_id
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Retrieve existing PII detection results for a dataset."""
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -241,9 +268,10 @@ def get_pii_flags(
 async def detect_pii_enhanced(
     dataset_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Enhanced PII detection using LLM for contextual analysis
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Enhanced PII detection using LLM for contextual analysis.
     
     Goes beyond regex patterns to identify:
     - Encoded or obfuscated PII
@@ -253,12 +281,6 @@ async def detect_pii_enhanced(
     
     Returns detailed risk assessment with recommendations.
     """
-    import logging
-    import pandas as pd
-    from .crud import get_dataset_by_id
-    from app.services.llm.enhanced_pii_detector import EnhancedPIIDetector
-    
-    logger = logging.getLogger(__name__)
     logger.info(f"Running enhanced PII detection for dataset {dataset_id}")
     
     # Get dataset
@@ -317,7 +339,6 @@ async def detect_pii_enhanced(
             "analysis": analysis,
             "disclaimer": "AI-generated analysis. Manual review recommended for production use."
         }
-    
     except Exception as e:
         logger.error(f"Enhanced PII detection failed: {e}", exc_info=True)
         raise HTTPException(
@@ -330,38 +351,37 @@ async def detect_pii_enhanced(
 def delete_dataset(
     dataset_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> DatasetDeleteResponse:
     """
     Delete a dataset (soft delete by setting deleted_at timestamp).
     
     Args:
         dataset_id: Dataset UUID
+        db: Database session
+        current_user: Authenticated user
         
     Returns:
         Success message with deleted dataset info
     """
-    from .crud import delete_dataset as delete_dataset_crud, get_dataset_by_id
-    
     # Validate UUID format
     dataset_uuid = validate_uuid(dataset_id, "dataset_id")
     
-    # SECURITY: Check ownership before deleting
+    # Security: Check ownership before deleting
     dataset = get_dataset_by_id(db, str(dataset_uuid))
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    if dataset.uploader_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied: You don't own this dataset")
+    check_resource_ownership(dataset, current_user.id)
     
     # Delete the dataset
-    deleted_dataset = delete_dataset_crud(db, str(dataset_uuid))
+    deleted_dataset = delete_dataset_repo(db, str(dataset_uuid))
     
     if not deleted_dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    return {
-        "message": "Dataset deleted successfully",
-        "dataset_id": str(deleted_dataset.id),
-        "deleted_at": deleted_dataset.deleted_at
-    }
+    return DatasetDeleteResponse(
+        message="Dataset deleted successfully",
+        dataset_id=str(deleted_dataset.id),
+        deleted_at=deleted_dataset.deleted_at
+    )

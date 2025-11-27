@@ -5,8 +5,11 @@ Tests how well ML models trained on synthetic data perform compared to
 models trained on real data.
 """
 
+# Standard library
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
+
+# Third-party
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score

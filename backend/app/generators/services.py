@@ -179,18 +179,6 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     # Update generator with model path and training metadata
     generator.model_path = str(model_path)
     generator.training_metadata = training_summary
-    generator.status = "generating"
-    db.add(generator)
-    db.commit()
-    
-    # Generate synthetic data
-    logger.info(f"Generating {num_rows} synthetic rows...")
-    synthetic_data = ctgan_service.generate(num_rows, conditions=conditions)
-    
-    # Save synthetic data
-    unique_filename = f"{generator.id}_ctgan_synthetic.csv"
-    file_path = UPLOAD_DIR / unique_filename
-    synthetic_data.to_csv(file_path, index=False)
     
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()

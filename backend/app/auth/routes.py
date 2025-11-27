@@ -1,14 +1,33 @@
 """Auth API routes (registration, login, etc.)."""
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
+# (No standard library imports needed directly here)
+
+# Third-party
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session
+
+# Local - Core
 from app.core.dependencies import get_db, get_current_user
-from .models import UserCreate, UserResponse, UserLogin, Token
-from .crud import create_user, get_user_by_email, authenticate_user
+
+# Local - Module
+from .schemas import UserCreate, UserResponse, UserLogin, Token
+from .repositories import create_user, get_user_by_email, authenticate_user
 from .services import create_access_token
+
+# ============================================================================
+# SETUP
+# ============================================================================
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
 @router.get("/ping", summary="Health check for auth module")
 def ping():

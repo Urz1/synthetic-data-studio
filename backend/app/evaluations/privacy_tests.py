@@ -7,8 +7,11 @@ Implements tests to detect potential privacy vulnerabilities:
 - Attribute inference attacks
 """
 
+# Standard library
 import logging
 from typing import Dict, Any, List, Optional
+
+# Third-party
 import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist

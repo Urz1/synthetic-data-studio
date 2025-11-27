@@ -7,6 +7,7 @@ Tests:
 - GET /auth/me
 """
 
+# Third-party
 import pytest
 from fastapi.testclient import TestClient
 

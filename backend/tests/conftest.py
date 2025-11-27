@@ -8,25 +8,40 @@ Provides:
 - Common utilities
 """
 
-import pytest
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
 import os
+from collections.abc import Generator as GeneratorType  # Avoid conflict with Generator model
+from typing import Dict
+
+# Third-party
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, create_engine, SQLModel
 from sqlmodel.pool import StaticPool
-from typing import Dict
-from collections.abc import Generator as GeneratorType  # Avoid conflict with Generator model
 
-from app.main import app
+# Local - Core
 from app.core.dependencies import get_db
+from app.main import app
+
+# Local - Services
 from app.auth.services import create_access_token
-from app.auth.models import User
-from app.datasets.models import Dataset
-from app.projects.models import Project
-from app.generators.models import Generator
-from app.evaluations.models import Evaluation
-from app.compliance.models import ComplianceReport
+
+# Local - Models
 from app.artifacts.models import Artifact
+from app.audit.models import AuditLog
+from app.auth.models import User
+from app.billing.models import UsageRecord, Quota
+from app.compliance.models import ComplianceReport
+from app.datasets.models import Dataset
+from app.evaluations.models import Evaluation
+from app.generators.models import Generator
 from app.jobs.models import Job
+from app.models.models import Model, ModelVersion
+from app.projects.models import Project
 
 # Test database URL (in-memory SQLite)
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -67,8 +82,8 @@ def client_fixture(session: Session) -> GeneratorType[TestClient, None, None]:
 @pytest.fixture(name="test_user")
 def test_user_fixture(session: Session) -> User:
     """Create a test user"""
-    from app.auth.crud import create_user
-    from app.auth.models import UserCreate
+    from app.auth.repositories import create_user
+    from app.auth.schemas import UserCreate
     
     user_data = UserCreate(
         email="test@example.com",

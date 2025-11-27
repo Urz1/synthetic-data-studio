@@ -1,26 +1,67 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""Jobs API Routes."""
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
+from typing import List
+
+# Third-party
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
+
+# Local - Core
 from app.core.dependencies import get_db, get_current_user
+
+# Local - Module
+from .schemas import JobCreate, JobResponse
+from .repositories import get_jobs, create_job, get_job_by_id
 from .models import Job
-from .crud import get_jobs, create_job, get_job_by_id
+
+# ============================================================================
+# SETUP
+# ============================================================================
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
-@router.get("/", response_model=list[Job])
-def list_jobs(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+@router.get("/", response_model=List[JobResponse])
+def list_jobs(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List all jobs."""
     return get_jobs(db)
 
 
-@router.get("/{job_id}", response_model=Job)
-def get_job(job_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+@router.get("/{job_id}", response_model=JobResponse)
+def get_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get job by ID."""
     job = get_job_by_id(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
 
-@router.post("/", response_model=Job)
-def create_new_job(job: Job, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    job.initiated_by = current_user.id
-    return create_job(db, job)
+@router.post("/", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
+def create_new_job(
+    job: JobCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Create a new job."""
+    # Convert schema to model
+    # Note: We use **job.dict() because from_orm fails when required fields (initiated_by) are missing in the source
+    db_job = Job(**job.dict())
+    db_job.initiated_by = current_user.id
+    
+    return create_job(db, db_job)
+

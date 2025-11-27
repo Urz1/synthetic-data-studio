@@ -5,7 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session
 from app.database.database import engine
 from app.auth.services import verify_token
-from app.auth.crud import get_user_by_email
+from app.auth.repositories import get_user_by_email
 
 security = HTTPBearer()
 

@@ -5,8 +5,11 @@ Implements various statistical tests to measure how well synthetic data
 matches the real data distribution.
 """
 
+# Standard library
 import logging
 from typing import Dict, Any, List, Tuple
+
+# Third-party
 import pandas as pd
 import numpy as np
 from scipy import stats

@@ -1,17 +1,19 @@
 """Business logic for datasets."""
 
-import pandas as pd
 import json
-import hashlib
-from pathlib import Path
-from typing import Optional, Dict, Any
+import logging
 import uuid
+from pathlib import Path
+from typing import Dict, Any
+
+import pandas as pd
 from sqlmodel import Session
-from .models import Dataset, DatasetFile
-from .crud import get_datasets, create_dataset, get_dataset_by_id
+
+from app.core.utils import calculate_checksum
 from app.services.profiling import profile_dataset
 from app.services.pii_detector import detect_pii, get_pii_recommendations
-import logging
+from .models import Dataset, DatasetFile
+from .repositories import get_datasets, create_dataset, get_dataset_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ async def process_uploaded_file(file_path: Path, filename: str, unique_filename:
         raise ValueError("Unsupported file format")
 
     # Calculate checksum
-    checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    checksum = calculate_checksum(file_path)
 
     # Basic schema detection
     schema = {}

@@ -1,32 +1,78 @@
+"""Generator API endpoints."""
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
+import logging
+import uuid
+from pathlib import Path
+from typing import Optional, Dict, Any
+
+# Third-party
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlmodel import Session
+
+# Local - Core
+from app.core.config import settings
 from app.core.dependencies import get_db, get_current_user
-from .models import Generator, SchemaInput
-from .crud import get_generators, create_generator, get_generator_by_id, update_generator_status, delete_generator
+from app.core.validators import validate_uuid
+
+# Local - Services
+from app.datasets.repositories import get_dataset_by_id
+from app.evaluations.repositories import list_evaluations_by_generator
+from app.services.llm.compliance_writer import ComplianceWriter
+from app.services.privacy.dp_config_validator import DPConfigValidator
+from app.services.privacy.privacy_report_service import PrivacyReportService
+
+# Local - Module
+from .models import Generator
+from .repositories import (
+    get_generators,
+    create_generator,
+    get_generator_by_id,
+    update_generator_status,
+    delete_generator
+)
+from .schemas import (
+    SchemaInput,
+    MLGenerationConfig,
+    GeneratorResponse,
+    GeneratorDeleteResponse,
+    GenerationStartResponse
+)
 from .services import generate_synthetic_data, _generate_from_schema
-from app.datasets.models import Dataset
-import uuid
-from typing import Optional
+
+# ============================================================================
+# SETUP
+# ============================================================================
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/generators", tags=["generators"])
 
-
-def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
-    """Validate and convert string to UUID, raising HTTPException if invalid."""
-    try:
-        return uuid.UUID(uuid_str)
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
-
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
 @router.get("/", response_model=list[Generator])
-def list_generators(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def list_generators(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> list[Generator]:
+    """List all generators."""
     return get_generators(db)
 
 
 @router.get("/{generator_id}", response_model=Generator)
-def get_generator(generator_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    # Validate UUID
+def get_generator(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Generator:
+    """Get a specific generator by ID."""
     validate_uuid(generator_id, "generator_id")
     
     generator = get_generator_by_id(db, generator_id)
@@ -36,32 +82,43 @@ def get_generator(generator_id: str, db: Session = Depends(get_db), current_user
 
 
 @router.delete("/{generator_id}")
-def delete_generator_endpoint(generator_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def delete_generator_endpoint(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> GeneratorDeleteResponse:
     """Delete a generator."""
-    # Validate UUID
     validate_uuid(generator_id, "generator_id")
     
     generator = delete_generator(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
-    return {"message": "Generator deleted successfully", "id": generator_id}
+    
+    return GeneratorDeleteResponse(
+        message="Generator deleted successfully",
+        id=generator_id
+    )
 
 
 @router.post("/", response_model=Generator)
-def create_new_generator(generator: Generator, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def create_new_generator(
+    generator: Generator,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Generator:
+    """Create a new generator."""
     generator.created_by = current_user.id
     return create_generator(db, generator)
 
 
-@router.post("/schema/generate", response_model=Dataset)
+@router.post("/schema/generate")
 def generate_from_schema(
     schema_input: SchemaInput,
     num_rows: int = 1000,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
     """Generate synthetic data directly from schema without creating a generator record."""
-    # Create a temporary generator object
     temp_generator = Generator(
         dataset_id=None,
         schema_json=schema_input.columns,
@@ -70,7 +127,6 @@ def generate_from_schema(
         name="schema_generated",
         created_by=current_user.id
     )
-
     return _generate_from_schema(temp_generator, db)
 
 
@@ -79,8 +135,8 @@ def start_generation(
     generator_id: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> GenerationStartResponse:
     """Start synthetic data generation for a generator."""
     generator = get_generator_by_id(db, generator_id)
     if not generator:
@@ -92,7 +148,10 @@ def start_generation(
     # Add background task
     background_tasks.add_task(_generate_in_background, generator_id, db)
 
-    return {"message": "Generation started", "generator_id": generator_id}
+    return GenerationStartResponse(
+        message="Generation started",
+        generator_id=generator_id
+    )
 
 
 @router.post("/dataset/{dataset_id}/generate")
@@ -104,9 +163,10 @@ def generate_from_dataset(
     batch_size: int = 500,
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Generate synthetic data from an existing dataset.
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Generate synthetic data from an existing dataset.
     
     Args:
         dataset_id: ID of the dataset to use for training
@@ -122,16 +182,12 @@ def generate_from_dataset(
         - If None: matches original dataset row count
     """
     # Verify dataset exists
-    from app.datasets.crud import get_dataset_by_id
-    import pandas as pd
-    
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     # Determine num_rows
     if num_rows is None:
-        # Match original dataset size
         try:
             df = pd.read_csv(dataset.file_path)
             num_rows = len(df)
@@ -170,7 +226,11 @@ def generate_from_dataset(
         try:
             output_dataset = generate_synthetic_data(generator, db)
             update_generator_status(db, str(generator.id), "completed", str(output_dataset.id))
-            return {"message": "Generation completed", "generator_id": str(generator.id), "output_dataset_id": str(output_dataset.id)}
+            return {
+                "message": "Generation completed",
+                "generator_id": str(generator.id),
+                "output_dataset_id": str(output_dataset.id)
+            }
         except Exception as e:
             update_generator_status(db, str(generator.id), "failed")
             raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
@@ -180,8 +240,8 @@ def generate_from_dataset(
 def get_privacy_report(
     generator_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Get comprehensive privacy report for a DP-enabled generator."""
     generator = get_generator_by_id(db, generator_id)
     if not generator:
@@ -204,8 +264,6 @@ def get_privacy_report(
         }
     
     # Generate comprehensive privacy report
-    from app.services.privacy.privacy_report_service import PrivacyReportService
-    
     report = PrivacyReportService.generate_privacy_report(
         generator_id=generator.id,
         model_type=generator.type,
@@ -225,18 +283,13 @@ def validate_dp_config(
     batch_size: int,
     target_epsilon: float = 10.0,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Validate DP configuration before training to prevent privacy failures.
     Returns validation results and recommendations.
     """
     # Verify dataset exists
-    from app.datasets.crud import get_dataset_by_id
-    import pandas as pd
-    from pathlib import Path
-    from app.core.config import settings
-    
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -250,8 +303,6 @@ def validate_dp_config(
     dataset_size = len(df)
     
     # Validate configuration
-    from app.services.privacy.dp_config_validator import DPConfigValidator
-    
     is_valid, errors, warnings = DPConfigValidator.validate_config(
         dataset_size=dataset_size,
         epochs=epochs,
@@ -285,20 +336,15 @@ def validate_dp_config(
 def get_recommended_config(
     dataset_id: str,
     target_epsilon: float = 10.0,
-    desired_quality: str = "balanced",  # "high_privacy", "balanced", "high_quality"
+    desired_quality: str = "balanced",
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get recommended DP configuration for a dataset.
     Quality options: high_privacy (ε<5), balanced (ε≈10), high_quality (ε≈15)
     """
     # Verify dataset exists
-    from app.datasets.crud import get_dataset_by_id
-    import pandas as pd
-    from pathlib import Path
-    from app.core.config import settings
-    
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -312,8 +358,6 @@ def get_recommended_config(
     dataset_size = len(df)
     
     # Get recommended config
-    from app.services.privacy.dp_config_validator import DPConfigValidator
-    
     recommended = DPConfigValidator.get_recommended_config(
         dataset_size=dataset_size,
         target_epsilon=target_epsilon,
@@ -329,36 +373,14 @@ def get_recommended_config(
     }
 
 
-def _generate_in_background(generator_id: str, db: Session):
-    """Background task to generate synthetic data."""
-    try:
-        generator = get_generator_by_id(db, generator_id)
-        if not generator:
-            return
-
-        # Generate the data
-        output_dataset = generate_synthetic_data(generator, db)
-
-        # Update generator with completed status and output dataset
-        update_generator_status(db, generator_id, "completed", str(output_dataset.id))
-
-    except Exception as e:
-        # Update status to failed
-        update_generator_status(db, generator_id, "failed")
-        print(f"Generation failed for {generator_id}: {str(e)}")
-
-
-# ============================================================================
-# COMPLIANCE DOCUMENTATION ENDPOINTS (Phase 3: LLM Integration)
-# ============================================================================
-
 @router.post("/{generator_id}/model-card")
 async def generate_model_card(
     generator_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Generate comprehensive model card for a generator
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Generate comprehensive model card for a generator.
     
     Uses LLM to create professional, compliance-ready documentation including:
     - Model details and purpose
@@ -367,9 +389,6 @@ async def generate_model_card(
     - Privacy and ethical considerations
     - Compliance framework mappings
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
     logger.info(f"Generating model card for generator {generator_id}")
     
     # Get generator
@@ -378,11 +397,9 @@ async def generate_model_card(
         raise HTTPException(status_code=404, detail="Generator not found")
     
     # Get dataset info
-    from app.datasets.crud import get_dataset_by_id
     dataset = get_dataset_by_id(db, str(generator.dataset_id)) if generator.dataset_id else None
     
     # Get latest evaluation if available
-    from app.evaluations.crud import list_evaluations_by_generator
     evaluations = list_evaluations_by_generator(db, generator_id)
     latest_eval = evaluations[0] if evaluations else None
     
@@ -404,8 +421,6 @@ async def generate_model_card(
     }
     
     # Generate model card using LLM
-    from app.services.llm.compliance_writer import ComplianceWriter
-    
     try:
         writer = ComplianceWriter()
         model_card = await writer.generate_model_card(metadata)
@@ -419,7 +434,6 @@ async def generate_model_card(
             "requires_review": True,
             "disclaimer": "AI-generated content. Requires legal review before distribution."
         }
-    
     except Exception as e:
         logger.error(f"Model card generation failed: {e}", exc_info=True)
         raise HTTPException(
@@ -432,16 +446,14 @@ async def generate_model_card(
 async def generate_audit_narrative(
     generator_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Generate human-readable audit narrative for a generator
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Generate human-readable audit narrative for a generator.
     
     Converts technical audit logs into a professional narrative suitable
     for compliance documentation and auditor review.
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
     logger.info(f"Generating audit narrative for generator {generator_id}")
     
     # Get generator
@@ -473,8 +485,6 @@ async def generate_audit_narrative(
         })
     
     # Generate narrative using LLM
-    from app.services.llm.compliance_writer import ComplianceWriter
-    
     try:
         writer = ComplianceWriter()
         narrative = await writer.generate_audit_narrative(audit_log)
@@ -487,7 +497,6 @@ async def generate_audit_narrative(
             "format": "markdown",
             "events_count": len(audit_log)
         }
-    
     except Exception as e:
         logger.error(f"Audit narrative generation failed: {e}", exc_info=True)
         raise HTTPException(
@@ -499,11 +508,12 @@ async def generate_audit_narrative(
 @router.post("/{generator_id}/compliance-report")
 async def generate_compliance_report(
     generator_id: str,
-    framework: str = "GDPR",  # GDPR, HIPAA, CCPA, SOC2
+    framework: str = "GDPR",
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Generate compliance framework mapping for a generator
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Generate compliance framework mapping for a generator.
     
     Maps generator configuration to specific compliance requirements
     for frameworks like GDPR, HIPAA, CCPA, or SOC 2.
@@ -512,9 +522,6 @@ async def generate_compliance_report(
         generator_id: Generator ID
         framework: Compliance framework (GDPR, HIPAA, CCPA, SOC2)
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
     # Validate framework
     valid_frameworks = ["GDPR", "HIPAA", "CCPA", "SOC2"]
     if framework.upper() not in valid_frameworks:
@@ -540,8 +547,6 @@ async def generate_compliance_report(
     }
     
     # Generate compliance report using LLM
-    from app.services.llm.compliance_writer import ComplianceWriter
-    
     try:
         writer = ComplianceWriter()
         report = await writer.generate_compliance_report(metadata, framework.upper())
@@ -549,7 +554,6 @@ async def generate_compliance_report(
         logger.info(f"✓ {framework} compliance report generated for {generator_id}")
         
         return report
-    
     except Exception as e:
         logger.error(f"Compliance report generation failed: {e}", exc_info=True)
         raise HTTPException(
@@ -557,3 +561,25 @@ async def generate_compliance_report(
             detail=f"Compliance report generation failed: {str(e)}"
         )
 
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def _generate_in_background(generator_id: str, db: Session) -> None:
+    """Background task to generate synthetic data."""
+    try:
+        generator = get_generator_by_id(db, generator_id)
+        if not generator:
+            return
+
+        # Generate the data
+        output_dataset = generate_synthetic_data(generator, db)
+
+        # Update generator with completed status and output dataset
+        update_generator_status(db, generator_id, "completed", str(output_dataset.id))
+
+    except Exception as e:
+        # Update status to failed
+        update_generator_status(db, generator_id, "failed")
+        logger.error(f"Generation failed for {generator_id}: {str(e)}")

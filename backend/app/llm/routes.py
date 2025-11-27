@@ -3,76 +3,58 @@
 Interactive chat interface for evaluation exploration.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
 import logging
 import uuid
+from typing import List, Dict, Any, Optional
 
+# Third-party
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+# Local - Core
 from app.core.dependencies import get_db, get_current_user
-from app.evaluations import crud as evaluations_crud
-from app.generators import crud as generators_crud
+from app.core.validators import validate_uuid
+
+# Local - Services
+from app.evaluations import repositories as evaluations_repo
+from app.generators import repositories as generators_repo
 from app.services.llm.chat_service import ChatService
 from app.services.llm.enhanced_pii_detector import EnhancedPIIDetector
 from app.services.llm.compliance_writer import ComplianceWriter
+
+# Local - Module
+from .schemas import (
+    ChatRequest,
+    ChatResponse,
+    FeatureGenerationRequest,
+    PIIDetectionRequest,
+    PrivacyReportRequest,
+    ModelCardRequest
+)
+
+# ============================================================================
+# SETUP
+# ============================================================================
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 
-
-def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
-    """Validate and convert string to UUID, raising HTTPException if invalid."""
-    try:
-        return uuid.UUID(uuid_str)
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
-
-
-class ChatRequest(BaseModel):
-    """Chat request model"""
-    message: str
-    evaluation_id: Optional[str] = None
-    generator_id: Optional[str] = None
-    history: Optional[List[Dict[str, str]]] = None
-
-
-class ChatResponse(BaseModel):
-    """Chat response model"""
-    response: str
-    context_used: Dict[str, Any]
-
-
-class FeatureGenerationRequest(BaseModel):
-    """Request for generating features from schema."""
-    schema: Dict[str, Any]
-    context: Optional[str] = None
-
-
-class PIIDetectionRequest(BaseModel):
-    """Request for PII detection."""
-    data: List[Dict[str, Any]]
-
-
-class PrivacyReportRequest(BaseModel):
-    """Request for privacy report generation."""
-    dataset_id: str
-    generator_id: Optional[str] = None
-
-
-class ModelCardRequest(BaseModel):
-    """Request for model card generation."""
-    generator_id: str
-    dataset_id: str
-
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> ChatResponse:
     """Interactive chat for evaluation exploration"""
     logger.info(f"Chat request: {request.message[:50]}...")
     
@@ -81,7 +63,7 @@ async def chat(
     
     if request.evaluation_id:
         validate_uuid(request.evaluation_id, "evaluation_id")
-        evaluation = evaluations_crud.get_evaluation(db, request.evaluation_id)
+        evaluation = evaluations_repo.get_evaluation(db, request.evaluation_id)
         if not evaluation:
             raise HTTPException(status_code=404, detail="Evaluation not found")
         
@@ -90,13 +72,13 @@ async def chat(
         context["generator_id"] = str(evaluation.generator_id)
         
         # Get generator info
-        generator = generators_crud.get_generator_by_id(db, str(evaluation.generator_id))
+        generator = generators_repo.get_generator_by_id(db, str(evaluation.generator_id))
         if generator:
             context["generator_type"] = generator.type
     
     elif request.generator_id:
         validate_uuid(request.generator_id, "generator_id")
-        generator = generators_crud.get_generator_by_id(db, request.generator_id)
+        generator = generators_repo.get_generator_by_id(db, request.generator_id)
         if not generator:
             raise HTTPException(status_code=404, detail="Generator not found")
         
@@ -131,8 +113,8 @@ async def chat(
 async def suggest_improvements(
     evaluation_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Get AI-powered improvement suggestions based on evaluation results"""
     logger.info(f"Generating improvement suggestions for evaluation {evaluation_id}")
     
@@ -140,7 +122,7 @@ async def suggest_improvements(
     validate_uuid(evaluation_id, "evaluation_id")
     
     # Get evaluation
-    evaluation = evaluations_crud.get_evaluation(db, evaluation_id)
+    evaluation = evaluations_repo.get_evaluation(db, evaluation_id)
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
     
@@ -168,8 +150,8 @@ async def suggest_improvements(
 async def explain_metric(
     metric_name: str,
     metric_value: str,
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Get plain English explanation of a technical metric"""
     logger.info(f"Explaining metric: {metric_name}")
     
@@ -199,8 +181,8 @@ async def explain_metric(
 @router.post("/generate-features")
 async def generate_features(
     request: FeatureGenerationRequest,
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Generate new features based on schema using LLM."""
     if not request.schema:
          raise HTTPException(status_code=422, detail="Schema cannot be empty")
@@ -220,8 +202,8 @@ async def generate_features(
 @router.post("/detect-pii")
 async def detect_pii(
     request: PIIDetectionRequest,
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Detect PII in provided data samples."""
     if not request.data:
         raise HTTPException(status_code=422, detail="Data cannot be empty")
@@ -247,8 +229,8 @@ async def detect_pii(
 async def privacy_report(
     request: PrivacyReportRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Generate a privacy compliance report."""
     validate_uuid(request.dataset_id, "dataset_id")
     if request.generator_id:
@@ -272,8 +254,8 @@ async def privacy_report(
 async def model_card(
     request: ModelCardRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
     """Generate a model card for the generator."""
     validate_uuid(request.generator_id, "generator_id")
     validate_uuid(request.dataset_id, "dataset_id")

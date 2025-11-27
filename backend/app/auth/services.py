@@ -1,8 +1,13 @@
 """Auth services: token generation and validation."""
 
+# Standard library
 from datetime import datetime, timedelta
 from typing import Optional
+
+# Third-party
 from jose import JWTError, jwt
+
+# Local - Core
 from app.core.config import settings
 
 
