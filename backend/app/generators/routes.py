@@ -40,6 +40,7 @@ from .schemas import (
     SchemaInput,
     MLGenerationConfig,
     GeneratorResponse,
+    GeneratorCreateRequest,
     GeneratorDeleteResponse,
     GenerationStartResponse
 )
@@ -57,21 +58,21 @@ router = APIRouter(prefix="/generators", tags=["generators"])
 # ENDPOINTS
 # ============================================================================
 
-@router.get("/", response_model=list[Generator])
+@router.get("/", response_model=list[GeneratorResponse])
 def list_generators(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> list[Generator]:
+) -> list[GeneratorResponse]:
     """List all generators."""
     return get_generators(db)
 
 
-@router.get("/{generator_id}", response_model=Generator)
+@router.get("/{generator_id}", response_model=GeneratorResponse)
 def get_generator(
     generator_id: str,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> Generator:
+) -> GeneratorResponse:
     """Get a specific generator by ID."""
     validate_uuid(generator_id, "generator_id")
     
@@ -100,14 +101,18 @@ def delete_generator_endpoint(
     )
 
 
-@router.post("/", response_model=Generator)
+@router.post("/", response_model=GeneratorResponse)
 def create_new_generator(
-    generator: Generator,
+    request: GeneratorCreateRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> Generator:
+) -> GeneratorResponse:
     """Create a new generator."""
+    # Convert request schema to DB model
+    generator_data = request.dict(exclude_unset=True)
+    generator = Generator(**generator_data)
     generator.created_by = current_user.id
+    
     return create_generator(db, generator)
 
 

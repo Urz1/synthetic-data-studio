@@ -3,9 +3,17 @@
 from typing import Optional, Dict, Any
 import uuid
 import datetime
+import warnings
 
 from sqlmodel import SQLModel, Field, Column
 from app.database.database import JSONType
+
+# Suppress the schema_json shadowing warning - we're aware of it but 
+# renaming would require a database migration
+warnings.filterwarnings(
+    "ignore", 
+    message='Field name "schema_json" in "Generator" shadows an attribute'
+)
 
 
 class Generator(SQLModel, table=True):

@@ -1,24 +1,40 @@
 """Business logic for data generators (CTGAN, TVAE, TimeGAN, schema-based)."""
 
-import pandas as pd
+# ============================================================================
+# IMPORTS
+# ============================================================================
+
+# Standard library
+import hashlib
 import json
+import logging
 import random
 import string
-import hashlib
-import numpy as np
-import logging
-from pathlib import Path
-from typing import Optional, Dict, Any
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional, Dict, Any
+
+# Third-party
+import numpy as np
+import pandas as pd
 from sqlmodel import Session
-from app.datasets.crud import create_dataset, get_dataset_by_id
+
+# Local - Core
+from app.core.config import settings
+
+# Local - Services
 from app.datasets.models import Dataset
+from app.datasets.repositories import create_dataset, get_dataset_by_id
 from app.services.synthesis import CTGANService, TVAEService
 from app.services.synthesis.dp_ctgan_service import DPCTGANService
 from app.services.synthesis.dp_tvae_service import DPTVAEService
 from app.services.privacy.privacy_report_service import PrivacyReportService
-from .models import Generator, MLGenerationConfig
+
+# Local - Module
+from .models import Generator
+from .schemas import MLGenerationConfig
+from .repositories import update_generator
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +82,7 @@ def _generate_from_dataset(generator: Generator, db: Session) -> Dataset:
         raise ValueError(f"Source dataset {generator.dataset_id} not found")
 
     # Load the actual data
-    from app.datasets.routes import UPLOAD_DIR
+    UPLOAD_DIR = Path(settings.upload_dir)
     data_file = UPLOAD_DIR / f"{source_dataset.original_filename}"
 
     if not data_file.exists():
@@ -112,7 +128,7 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
     csv_content = df.to_csv(index=False)
 
     # Save to file
-    from app.datasets.routes import UPLOAD_DIR
+    UPLOAD_DIR = Path(settings.upload_dir)
     unique_filename = f"{generator.id}_copula_synthetic.csv"
     file_path = UPLOAD_DIR / unique_filename
     df.to_csv(file_path, index=False)    # Calculate checksum
@@ -170,7 +186,7 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     training_summary = ctgan_service.train(real_data, column_types=column_types)
     
     # Save model
-    from app.datasets.routes import UPLOAD_DIR
+    UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_ctgan.pkl"
@@ -179,6 +195,15 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     # Update generator with model path and training metadata
     generator.model_path = str(model_path)
     generator.training_metadata = training_summary
+    
+    # Generate synthetic data
+    logger.info(f"Generating {num_rows} synthetic rows...")
+    synthetic_data = ctgan_service.generate(num_rows, conditions=conditions)
+    
+    # Save synthetic data
+    unique_filename = f"{generator.id}_ctgan_synthetic.csv"
+    file_path = UPLOAD_DIR / unique_filename
+    synthetic_data.to_csv(file_path, index=False)
     
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
@@ -237,7 +262,7 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     training_summary = tvae_service.train(real_data, column_types=column_types)
     
     # Save model
-    from app.datasets.routes import UPLOAD_DIR
+    UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_tvae.pkl"
@@ -247,8 +272,7 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     generator.model_path = str(model_path)
     generator.training_metadata = training_summary
     generator.status = "generating"
-    db.add(generator)
-    db.commit()
+    update_generator(db, generator)
     
     # Generate synthetic data
     logger.info(f"Generating {num_rows} synthetic rows...")
@@ -330,7 +354,7 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     privacy_report = dp_ctgan_service.get_privacy_report()
     
     # Save model
-    from app.datasets.routes import UPLOAD_DIR
+    UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_dp_ctgan.pkl"
@@ -342,8 +366,7 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     generator.privacy_config = training_summary.get("privacy_config")
     generator.privacy_spent = training_summary.get("privacy_spent")
     generator.status = "generating"
-    db.add(generator)
-    db.commit()
+    update_generator(db, generator)
     
     # Generate synthetic data
     logger.info(f"Generating {num_rows} synthetic rows with DP-CTGAN...")
@@ -428,7 +451,7 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     privacy_report = dp_tvae_service.get_privacy_report()
     
     # Save model
-    from app.datasets.routes import UPLOAD_DIR
+    UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_dp_tvae.pkl"
@@ -440,8 +463,7 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     generator.privacy_config = training_summary.get("privacy_config")
     generator.privacy_spent = training_summary.get("privacy_spent")
     generator.status = "generating"
-    db.add(generator)
-    db.commit()
+    update_generator(db, generator)
     
     # Generate synthetic data
     logger.info(f"Generating {num_rows} synthetic rows with DP-TVAE...")

@@ -32,6 +32,15 @@ def update_generator_status(db: Session, generator_id: str, status: str, output_
     return generator
 
 
+def update_generator(db: Session, generator: Generator):
+    """Generic update for generator."""
+    generator.updated_at = datetime.datetime.utcnow()
+    db.add(generator)
+    db.commit()
+    db.refresh(generator)
+    return generator
+
+
 def delete_generator(db: Session, generator_id: str):
     """Delete a generator."""
     generator = get_generator_by_id(db, generator_id)

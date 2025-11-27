@@ -1,274 +1,136 @@
-# Synthetic Data Studio — Backend
+# Synthetic Data Studio
 
 A production-ready synthetic data generation platform with differential privacy guarantees, built with FastAPI and SDV.
 
-## 🎯 Features
+## 🎯 Overview
 
-### Core Capabilities
+Synthetic Data Studio enables organizations to generate high-quality synthetic datasets that maintain statistical properties and privacy guarantees. Perfect for healthcare, finance, and any industry requiring safe data for development, testing, and analytics.
 
-- **Data Profiling**: Statistical analysis, outlier detection, correlation matrices
-- **PII/PHI Detection**: Automated sensitive data identification with recommendations
-- **Multiple Synthesis Methods**:
-  - CTGAN (Conditional Tabular GAN)
-  - TVAE (Tabular Variational Autoencoder)
-  - GaussianCopula (schema-based generation)
-  - DP-CTGAN (Differential Privacy)
-  - DP-TVAE (Differential Privacy, faster)
-- **Privacy Guarantees**: (ε, δ)-differential privacy with RDP accounting
-- **Compliance**: HIPAA, GDPR, CCPA, SOC-2 compliance reporting
-- **Safety System**: 3-layer validation to prevent privacy failures
+### ✨ Key Features
 
-### 🤖 AI-Powered Features (NEW)
-
-- **Interactive Chat**: Ask questions about your synthetic data quality
-- **Smart Suggestions**: AI-powered recommendations to improve data quality
-- **Metric Explanations**: Plain English explanations of technical metrics
-- **Auto-Documentation**: Generate model cards and audit narratives
-- **Compliance Mapping**: Automated GDPR/HIPAA/CCPA/SOC2 compliance reports
-- **Enhanced PII Detection**: Context-aware identification of sensitive data
-
-> **See [LLM_IMPLEMENTATION_PLAN.md](LLM_IMPLEMENTATION_PLAN.md) for complete AI features documentation**
+- **🔒 Differential Privacy**: Mathematical privacy guarantees with RDP accounting
+- **🤖 AI-Powered**: Interactive chat, smart suggestions, and automated documentation
+- **📊 Quality Assurance**: Comprehensive evaluation suite with statistical and ML utility tests
+- **🛡️ Compliance Ready**: HIPAA, GDPR, CCPA, SOC-2 compliance reporting
+- **🔬 Multiple Methods**: CTGAN, TVAE, GaussianCopula, and privacy-preserving variants
 
 ## 🚀 Quick Start
 
-### Installation
-
 ```bash
-# Clone repository
+# Clone and setup
 git clone https://github.com/Urz1/synthetic-data-studio.git
 cd synthetic-data-studio/backend
-
-# Create virtual environment
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run migrations
-python -m app.database.create_tables
-```
-
-### Run Server
-
-```bash
-# Development server
+# Start server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Or use the batch file (Windows)
-start_server.bat
+# Visit API docs
+open http://localhost:8000/docs
 ```
-
-### Access API
-
-- **API Documentation**: http://localhost:8000/docs
-- **Alternative Docs**: http://localhost:8000/redoc
 
 ## 📚 Documentation
 
-### Complete Documentation Index
+### 📖 Getting Started
+- **[Installation Guide](docs/getting-started/installation.md)** - Complete setup instructions
+- **[Quick Start Tutorial](docs/getting-started/quick-start.md)** - 5-minute hands-on tutorial
+- **[Configuration](docs/getting-started/configuration.md)** - Environment setup and options
 
-See [docs/INDEX.md](docs/INDEX.md) for full documentation structure
+### 👥 User Guides
+- **[Platform Overview](docs/user-guide/overview.md)** - Understanding Synthetic Data Studio
+- **[Data Management](docs/user-guide/uploading-data.md)** - Upload and manage datasets
+- **[Data Synthesis](docs/user-guide/generating-data.md)** - Generate synthetic data
+- **[Privacy Features](docs/user-guide/privacy-features.md)** - Differential privacy and compliance
+- **[Quality Evaluation](docs/user-guide/evaluating-quality.md)** - Assess synthetic data quality
+- **[AI Features](docs/user-guide/ai-features.md)** - Interactive chat and automation
 
-### Quick Links
+### 🔌 API Examples
+- **[Postman Collection](docs/examples/postman-collection.json)** - Complete API collection
+- **[Python Client](docs/examples/python-client.md)** - Python SDK examples
+- **[cURL Examples](docs/examples/curl-examples.md)** - Command-line API usage
+- **[Live API Docs](http://localhost:8000/docs)** - Interactive API documentation
 
-- **Getting Started**: [docs/guides/TESTING.md](docs/guides/TESTING.md)
-- **DP Quick Reference**: [docs/phase3/PHASE3_SAFETY_QUICKREF.md](docs/phase3/PHASE3_SAFETY_QUICKREF.md)
-- **API Examples**: [docs/phase3/PHASE3_SAFETY_API_EXAMPLES.md](docs/phase3/PHASE3_SAFETY_API_EXAMPLES.md)
-- **Implementation Plan**: [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)
+### 🎓 Tutorials
+- **[Basic Synthesis](docs/tutorials/basic-synthesis.md)** - End-to-end data generation
+- **[Privacy Synthesis](docs/tutorials/privacy-synthesis.md)** - DP workflow tutorial
+- **[Quality Assessment](docs/tutorials/quality-evaluation.md)** - Evaluation tutorial
+- **[Compliance Reporting](docs/tutorials/compliance-reporting.md)** - Audit preparation
 
-### Phase Documentation
+### 🛠️ Developer Resources
+- **[Architecture](docs/developer-guide/architecture.md)** - System design and components
+- **[Development Setup](docs/developer-guide/development-setup.md)** - Dev environment
+- **[Testing](docs/developer-guide/testing.md)** - Testing guidelines and procedures
+- **[Deployment](docs/developer-guide/deployment.md)** - Production deployment
+- **[API Integration](docs/developer-guide/api-integration.md)** - Third-party integrations
 
-- [Phase 1: Data Profiling](docs/phase1/PHASE1_SUMMARY.md)
-- [Phase 2: Synthesis Models](docs/phase2/PHASE2_SUMMARY.md)
-- [Phase 3: Differential Privacy](docs/phase3/PHASE3_SUMMARY.md)
+### 📚 Reference
+- **[Configuration Options](docs/reference/configuration-options.md)** - All config parameters
+- **[Privacy Levels](docs/reference/privacy-levels.md)** - Epsilon/delta explanations
+- **[Supported Formats](docs/reference/supported-formats.md)** - Data format specifications
+- **[Troubleshooting](docs/reference/troubleshooting.md)** - Common issues and solutions
 
-## 🏗️ Architecture
+## 🏢 Use Cases
 
-```
-app/
-├── core/           # Configuration, dependencies, utilities
-├── auth/           # Authentication & authorization
-├── datasets/       # Dataset management & profiling
-├── generators/     # Synthesis model orchestration
-├── services/       # Business logic
-│   ├── synthesis/  # DP-CTGAN, DP-TVAE, CTGAN, TVAE
-│   └── privacy/    # Privacy validation & reporting
-├── database/       # Database models & migrations
-├── storage/        # S3 integration
-└── api/            # API routes
-```
+### 🏥 Healthcare & Life Sciences
+- Generate synthetic patient data for ML model training
+- Maintain HIPAA compliance with differential privacy
+- Create test datasets without exposing PHI
 
-## 🧪 Testing
+### 💰 Financial Services
+- Synthetic transaction data for fraud detection models
+- Privacy-preserving customer analytics
+- Regulatory compliance testing
 
-```bash
-# Run all tests
-pytest
+### 📈 Enterprise Analytics
+- Safe data sharing between departments
+- Model validation and testing
+- Customer data analytics without privacy risks
 
-# Run specific test suite
-pytest tests/test_datasets.py
+## 🔒 Privacy & Compliance
 
-# Run with coverage
-pytest --cov=app
-```
+### Differential Privacy Levels
+| Epsilon (ε) | Privacy Level | Use Case |
+|-------------|---------------|----------|
+| < 1.0 | Very Strong | Clinical trials, genomic data |
+| 1-5 | Strong | Healthcare, financial records |
+| 5-10 | Moderate | Customer data, HR records |
+| 10-20 | Weak | Aggregated analytics |
 
-## 🔒 Differential Privacy Usage
-
-### Validate Configuration First
-
-```bash
-curl -X POST http://localhost:8000/generators/dp/validate-config \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dataset_id": "your-dataset-id",
-    "epochs": 20,
-    "batch_size": 100,
-    "target_epsilon": 10.0
-  }'
-```
-
-### Generate with DP
-
-```bash
-curl -X POST http://localhost:8000/generators/dataset/{id}/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "generator_type": "dp-ctgan",
-    "epochs": 20,
-    "batch_size": 100,
-    "target_epsilon": 10.0
-  }'
-```
-
-### Get Privacy Report
-
-```bash
-curl http://localhost:8000/generators/{generator_id}/privacy-report
-```
-
-## 📊 API Endpoints
-
-### Datasets
-
-- `POST /datasets/upload` - Upload dataset
-- `GET /datasets/` - List datasets
-- `POST /datasets/{id}/profile` - Generate profile
-- `POST /datasets/{id}/detect-pii` - Detect sensitive data
-
-### Generators
-
-- `POST /generators/dataset/{id}/generate` - Generate synthetic data
-- `GET /generators/{id}` - Get generator details
-- `GET /generators/{id}/privacy-report` - Get privacy report
-
-### Differential Privacy
-
-- `POST /generators/dp/validate-config` - Validate DP config
-- `GET /generators/dp/recommended-config` - Get safe parameters
-
-## 🛡️ Safety Features
-
-The system includes 3-layer privacy protection:
-
-1. **Pre-Training Validation**: Catches bad configurations before training
-2. **Improved Noise Calculation**: Proper RDP formula for accurate privacy accounting
-3. **Post-Training Verification**: Validates actual privacy spent vs target
-
-See [docs/phase3/PHASE3_SAFETY_SUMMARY.md](docs/phase3/PHASE3_SAFETY_SUMMARY.md) for details.
-
-## 🌟 Privacy Levels
-
-| Epsilon | Level       | Use Case                      |
-| ------- | ----------- | ----------------------------- |
-| <1.0    | Very Strong | Clinical trials, genomic data |
-| 1-5     | Strong      | Healthcare, financial records |
-| 5-10    | Moderate    | Customer data, HR records     |
-| 10-20   | Weak        | Aggregated analytics          |
-| >20     | Minimal     | Non-sensitive data            |
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create `.env` file:
-
-```env
-# Database
-DATABASE_URL=sqlite:///./synth_studio.db
-
-# Storage
-UPLOAD_DIR=./uploads
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
-S3_BUCKET=your-bucket
-
-# Security
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-```
-
-## 📦 Dependencies
-
-Core packages:
-
-- `fastapi` - Web framework
-- `sqlmodel` - ORM
-- `sdv>=1.29.0` - Synthetic data generation
-- `opacus>=1.4.0` - Differential privacy
-- `pandas` - Data manipulation
-- `numpy` - Numerical computing
-
-See [requirements.txt](requirements.txt) for complete list.
-
-## 🚢 Deployment
-
-### Docker
-
-```bash
-# Build image
-docker build -t synth-studio-backend .
-
-# Run container
-docker run -p 8000:8000 synth-studio-backend
-```
-
-### Production Considerations
-
-- Use PostgreSQL instead of SQLite
-- Enable HTTPS/TLS
-- Set up Celery for background jobs
-- Configure proper logging
-- Implement rate limiting
-- Use environment-specific configs
+### Compliance Frameworks
+- ✅ **HIPAA** - Protected Health Information
+- ✅ **GDPR** - General Data Protection Regulation
+- ✅ **CCPA** - California Consumer Privacy Act
+- ✅ **SOC-2** - Security, availability, and confidentiality
 
 ## 🤝 Contributing
 
-1. Follow existing code structure
-2. Write tests for new features
-3. Update documentation
-4. Ensure privacy validation for DP features
-5. Run tests before committing
+We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for details on:
+- Development workflow
+- Code standards
+- Testing requirements
+- Pull request process
 
-## 📝 License
+## 📄 License
 
-[Add your license information]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 Support
+## 📞 Support & Community
 
-- Documentation: [docs/INDEX.md](docs/INDEX.md)
-- API Docs: http://localhost:8000/docs
-- Issues: [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues)
+- **📖 Documentation**: [Full Documentation Index](docs/index.md)
+- **🐛 Issues**: [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/Urz1/synthetic-data-studio/discussions)
+- **📧 Security**: security@synthetic-data-studio.com
 
-## 🎓 Resources
+## 🏆 Recognition
 
-- [Differential Privacy Primer](https://privacytools.seas.harvard.edu/differential-privacy)
-- [SDV Documentation](https://docs.sdv.dev/)
-- [Opacus Documentation](https://opacus.ai/)
+Built with cutting-edge privacy-preserving technologies:
+- **FastAPI** - Modern Python web framework
+- **SDV** - Synthetic Data Vault library
+- **Opacus** - PyTorch differential privacy
+- **Google Gemini & Groq** - AI-powered features
 
 ---
 
-**Status**: Phase 3 Complete ✅ (Differential Privacy with Safety System)
-
-**Next**: Phase 4 - Evaluation Suite (Statistical similarity, utility tests, privacy leakage)
+**Ready to get started?** Visit our [Quick Start Guide](docs/getting-started/quick-start.md) to generate your first synthetic dataset in minutes! 🚀

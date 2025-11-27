@@ -15,6 +15,7 @@ class Settings:
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./test.db")
     secret_key: str = os.getenv("SECRET_KEY", "")
     allowed_origins: List[str] = None
+    upload_dir: str = os.getenv("UPLOAD_DIR", "uploads")
     
     def __post_init__(self):
         """Validate critical settings after initialization."""

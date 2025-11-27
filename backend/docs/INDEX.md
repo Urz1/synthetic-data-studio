@@ -1,129 +1,147 @@
-# Documentation Index
+# 📚 Synthetic Data Studio Documentation
 
-## 📁 Documentation Structure
-
-### Root Documentation
-- [README.md](../README.md) - Project overview and getting started
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Original implementation roadmap
-
-### Phase Documentation
-
-#### Phase 1: Data Profiling & PII Detection
-- [PHASE1_SUMMARY.md](phase1/PHASE1_SUMMARY.md) - Statistical profiling and PII detection implementation
-
-#### Phase 2: Synthesis Models
-- [PHASE2_SUMMARY.md](phase2/PHASE2_SUMMARY.md) - CTGAN, TVAE, and GaussianCopula implementation
-
-#### Phase 3: Differential Privacy
-- [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md) - DP-CTGAN and DP-TVAE with privacy guarantees
-- [PHASE3_TESTING.md](phase3/PHASE3_TESTING.md) - Testing guide for DP features
-- [PHASE3_QUICKREF.md](phase3/PHASE3_QUICKREF.md) - Quick reference for DP usage
-- [PHASE3_SAFETY_SUMMARY.md](phase3/PHASE3_SAFETY_SUMMARY.md) - Safety features and bug fixes
-- [PHASE3_SAFETY_TESTING.md](phase3/PHASE3_SAFETY_TESTING.md) - Safety system testing guide
-- [PHASE3_SAFETY_QUICKREF.md](phase3/PHASE3_SAFETY_QUICKREF.md) - Safety features quick reference
-- [PHASE3_SAFETY_ARCHITECTURE.md](phase3/PHASE3_SAFETY_ARCHITECTURE.md) - System architecture and flow diagrams
-- [PHASE3_SAFETY_API_EXAMPLES.md](phase3/PHASE3_SAFETY_API_EXAMPLES.md) - Ready-to-run API test examples
-
-#### Phase 4: Evaluation Suite
-- [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) - Comprehensive synthetic data quality evaluation
-
-### Testing & Development Guides
-- [TESTING.md](guides/TESTING.md) - General testing guidelines
-- [GENERATOR_TESTS.md](guides/GENERATOR_TESTS.md) - Generator-specific test cases
-
----
+Welcome to the comprehensive documentation for Synthetic Data Studio, a production-ready platform for generating high-quality synthetic data with differential privacy guarantees.
 
 ## 🚀 Quick Navigation
 
-### For New Developers
-1. Start with [README.md](../README.md)
-2. Review [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
-3. Follow phase documentation in order (Phase 1 → 2 → 3)
+### 🆕 Just Getting Started?
+- **[Installation Guide](getting-started/installation.md)** - Complete setup instructions
+- **[Quick Start Tutorial](getting-started/quick-start.md)** - Generate your first synthetic dataset
+- **[Configuration](getting-started/configuration.md)** - Environment setup and options
 
-### For API Users
-- **DP Configuration**: [PHASE3_SAFETY_QUICKREF.md](phase3/PHASE3_SAFETY_QUICKREF.md)
-- **API Examples**: [PHASE3_SAFETY_API_EXAMPLES.md](phase3/PHASE3_SAFETY_API_EXAMPLES.md)
-- **Testing Guide**: [PHASE3_SAFETY_TESTING.md](phase3/PHASE3_SAFETY_TESTING.md)
+### 👥 I'm a User
+- **[Platform Overview](user-guide/overview.md)** - Understanding Synthetic Data Studio
+- **[Data Management](user-guide/uploading-data.md)** - Upload and manage datasets
+- **[Data Synthesis](user-guide/generating-data.md)** - Generate synthetic data
+- **[Privacy Features](user-guide/privacy-features.md)** - Differential privacy and compliance
+- **[Quality Evaluation](user-guide/evaluating-quality.md)** - Assess synthetic data quality
+- **[AI Features](user-guide/ai-features.md)** - Interactive chat and automation
 
-### For Compliance/Privacy Officers
-- **Privacy Overview**: [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md)
-- **Safety Features**: [PHASE3_SAFETY_SUMMARY.md](phase3/PHASE3_SAFETY_SUMMARY.md)
-- **Architecture**: [PHASE3_SAFETY_ARCHITECTURE.md](phase3/PHASE3_SAFETY_ARCHITECTURE.md)
+### 🔌 I'm a Developer
+- **[API Examples](examples/)** - Code examples and API usage
+- **[Architecture](developer-guide/architecture.md)** - System design and components
+- **[Development Setup](developer-guide/development-setup.md)** - Dev environment
+- **[Testing](developer-guide/testing.md)** - Testing guidelines and procedures
+- **[Deployment](developer-guide/deployment.md)** - Production deployment
+
+### 🎓 I Want to Learn
+- **[Basic Synthesis Tutorial](tutorials/basic-synthesis.md)** - End-to-end data generation
+- **[Privacy Synthesis Tutorial](tutorials/privacy-synthesis.md)** - DP workflow tutorial
+- **[Quality Assessment Tutorial](tutorials/quality-evaluation.md)** - Evaluation tutorial
+- **[Compliance Reporting Tutorial](tutorials/compliance-reporting.md)** - Audit preparation
+
+## 📋 Documentation Structure
+
+```
+docs/
+├── index.md                    # This navigation hub
+├── getting-started/           # First-time setup and basics
+├── user-guide/                # Feature guides and workflows
+├── tutorials/                 # Step-by-step tutorials
+├── developer-guide/           # Development and deployment
+├── examples/                  # Code examples and API usage
+└── reference/                 # Configuration and troubleshooting
+```
+
+## 🎯 Key Features Overview
+
+### 🔒 Differential Privacy
+- **Mathematical Guarantees**: (ε, δ)-differential privacy with RDP accounting
+- **Safety Validation**: 3-layer validation prevents privacy failures
+- **Compliance Ready**: HIPAA, GDPR, CCPA, SOC-2 reporting
+- **Multiple Algorithms**: DP-CTGAN, DP-TVAE with automatic parameter tuning
+
+### 🤖 AI-Powered Capabilities
+- **Interactive Chat**: Ask questions about your synthetic data quality
+- **Smart Suggestions**: AI-powered recommendations for improvement
+- **Auto-Documentation**: Generate model cards and audit narratives
+- **Enhanced Detection**: Context-aware PII identification
+
+### 📊 Quality Assurance
+- **Statistical Similarity**: KS tests, Chi-square, Wasserstein distance
+- **ML Utility**: Classification/regression performance evaluation
+- **Privacy Leakage**: Membership and attribute inference detection
+- **Comprehensive Reports**: Actionable quality assessments
+
+### 🔧 Enterprise-Ready
+- **Multiple Synthesis Methods**: CTGAN, TVAE, GaussianCopula
+- **Background Processing**: Asynchronous job handling
+- **Scalable Architecture**: FastAPI with SQLAlchemy
+- **Production Deployment**: Docker, cloud-native ready
+
+## 🌟 Common Workflows
+
+### 1. Basic Data Synthesis
+1. [Upload Dataset](user-guide/uploading-data.md)
+2. [Generate Profile](user-guide/uploading-data.md#data-profiling)
+3. [Create Synthetic Data](user-guide/generating-data.md)
+4. [Evaluate Quality](user-guide/evaluating-quality.md)
+
+### 2. Privacy-Preserving Synthesis
+1. [Validate DP Configuration](user-guide/privacy-features.md#configuration-validation)
+2. [Generate with Privacy Guarantees](user-guide/generating-data.md#differential-privacy)
+3. [Review Privacy Report](user-guide/privacy-features.md#privacy-reports)
+4. [Compliance Documentation](user-guide/privacy-features.md#compliance-reporting)
+
+### 3. Quality Assessment
+1. [Run Comprehensive Evaluation](user-guide/evaluating-quality.md#comprehensive-evaluation)
+2. [Review Statistical Metrics](user-guide/evaluating-quality.md#statistical-similarity)
+3. [Check ML Utility](user-guide/evaluating-quality.md#ml-utility)
+4. [AI-Powered Insights](user-guide/ai-features.md#evaluation-chat)
+
+## 🔍 Search & Discovery
+
+### By Use Case
+- **Healthcare**: [PHI Detection](user-guide/uploading-data.md#sensitive-data-detection), [HIPAA Compliance](user-guide/privacy-features.md#hipaa-compliance)
+- **Finance**: [Transaction Synthesis](tutorials/privacy-synthesis.md), [Fraud Detection](user-guide/generating-data.md#conditional-sampling)
+- **Analytics**: [Quality Evaluation](user-guide/evaluating-quality.md), [ML Utility Testing](user-guide/evaluating-quality.md#ml-utility)
+
+### By Technical Focus
+- **Privacy**: [DP Configuration](user-guide/privacy-features.md), [Privacy Reports](examples/postman-collection.json)
+- **Quality**: [Evaluation API](examples/python-client.md), [Statistical Tests](user-guide/evaluating-quality.md#statistical-tests)
+- **AI Features**: [Chat Interface](examples/curl-examples.md), [Smart Suggestions](user-guide/ai-features.md#suggestions)
+
+## 📖 Reading Paths
+
+### Beginner Path
+1. [Installation](getting-started/installation.md)
+2. [Quick Start](getting-started/quick-start.md)
+3. [Basic Synthesis Tutorial](tutorials/basic-synthesis.md)
+4. [Platform Overview](user-guide/overview.md)
+
+### Privacy Engineer Path
+1. [Privacy Features Overview](user-guide/privacy-features.md)
+2. [DP Configuration Guide](user-guide/privacy-features.md#configuration-validation)
+3. [Privacy Synthesis Tutorial](tutorials/privacy-synthesis.md)
+4. [Compliance Reporting](tutorials/compliance-reporting.md)
+
+### Developer Path
+1. [Development Setup](developer-guide/development-setup.md)
+2. [Architecture Overview](developer-guide/architecture.md)
+3. [API Examples](examples/)
+4. [Testing Guide](developer-guide/testing.md)
+
+## 🔗 External Resources
+
+- **Live API**: http://localhost:8000/docs (when running)
+- **GitHub Repository**: https://github.com/Urz1/synthetic-data-studio
+- **Differential Privacy**: https://privacytools.seas.harvard.edu/differential-privacy
+- **SDV Documentation**: https://docs.sdv.dev/
+
+## 📞 Support
+
+- **📖 Documentation Issues**: [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues)
+- **💬 General Discussion**: [GitHub Discussions](https://github.com/Urz1/synthetic-data-studio/discussions)
+- **📧 Security Issues**: security@synthetic-data-studio.com
+
+## 📝 Contributing
+
+Help improve our documentation! See our [Contributing Guide](../CONTRIBUTING.md) for guidelines on:
+- Writing documentation
+- Reporting issues
+- Suggesting improvements
+- Code contributions
 
 ---
 
-## 📊 Feature Status
-
-| Phase | Feature | Status | Documentation |
-|-------|---------|--------|---------------|
-| 1 | Statistical Profiling | ✅ Complete | [PHASE1_SUMMARY.md](phase1/PHASE1_SUMMARY.md) |
-| 1 | PII/PHI Detection | ✅ Complete | [PHASE1_SUMMARY.md](phase1/PHASE1_SUMMARY.md) |
-| 2 | CTGAN Synthesis | ✅ Complete | [PHASE2_SUMMARY.md](phase2/PHASE2_SUMMARY.md) |
-| 2 | TVAE Synthesis | ✅ Complete | [PHASE2_SUMMARY.md](phase2/PHASE2_SUMMARY.md) |
-| 2 | GaussianCopula | ✅ Complete | [PHASE2_SUMMARY.md](phase2/PHASE2_SUMMARY.md) |
-| 3 | DP-CTGAN | ✅ Complete | [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md) |
-| 3 | DP-TVAE | ✅ Complete | [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md) |
-| 3 | Privacy Reports | ✅ Complete | [PHASE3_SUMMARY.md](phase3/PHASE3_SUMMARY.md) |
-| 3 | Safety System | ✅ Complete | [PHASE3_SAFETY_SUMMARY.md](phase3/PHASE3_SAFETY_SUMMARY.md) |
-| 4 | Statistical Tests | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
-| 4 | ML Utility Tests | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
-| 4 | Privacy Tests | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
-| 4 | Quality Reports | ✅ Complete | [PHASE4_SUMMARY.md](phase4/PHASE4_SUMMARY.md) |
-| 5 | Compliance System | 🔄 Planned | TBD |
-| 6 | Production Ready | 🔄 Planned | TBD |
-
----
-
-## 🔧 API Endpoints Reference
-
-### Data Profiling
-- `POST /datasets/{id}/profile` - Generate statistical profile
-- `GET /datasets/{id}/profile` - Retrieve profile
-- `POST /datasets/{id}/detect-pii` - Detect PII/PHI
-
-### Synthesis
-- `POST /generators/dataset/{id}/generate` - Generate synthetic data
-- `POST /generators/schema/generate` - Generate from schema
-- `GET /generators/{id}` - Get generator details
-
-### Differential Privacy
-- `POST /generators/dp/validate-config` - Validate DP configuration
-- `GET /generators/dp/recommended-config` - Get safe DP parameters
-- `GET /generators/{id}/privacy-report` - Get privacy report
-
-### Evaluation
-- `POST /evaluations/run` - Run comprehensive evaluation
-- `GET /evaluations/{id}` - Get evaluation results
-- `GET /evaluations/generator/{id}` - List generator evaluations
-- `POST /evaluations/quick/{id}` - Quick statistical evaluation
-
----
-
-## 📞 Support & Resources
-
-- **API Documentation**: http://localhost:8000/docs (when server is running)
-- **Issue Tracking**: See project repository
-- **Testing**: Start with [TESTING.md](guides/TESTING.md)
-
----
-
-## 🎓 Learning Path
-
-### Beginner: Understanding Synthetic Data
-1. Read [README.md](../README.md) overview
-2. Review Phase 1 (profiling basics)
-3. Try basic CTGAN synthesis (Phase 2)
-
-### Intermediate: Working with Privacy
-1. Study Phase 3 overview
-2. Follow [PHASE3_SAFETY_QUICKREF.md](phase3/PHASE3_SAFETY_QUICKREF.md)
-3. Test with [PHASE3_SAFETY_API_EXAMPLES.md](phase3/PHASE3_SAFETY_API_EXAMPLES.md)
-
-### Advanced: Privacy Engineering
-1. Deep dive into [PHASE3_SAFETY_ARCHITECTURE.md](phase3/PHASE3_SAFETY_ARCHITECTURE.md)
-2. Review safety validation implementation
-3. Understand RDP accounting and composition
-
----
-
-Last Updated: November 20, 2025
+**Ready to explore?** Start with our [Quick Start Tutorial](getting-started/quick-start.md) to generate your first synthetic dataset! 🚀

@@ -1,4 +1,3 @@
-```python
 """Business logic for async job processing."""
 
 # Standard library

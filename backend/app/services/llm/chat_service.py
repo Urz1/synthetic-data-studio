@@ -287,7 +287,7 @@ Explain:
         try:
             response = await self.router.generate(request, use_case="quick")
             return response.content
-        
+        except Exception as e:
             return f"The {metric_name} metric has a value of {metric_value}. Please refer to the documentation for details."
 
 

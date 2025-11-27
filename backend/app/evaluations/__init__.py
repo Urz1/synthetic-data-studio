@@ -8,7 +8,7 @@ This module provides comprehensive evaluation tools including:
 - Quality scoring and reporting
 """
 
-from . import models, repositories, schemas, routes, services
+from . import models, repositories, schemas, routes
 from .statistical_tests import StatisticalEvaluator
 from .ml_utility import MLUtilityEvaluator
 from .privacy_tests import PrivacyEvaluator
@@ -16,10 +16,9 @@ from .quality_report import QualityReportGenerator
 
 __all__ = [
     "models",
-    "repositories", 
+    "repositories",
     "schemas",
     "routes",
-    "services",
     "StatisticalEvaluator",
     "MLUtilityEvaluator",
     "PrivacyEvaluator",

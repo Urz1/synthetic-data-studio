@@ -55,8 +55,11 @@ class GeneratorCreateRequest(BaseModel):
     model_version_id: Optional[uuid.UUID] = None
     type: str = Field(..., description="Generator type")
     parameters_json: Dict[str, Any] = Field(default_factory=dict)
-    schema_json: Optional[Dict[str, Any]] = None
+    generator_schema: Optional[Dict[str, Any]] = Field(None, alias="schema_json")
     name: str = Field(..., min_length=1, max_length=255)
+    
+    class Config:
+        populate_by_name = True  # Allow both field name and alias
 
 
 # ============================================================================
@@ -70,7 +73,7 @@ class GeneratorResponse(BaseModel):
     model_version_id: Optional[uuid.UUID] = None
     type: str
     parameters_json: Dict[str, Any]
-    schema_json: Optional[Dict[str, Any]] = None
+    generator_schema: Optional[Dict[str, Any]] = Field(None, alias="schema_json")
     name: str
     status: str
     output_dataset_id: Optional[uuid.UUID] = None
@@ -84,6 +87,7 @@ class GeneratorResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class GeneratorDeleteResponse(BaseModel):
