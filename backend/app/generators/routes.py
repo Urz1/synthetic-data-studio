@@ -2,13 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlmodel import Session
 from app.core.dependencies import get_db, get_current_user
 from .models import Generator, SchemaInput
-from .crud import get_generators, create_generator, get_generator_by_id, update_generator_status
+from .crud import get_generators, create_generator, get_generator_by_id, update_generator_status, delete_generator
 from .services import generate_synthetic_data, _generate_from_schema
 from app.datasets.models import Dataset
 import uuid
 from typing import Optional
 
 router = APIRouter(prefix="/generators", tags=["generators"])
+
+
+def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
+    """Validate and convert string to UUID, raising HTTPException if invalid."""
+    try:
+        return uuid.UUID(uuid_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
 
 
 @router.get("/", response_model=list[Generator])
@@ -18,10 +26,25 @@ def list_generators(db: Session = Depends(get_db), current_user=Depends(get_curr
 
 @router.get("/{generator_id}", response_model=Generator)
 def get_generator(generator_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Validate UUID
+    validate_uuid(generator_id, "generator_id")
+    
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
     return generator
+
+
+@router.delete("/{generator_id}")
+def delete_generator_endpoint(generator_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Delete a generator."""
+    # Validate UUID
+    validate_uuid(generator_id, "generator_id")
+    
+    generator = delete_generator(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    return {"message": "Generator deleted successfully", "id": generator_id}
 
 
 @router.post("/", response_model=Generator)

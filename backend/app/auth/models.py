@@ -42,6 +42,35 @@ class APIKey(SQLModel, table=True):
 class UserCreate(SQLModel):
     email: str
     password: str
+    
+    @property
+    def _validate_email(self):
+        """Validate email format"""
+        import re
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', self.email):
+            raise ValueError("Invalid email format")
+        return True
+    
+    @property
+    def _validate_password(self):
+        """Validate password requirements"""
+        if len(self.password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        # Bcrypt has a 72-byte limit
+        if len(self.password.encode('utf-8')) > 72:
+            raise ValueError("Password cannot exceed 72 bytes due to bcrypt limitations")
+        # Check for uppercase
+        if not any(c.isupper() for c in self.password):
+            raise ValueError("Password must contain at least one uppercase letter")
+        # Check for numbers
+        if not any(c.isdigit() for c in self.password):
+            raise ValueError("Password must contain at least one number")
+        return True
+    
+    def model_post_init(self, __context):
+        """Run validation after model initialization"""
+        self._validate_email
+        self._validate_password
 
 
 class UserResponse(SQLModel):

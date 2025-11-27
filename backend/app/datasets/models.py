@@ -31,6 +31,7 @@ class Dataset(SQLModel, table=True):
     # Store comprehensive profiling results (statistics, distributions, correlations)
     profiling_data: Optional[dict] = Field(default=None, sa_column=Column(JSONType))
     version: int = Field(default=1)
+    uploader_id: uuid.UUID = Field(foreign_key="users.id")  # Track who uploaded the dataset
     uploaded_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     deleted_at: Optional[datetime.datetime] = None
 

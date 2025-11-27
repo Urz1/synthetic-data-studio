@@ -1,13 +1,16 @@
+from sqlmodel import Session, select
 from .models import ComplianceReport
+import uuid
 
-_R = []
-
-
-def list_reports():
-    return _R
+def list_reports(db: Session):
+    return db.exec(select(ComplianceReport)).all()
 
 
-def create_report(r: ComplianceReport):
-    r.id = len(_R) + 1
-    _R.append(r)
-    return r
+def create_report(db: Session, report: ComplianceReport):
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    return report
+
+def get_report(db: Session, report_id: uuid.UUID):
+    return db.get(ComplianceReport, report_id)

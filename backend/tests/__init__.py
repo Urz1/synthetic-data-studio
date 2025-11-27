@@ -1,1 +1,1 @@
-"""Top-level test package."""
+"""Empty __init__.py for tests package"""

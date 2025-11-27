@@ -285,6 +285,73 @@ Explain:
             response = await self.router.generate(request, use_case="quick")
             return response.content
         
-        except Exception as e:
-            logger.error(f"Metric explanation failed: {e}")
             return f"The {metric_name} metric has a value of {metric_value}. Please refer to the documentation for details."
+
+
+    async def generate_features(
+        self,
+        schema: Dict[str, Any],
+        context: Optional[str] = None
+    ) -> List[Dict[str, str]]:
+        """Generate feature engineering suggestions based on schema
+        
+        Args:
+            schema: Dataset schema (columns and types)
+            context: Optional context about the dataset domain
+            
+        Returns:
+            List of feature suggestions
+        """
+        logger.info("Generating feature suggestions")
+        
+        system_prompt = """You are an expert data scientist specializing in feature engineering.
+Suggest meaningful derived features that could improve model performance."""
+        
+        user_prompt = f"""Based on this schema, suggest 3-5 new features to generate:
+
+Schema: {json.dumps(schema, indent=2)}
+{f"Context: {context}" if context else ""}
+
+Provide a JSON array of feature objects. Each object should have:
+- "name": Name of the new feature
+- "expression": Mathematical or logical expression to calculate it (e.g., "col1 / col2")
+- "description": Why this feature is useful
+
+Format: [{"name": "...", "expression": "...", "description": "..."}]"""
+        
+        request = LLMRequest(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.3,
+            response_format="json",
+            max_tokens=500
+        )
+        
+        try:
+            response = await self.router.generate(request, use_case="creative")
+            features_data = json.loads(response.content)
+            
+            # Handle different JSON structures
+            if isinstance(features_data, list):
+                features = features_data
+            elif isinstance(features_data, dict):
+                features = (
+                    features_data.get('features') or
+                    features_data.get('suggestions') or
+                    list(features_data.values())[0] if features_data else []
+                )
+            else:
+                features = []
+                
+            return features if isinstance(features, list) else []
+            
+        except Exception as e:
+            logger.error(f"Feature generation failed: {e}")
+            # Fallback
+            return [
+                {
+                    "name": "interaction_term",
+                    "expression": "col1 * col2",
+                    "description": "Capture interaction between numeric columns (fallback suggestion)"
+                }
+            ]

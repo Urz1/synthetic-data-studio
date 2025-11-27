@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_user
 from .models import UserCreate, UserResponse, UserLogin, Token
 from .crud import create_user, get_user_by_email, authenticate_user
 from .services import create_access_token
@@ -65,3 +65,23 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         )
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Get current user",
+    description="Get the currently authenticated user's information"
+)
+def get_current_user_info(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Get current authenticated user.
+    
+    Requires valid JWT token in Authorization header.
+    
+    Returns the user information (without password).
+    """
+    return current_user

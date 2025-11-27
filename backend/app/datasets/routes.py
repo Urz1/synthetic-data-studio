@@ -17,6 +17,14 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
 
+def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
+    """Validate and convert string to UUID, raising HTTPException if invalid."""
+    try:
+        return uuid.UUID(uuid_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
+
+
 @router.get("/", response_model=list[Dataset])
 def list_datasets(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return get_all_datasets(db)
@@ -25,9 +33,16 @@ def list_datasets(db: Session = Depends(get_db), current_user=Depends(get_curren
 @router.get("/{dataset_id}")
 def get_dataset(dataset_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     from .crud import get_dataset_by_id
-    dataset = get_dataset_by_id(db, dataset_id)
+    # Validate UUID format
+    dataset_uuid = validate_uuid(dataset_id, "dataset_id")
+    dataset = get_dataset_by_id(db, str(dataset_uuid))
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # SECURITY: Check ownership
+    if dataset.uploader_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied: You don't own this dataset")
+    
     return dataset
 
 
@@ -37,7 +52,9 @@ def download_dataset(dataset_id: str, db: Session = Depends(get_db), current_use
     from fastapi.responses import FileResponse
     from .crud import get_dataset_by_id
 
-    dataset = get_dataset_by_id(db, dataset_id)
+    # Validate UUID format
+    dataset_uuid = validate_uuid(dataset_id, "dataset_id")
+    dataset = get_dataset_by_id(db, str(dataset_uuid))
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -47,6 +64,21 @@ def download_dataset(dataset_id: str, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=404, detail=f"File not found: {dataset.original_filename}")
 
     return FileResponse(path=file_path, filename=dataset.original_filename, media_type='text/csv')
+
+
+import re
+
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename to be safe for filesystem."""
+    # Remove path separators and null bytes
+    filename = os.path.basename(filename)
+    # Replace invalid characters (Windows/Linux safe)
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    # Truncate to reasonable length (e.g. 200 chars) to allow for UUID prefix
+    if len(filename) > 200:
+        name, ext = os.path.splitext(filename)
+        filename = name[:200-len(ext)] + ext
+    return filename
 
 
 @router.post("/upload", response_model=Dataset)
@@ -69,14 +101,17 @@ async def upload_dataset(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
+    # Sanitize filename
+    safe_filename = sanitize_filename(file.filename)
+
     # Validate file extension
     allowed_extensions = {".csv", ".json"}
-    file_ext = Path(file.filename).suffix.lower()
+    file_ext = Path(safe_filename).suffix.lower()
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail="Only CSV and JSON files allowed")
 
     # Save file with UUID prefix for uniqueness
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    unique_filename = f"{uuid.uuid4()}_{safe_filename}"
     file_path = UPLOAD_DIR / unique_filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -85,7 +120,7 @@ async def upload_dataset(
     try:
         dataset = await process_uploaded_file(
             file_path=file_path,
-            filename=file.filename,
+            filename=safe_filename,
             unique_filename=unique_filename,
             project_id=uuid.UUID(project_id),
             uploader_id=current_user.id,
@@ -289,3 +324,44 @@ async def detect_pii_enhanced(
             status_code=500,
             detail=f"Enhanced PII detection failed: {str(e)}"
         )
+
+
+@router.delete("/{dataset_id}")
+def delete_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Delete a dataset (soft delete by setting deleted_at timestamp).
+    
+    Args:
+        dataset_id: Dataset UUID
+        
+    Returns:
+        Success message with deleted dataset info
+    """
+    from .crud import delete_dataset as delete_dataset_crud, get_dataset_by_id
+    
+    # Validate UUID format
+    dataset_uuid = validate_uuid(dataset_id, "dataset_id")
+    
+    # SECURITY: Check ownership before deleting
+    dataset = get_dataset_by_id(db, str(dataset_uuid))
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    if dataset.uploader_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied: You don't own this dataset")
+    
+    # Delete the dataset
+    deleted_dataset = delete_dataset_crud(db, str(dataset_uuid))
+    
+    if not deleted_dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    return {
+        "message": "Dataset deleted successfully",
+        "dataset_id": str(deleted_dataset.id),
+        "deleted_at": deleted_dataset.deleted_at
+    }

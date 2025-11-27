@@ -72,7 +72,8 @@ async def process_uploaded_file(file_path: Path, filename: str, unique_filename:
         size_bytes=file_path.stat().st_size,
         row_count=len(df),
         schema_data=schema,
-        checksum=checksum
+        checksum=checksum,
+        uploader_id=uploader_id  # Set owner
     )
 
     # Save to DB

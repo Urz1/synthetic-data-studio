@@ -30,3 +30,14 @@ def update_generator_status(db: Session, generator_id: str, status: str, output_
         db.commit()
         db.refresh(generator)
     return generator
+
+
+def delete_generator(db: Session, generator_id: str):
+    """Delete a generator."""
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        return None
+    
+    db.delete(generator)
+    db.commit()
+    return generator

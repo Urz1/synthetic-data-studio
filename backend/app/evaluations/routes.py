@@ -3,12 +3,13 @@ API routes for synthetic data evaluation.
 """
 
 import logging
+import uuid
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..core.dependencies import get_db
+from ..core.dependencies import get_db, get_current_user
 from ..generators import crud as generators_crud
 from ..datasets import crud as datasets_crud
 from .quality_report import QualityReportGenerator
@@ -17,6 +18,14 @@ from . import crud as evaluations_crud
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
+
+
+def validate_uuid(uuid_str: str, param_name: str = "id") -> uuid.UUID:
+    """Validate and convert string to UUID, raising HTTPException if invalid."""
+    try:
+        return uuid.UUID(uuid_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=422, detail=f"Invalid UUID format for {param_name}")
 
 
 class EvaluationRequest(BaseModel):
@@ -42,10 +51,16 @@ class EvaluationResponse(BaseModel):
         from_attributes = True
 
 
+class ComparisonRequest(BaseModel):
+    """Request model for comparison."""
+    evaluation_ids: List[str]
+
+
 @router.post("/run", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
 async def run_evaluation(
     request: EvaluationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """
     Run comprehensive quality evaluation on generated synthetic data.
@@ -58,11 +73,16 @@ async def run_evaluation(
     Args:
         request: Evaluation configuration
         db: Database session
+        current_user: Authenticated user
     
     Returns:
         Comprehensive quality report with scores and recommendations
     """
     logger.info(f"Running evaluation for generator {request.generator_id}")
+    
+    # Validate UUIDs
+    validate_uuid(request.generator_id, "generator_id")
+    validate_uuid(request.dataset_id, "dataset_id")
     
     # Load generator
     generator = generators_crud.get_generator_by_id(db, request.generator_id)
@@ -163,30 +183,6 @@ async def run_evaluation(
     except Exception as e:
         logger.error(f"Evaluation failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Evaluation failed: {str(e)}"
-        )
-
-
-@router.get("/{evaluation_id}", response_model=EvaluationResponse)
-async def get_evaluation(
-    evaluation_id: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Get evaluation results by ID.
-    
-    Args:
-        evaluation_id: Evaluation ID
-        db: Database session
-    
-    Returns:
-        Evaluation results with quality report
-    """
-    evaluation = evaluations_crud.get_evaluation(db, evaluation_id)
-    if not evaluation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Evaluation {evaluation_id} not found"
         )
     
@@ -199,10 +195,27 @@ async def get_evaluation(
     )
 
 
+@router.get("/{evaluation_id}", response_model=EvaluationResponse)
+def get_evaluation(
+    evaluation_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Get a specific evaluation by ID."""
+    # Validate UUID format
+    eval_uuid = validate_uuid(evaluation_id, "evaluation_id")
+    
+    evaluation = evaluations_crud.get_evaluation(db, str(eval_uuid))
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+    return evaluation
+
+
 @router.get("/generator/{generator_id}", response_model=List[EvaluationResponse])
 async def list_generator_evaluations(
     generator_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """
     List all evaluations for a specific generator.
@@ -210,10 +223,14 @@ async def list_generator_evaluations(
     Args:
         generator_id: Generator ID
         db: Database session
+        current_user: Authenticated user
     
     Returns:
         List of evaluations for the generator
     """
+    # Validate UUID
+    validate_uuid(generator_id, "generator_id")
+    
     evaluations = evaluations_crud.list_evaluations_by_generator(db, generator_id)
     
     return [
@@ -231,7 +248,8 @@ async def list_generator_evaluations(
 @router.post("/quick/{generator_id}", response_model=dict)
 async def quick_evaluation(
     generator_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """
     Run quick statistical evaluation (no ML utility or privacy tests).
@@ -241,11 +259,15 @@ async def quick_evaluation(
     Args:
         generator_id: Generator ID
         db: Database session
+        current_user: Authenticated user
     
     Returns:
         Statistical summary report
     """
     logger.info(f"Running quick evaluation for generator {generator_id}")
+    
+    # Validate UUID
+    validate_uuid(generator_id, "generator_id")
     
     # Load generator
     generator = generators_crud.get_generator_by_id(db, generator_id)
@@ -313,7 +335,8 @@ async def quick_evaluation(
 @router.post("/{evaluation_id}/explain", response_model=dict)
 async def explain_evaluation(
     evaluation_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """
     Generate natural language explanation of evaluation results.
@@ -327,11 +350,15 @@ async def explain_evaluation(
     Args:
         evaluation_id: Evaluation ID
         db: Database session
+        current_user: Authenticated user
     
     Returns:
         Natural language insights with metadata
     """
     logger.info(f"Generating natural language insights for evaluation {evaluation_id}")
+    
+    # Validate UUID
+    validate_uuid(evaluation_id, "evaluation_id")
     
     # Get evaluation
     evaluation = evaluations_crud.get_evaluation(db, evaluation_id)
@@ -373,8 +400,9 @@ async def explain_evaluation(
 
 @router.post("/compare", response_model=dict)
 async def compare_evaluations(
-    evaluation_ids: List[str],
-    db: Session = Depends(get_db)
+    request: ComparisonRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """
     Compare multiple evaluations and provide recommendations.
@@ -383,13 +411,19 @@ async def compare_evaluations(
     by comparing quality, privacy, and utility trade-offs.
     
     Args:
-        evaluation_ids: List of evaluation IDs to compare
+        request: Comparison request with evaluation IDs
         db: Database session
+        current_user: Authenticated user
     
     Returns:
         Comparative analysis with recommendations
     """
+    evaluation_ids = request.evaluation_ids
     logger.info(f"Comparing {len(evaluation_ids)} evaluations")
+    
+    # Validate UUIDs
+    for eval_id in evaluation_ids:
+        validate_uuid(eval_id, "evaluation_id")
     
     if len(evaluation_ids) < 2:
         raise HTTPException(
@@ -438,4 +472,3 @@ async def compare_evaluations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate comparison: {str(e)}"
         )
-

@@ -76,9 +76,9 @@ add_*_migration.py
 !app/database/migrations/
 
 # Standalone test scripts
-test_*.py
-!tests/
-!app/**/tests/
+# test_*.py
+# !tests/
+# !app/**/tests/
 
 # Build artifacts
 *.egg
