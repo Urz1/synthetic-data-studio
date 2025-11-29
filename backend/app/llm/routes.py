@@ -235,18 +235,33 @@ async def privacy_report(
     validate_uuid(request.dataset_id, "dataset_id")
     if request.generator_id:
         validate_uuid(request.generator_id, "generator_id")
+        generator = generators_repo.get_generator_by_id(db, request.generator_id)
+        if not generator:
+            raise HTTPException(status_code=404, detail="Generator not found")
+    else:
+        generator = None
         
     try:
         writer = ComplianceWriter()
-        # Mocking the report generation for now
-        report = await writer.generate_report(
-            project_name="Project",
-            dataset_name="Dataset",
-            generator_type="CTGAN",
-            metrics={}
+        
+        # Build generator metadata
+        metadata = {
+            "type": generator.type if generator else "Unknown",
+            "privacy_config": generator.privacy_config if generator else {},
+            "training_metadata": generator.training_metadata if generator else {}
+        }
+        
+        # Use generate_compliance_report for privacy compliance
+        report = await writer.generate_compliance_report(
+            generator_metadata=metadata,
+            framework="Privacy"
         )
+        # Wrap in dict if it's a string
+        if isinstance(report, str):
+            return {"report": report, "framework": "Privacy"}
         return report
     except Exception as e:
+        logger.error(f"Privacy report generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -260,15 +275,33 @@ async def model_card(
     validate_uuid(request.generator_id, "generator_id")
     validate_uuid(request.dataset_id, "dataset_id")
     
+    # Get generator
+    generator = generators_repo.get_generator_by_id(db, request.generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
     try:
         writer = ComplianceWriter()
-        # Mocking model card generation
+        
+        # Build generator metadata
+        metadata = {
+            "id": str(generator.id),
+            "name": generator.name,
+            "type": generator.type,
+            "parameters": generator.parameters_json,
+            "privacy_config": generator.privacy_config,
+            "training_metadata": generator.training_metadata,
+            "status": generator.status
+        }
+        
+        # Use correct method signature
         card = await writer.generate_model_card(
-            model_name="Generator Model",
-            model_type="CTGAN",
-            metrics={},
-            parameters={}
+            generator_metadata=metadata
         )
+        # Wrap markdown in dict for JSON response
+        if isinstance(card, str):
+            return {"model_card": card, "generator_id": str(generator.id)}
         return card
     except Exception as e:
+        logger.error(f"Model card generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

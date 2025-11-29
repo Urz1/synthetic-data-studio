@@ -22,7 +22,7 @@ class Generator(SQLModel, table=True):
 
     id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     dataset_id: Optional[uuid.UUID] = Field(default=None, foreign_key="datasets.id")
-    model_version_id: Optional[uuid.UUID] = Field(default=None, foreign_key="model_versions.id")
+    model_version_id: Optional[uuid.UUID] = Field(default=None)  # No FK - model_versions table doesn't exist yet
     type: str  # 'ctgan', 'tvae', 'timegan', 'dp-ctgan', 'dp-tvae', 'random'
     parameters_json: dict = Field(default_factory=dict, sa_column=Column(JSONType))
     schema_json: Optional[dict] = Field(default=None, sa_column=Column(JSONType))

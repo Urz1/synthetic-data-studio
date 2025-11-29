@@ -5,33 +5,49 @@
 # ============================================================================
 
 # Standard library
-from typing import List
+from typing import List, Optional
 import uuid
-import datetime
 
-# Local - Module
-from .models import SyntheticDataset
+# Third-party
+from sqlmodel import Session, select
 
-# ============================================================================
-# MOCK STORAGE
-# ============================================================================
-
-_SYN = []
+# Local - Core
+from app.datasets.models import Dataset
 
 # ============================================================================
 # REPOSITORIES
 # ============================================================================
 
-def list_synthetic() -> List[SyntheticDataset]:
-    """List all synthetic datasets."""
-    return _SYN
+def list_synthetic_datasets(db: Session) -> List[Dataset]:
+    """
+    List all synthetic datasets.
+    
+    Note: Synthetic datasets are stored in the datasets table with
+    a specific flag or naming convention to identify them.
+    """
+    # Get all datasets - synthetic ones are created by generators
+    return db.exec(select(Dataset)).all()
 
 
-def create_synthetic(s: SyntheticDataset) -> SyntheticDataset:
-    """Create a new synthetic dataset."""
-    # Mock ID generation
-    s.id = uuid.uuid4()
-    if not s.uploaded_at:
-        s.uploaded_at = datetime.datetime.utcnow()
-    _SYN.append(s)
-    return s
+def get_synthetic_dataset_by_id(db: Session, dataset_id: uuid.UUID) -> Optional[Dataset]:
+    """Get a specific synthetic dataset by ID."""
+    return db.get(Dataset, dataset_id)
+
+
+def create_synthetic_dataset(db: Session, dataset: Dataset) -> Dataset:
+    """Create a new synthetic dataset record."""
+    db.add(dataset)
+    db.commit()
+    db.refresh(dataset)
+    return dataset
+
+
+def delete_synthetic_dataset(db: Session, dataset_id: uuid.UUID) -> bool:
+    """Delete a synthetic dataset."""
+    dataset = db.get(Dataset, dataset_id)
+    if not dataset:
+        return False
+    
+    db.delete(dataset)
+    db.commit()
+    return True

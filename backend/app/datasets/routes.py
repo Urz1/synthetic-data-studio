@@ -109,13 +109,13 @@ def download_dataset(
     )
 
 
-@router.post("/upload", response_model=Dataset)
+@router.post("/upload", response_model=DatasetResponse)
 async def upload_dataset(
     file: UploadFile = File(...),
     project_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> Dataset:
+) -> DatasetResponse:
     """
     Upload a dataset file (CSV/JSON) and create dataset record.
     
@@ -158,6 +158,8 @@ async def upload_dataset(
         )
         return dataset
     except Exception as e:
+        # Log full error with traceback
+        logger.exception(f"Failed to process uploaded file {safe_filename}")
         # Clean up file on error
         if file_path.exists():
             file_path.unlink()

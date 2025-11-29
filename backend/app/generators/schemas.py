@@ -100,3 +100,4 @@ class GenerationStartResponse(BaseModel):
     """Response when starting generation."""
     message: str
     generator_id: str
+    job_id: Optional[str] = None  # Job ID for tracking the background task

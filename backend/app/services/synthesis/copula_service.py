@@ -29,19 +29,16 @@ class GaussianCopulaService:
     
     def create_from_schema(self, schema: Dict[str, Dict[str, Any]], num_samples: int = 100) -> None:
         """
-        Create synthesizer from schema definition and fit on synthetic sample data.
-        
-        Since GaussianCopula requires training data, we generate a small sample first.
+        Create synthesizer from schema definition and fit on realistic sample data.
         
         Schema format:
         {
             "column_name": {
-                "type": "integer|float|categorical|datetime|boolean|string",
-                "constraints": {
-                    "min": 0, "max": 100,  # for numeric
-                    "categories": ["A", "B"],  # for categorical
-                    "start_date": "2020-01-01", "end_date": "2024-12-31"  # for datetime
-                }
+                "type": "integer|float|categorical|datetime|boolean|string|uuid",
+                "min": 0, "max": 100,  # for numeric
+                "values": ["A", "B"],  # for categorical (will use actual values!)
+                "precision": 2,  # for float decimal places
+                "start_date": "2020-01-01", "end_date": "2024-12-31"  # for datetime
             }
         }
         
@@ -49,47 +46,13 @@ class GaussianCopulaService:
             schema: Dictionary defining columns and their types
             num_samples: Number of sample rows to generate for fitting (default: 100)
         """
-        import random
-        import string
-        from datetime import datetime, timedelta
+        from app.services.synthesis.realistic_schema_generator import generate_realistic_dataset
         
         logger.info(f"Creating GaussianCopula synthesizer from schema with {len(schema)} columns")
         
-        # Generate sample data from schema for fitting
-        sample_data = []
-        for _ in range(num_samples):
-            row = {}
-            for col_name, col_info in schema.items():
-                col_type = col_info.get('type', 'string')
-                constraints = col_info.get('constraints', {})
-                
-                if col_type == 'integer':
-                    min_val = constraints.get('min', 0)
-                    max_val = constraints.get('max', 100)
-                    row[col_name] = random.randint(min_val, max_val)
-                elif col_type == 'float':
-                    min_val = constraints.get('min', 0.0)
-                    max_val = constraints.get('max', 100.0)
-                    row[col_name] = random.uniform(min_val, max_val)
-                elif col_type == 'categorical':
-                    categories = constraints.get('categories', ['A', 'B', 'C'])
-                    row[col_name] = random.choice(categories)
-                elif col_type == 'boolean':
-                    row[col_name] = random.choice([True, False])
-                elif col_type == 'datetime':
-                    start_date = constraints.get('start_date', '2020-01-01')
-                    end_date = constraints.get('end_date', '2024-12-31')
-                    start = datetime.fromisoformat(start_date)
-                    end = datetime.fromisoformat(end_date)
-                    random_date = start + timedelta(days=random.randint(0, (end - start).days))
-                    row[col_name] = random_date.strftime('%Y-%m-%d')
-                else:
-                    # String
-                    length = constraints.get('length', 10)
-                    row[col_name] = ''.join(random.choices(string.ascii_letters + string.digits, k=length))
-            
-            sample_data.append(row)
-        
+        # Generate realistic sample data using domain-agnostic generator
+        logger.info(f"Generating {num_samples} realistic sample rows for fitting...")
+        sample_data = generate_realistic_dataset(schema, num_samples)
         df_sample = pd.DataFrame(sample_data)
         
         # Create metadata
@@ -103,7 +66,7 @@ class GaussianCopulaService:
             enforce_rounding=True
         )
         
-        logger.info(f"Fitting GaussianCopula on {num_samples} sample rows...")
+        logger.info(f"Fitting GaussianCopula on {num_samples} realistic sample rows...")
         self.synthesizer.fit(df_sample)
         
         logger.info("✓ GaussianCopula synthesizer fitted and ready")
@@ -138,7 +101,11 @@ class GaussianCopulaService:
         schema: Dict[str, Dict[str, Any]]
     ) -> pd.DataFrame:
         """
-        Generate data and apply schema constraints.
+        Generate data with schema constraints applied.
+        
+        Note: With the realistic generator, most constraints are already
+        properly handled during fitting. This method now mainly ensures
+        data types and clamps any edge cases.
         
         Args:
             num_rows: Number of rows to generate
@@ -150,35 +117,36 @@ class GaussianCopulaService:
         # Generate base data
         synthetic_data = self.generate(num_rows)
         
-        # Apply constraints from schema
+        # Apply post-generation constraints for edge cases
         for col_name, col_info in schema.items():
             if col_name not in synthetic_data.columns:
                 continue
             
             col_type = col_info.get('type', 'string')
-            constraints = col_info.get('constraints', {})
             
-            if col_type == 'integer':
-                # Apply integer constraints
-                min_val = constraints.get('min', 0)
-                max_val = constraints.get('max', 100)
+            if col_type == 'integer' or col_type == 'int':
+                # Ensure integer type and apply strict bounds
+                min_val = col_info.get('min', 0)
+                max_val = col_info.get('max', 100)
                 synthetic_data[col_name] = synthetic_data[col_name].clip(min_val, max_val)
                 synthetic_data[col_name] = synthetic_data[col_name].round().astype(int)
             
-            elif col_type == 'float':
-                # Apply float constraints
-                min_val = constraints.get('min', 0.0)
-                max_val = constraints.get('max', 100.0)
+            elif col_type == 'float' or col_type == 'double':
+                # Apply float constraints with proper precision
+                min_val = col_info.get('min', 0.0)
+                max_val = col_info.get('max', 100.0)
+                precision = col_info.get('precision', 2)
                 synthetic_data[col_name] = synthetic_data[col_name].clip(min_val, max_val)
+                synthetic_data[col_name] = synthetic_data[col_name].round(precision)
             
-            elif col_type == 'categorical':
-                # Ensure only valid categories
-                categories = constraints.get('categories', [])
-                if categories:
-                    # Map to closest valid category if needed
-                    valid_categories = set(categories)
+            elif col_type == 'categorical' or col_type == 'category':
+                # Ensure only valid categories (should already be correct)
+                values = col_info.get('values', []) or col_info.get('categories', [])
+                if values:
+                    valid_categories = set(values)
+                    # Map any invalid values to first valid category
                     synthetic_data[col_name] = synthetic_data[col_name].apply(
-                        lambda x: x if x in valid_categories else categories[0]
+                        lambda x: x if x in valid_categories else values[0]
                     )
         
         return synthetic_data

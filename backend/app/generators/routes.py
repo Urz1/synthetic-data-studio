@@ -46,6 +46,10 @@ from .schemas import (
 )
 from .services import generate_synthetic_data, _generate_from_schema
 
+# Jobs integration
+from app.jobs.models import Job
+from app.jobs.repositories import create_job, update_job_status
+
 # ============================================================================
 # SETUP
 # ============================================================================
@@ -147,15 +151,27 @@ def start_generation(
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
 
+    # Create Job record to track this task
+    job = Job(
+        project_id=generator.dataset_id if generator.dataset_id else uuid.uuid4(),  # Use dataset's project or create temp
+        initiated_by=current_user.id,
+        generator_id=uuid.UUID(generator_id),
+        type="generation",
+        status="pending"
+    )
+    job = create_job(db, job)
+
     # Update status to running
     update_generator_status(db, generator_id, "running")
+    update_job_status(db, str(job.id), "running")
 
     # Add background task
-    background_tasks.add_task(_generate_in_background, generator_id, db)
+    background_tasks.add_task(_generate_in_background, generator_id, str(job.id), db)
 
     return GenerationStartResponse(
         message="Generation started",
-        generator_id=generator_id
+        generator_id=generator_id,
+        job_id=str(job.id)
     )
 
 
@@ -220,12 +236,28 @@ def generate_from_dataset(
 
     generator = create_generator(db, generator)
 
+    # Create Job record to track this task
+    job = Job(
+        project_id=dataset.project_id,
+        initiated_by=current_user.id,
+        dataset_id=uuid.UUID(dataset_id),
+        generator_id=generator.id,
+        type="training",
+        status="pending"
+    )
+    job = create_job(db, job)
+
     # Start generation
     update_generator_status(db, str(generator.id), "running")
+    update_job_status(db, str(job.id), "running")
 
     if background_tasks:
-        background_tasks.add_task(_generate_in_background, str(generator.id), db)
-        return {"message": "Generation started", "generator_id": str(generator.id)}
+        background_tasks.add_task(_generate_in_background, str(generator.id), str(job.id), db)
+        return {
+            "message": "Generation started",
+            "generator_id": str(generator.id),
+            "job_id": str(job.id)
+        }
     else:
         # Synchronous generation for testing
         try:
@@ -571,11 +603,12 @@ async def generate_compliance_report(
 # HELPER FUNCTIONS
 # ============================================================================
 
-def _generate_in_background(generator_id: str, db: Session) -> None:
+def _generate_in_background(generator_id: str, job_id: str, db: Session) -> None:
     """Background task to generate synthetic data."""
     try:
         generator = get_generator_by_id(db, generator_id)
         if not generator:
+            update_job_status(db, job_id, "failed", error_message="Generator not found")
             return
 
         # Generate the data
@@ -583,8 +616,19 @@ def _generate_in_background(generator_id: str, db: Session) -> None:
 
         # Update generator with completed status and output dataset
         update_generator_status(db, generator_id, "completed", str(output_dataset.id))
+        
+        # Update job with completed status and result
+        update_job_status(
+            db,
+            job_id,
+            "completed",
+            synthetic_dataset_id=output_dataset.id
+        )
+        
+        logger.info(f"✓ Generation completed for {generator_id}, job {job_id}")
 
     except Exception as e:
-        # Update status to failed
+        # Update both generator and job status to failed
         update_generator_status(db, generator_id, "failed")
+        update_job_status(db, job_id, "failed", error_message=str(e))
         logger.error(f"Generation failed for {generator_id}: {str(e)}")

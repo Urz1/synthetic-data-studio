@@ -6,6 +6,7 @@
 
 # Standard library
 from typing import List
+import uuid
 
 # Third-party
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,8 +16,14 @@ from sqlmodel import Session
 from app.core.dependencies import get_db, get_current_user
 
 # Local - Module
-from .schemas import ProjectCreate, ProjectResponse
-from .repositories import get_projects, create_project
+from .schemas import ProjectCreate, ProjectUpdate, ProjectResponse
+from .repositories import (
+    get_projects,
+    get_project_by_id,
+    create_project,
+    update_project,
+    delete_project
+)
 from .models import Project
 
 # ============================================================================
@@ -38,6 +45,22 @@ def list_projects(
     return get_projects(db)
 
 
+@router.get("/{project_id}", response_model=ProjectResponse)
+def get_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get a specific project by ID."""
+    project = get_project_by_id(db, project_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
+    return project
+
+
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_new_project(
     project: ProjectCreate,
@@ -52,3 +75,59 @@ def create_new_project(
     
     return create_project(db, db_project)
 
+
+@router.put("/{project_id}", response_model=ProjectResponse)
+def update_existing_project(
+    project_id: uuid.UUID,
+    project_update: ProjectUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Update an existing project."""
+    # Get existing project
+    db_project = get_project_by_id(db, project_id)
+    if not db_project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
+    
+    # Check ownership
+    if db_project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this project"
+        )
+    
+    # Update fields
+    update_data = project_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_project, field, value)
+    
+    return update_project(db, db_project)
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_existing_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Delete a project."""
+    # Get existing project
+    db_project = get_project_by_id(db, project_id)
+    if not db_project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
+    
+    # Check ownership
+    if db_project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this project"
+        )
+    
+    delete_project(db, db_project)
+    return None

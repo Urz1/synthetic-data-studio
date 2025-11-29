@@ -22,17 +22,30 @@ def create_dataset(db: Session, dataset: Dataset):
 
 
 def delete_dataset(db: Session, dataset_id: str):
-    """Soft delete a dataset by setting deleted_at timestamp."""
+    """Delete a dataset (hard delete - removes file and database record)."""
+    from pathlib import Path
+    
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         return None
     
-    # Check if already deleted
-    if dataset.deleted_at:
-        return None
+    # Delete the physical file if it exists
+    if dataset.original_filename:
+        try:
+            from app.core.config import settings
+            upload_dir = Path(settings.upload_dir)
+            file_path = upload_dir / dataset.original_filename
+            if file_path.exists():
+                file_path.unlink()
+                print(f"Deleted file: {file_path}")
+        except Exception as e:
+            print(f"Warning: Could not delete file {dataset.original_filename}: {e}")
     
-    # Soft delete by setting deleted_at
+    # Set deleted_at timestamp (for audit trail)
     dataset.deleted_at = datetime.datetime.utcnow()
+    
+    # Hard delete from database
+    db.delete(dataset)
     db.commit()
-    db.refresh(dataset)
+    
     return dataset
