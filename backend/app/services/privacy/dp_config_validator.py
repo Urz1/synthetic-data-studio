@@ -85,17 +85,47 @@ class DPConfigValidator:
                 f"This requires very high noise levels."
             )
         
-        # 4. Check if configuration is mathematically feasible
+        # 4. Check if configuration is mathemati cally feasible
         # Rough estimate: noise_multiplier ≈ sqrt(steps) / epsilon
         import numpy as np
-        estimated_noise = np.sqrt(2 * steps * np.log(1.0 / target_delta)) / target_epsilon
+        
+        # 🔒 SAFETY: Check for overflow before computing
+        log_term = np.log(1.0 / target_delta)
+        product = 2 * steps * log_term
+        
+        # Cap to prevent infinity
+        if product > 1e10:
+            errors.append(
+                f"Configuration requires infinite noise multiplier. "
+                f"With {epochs} epochs and batch_size {batch_size}, cannot achieve ε={target_epsilon}. "
+                f"Options:\n"
+                f"  - Reduce epochs to {max(5, epochs // 10)}\n"
+                f"  - Increase batch_size to {min(5000, batch_size * 5)}\n"
+                f"  - Increase target_epsilon to {target_epsilon * 5}\n"
+                f"  - Use regular 'ctgan' instead of 'dp-ctgan'"
+            )
+            # Skip further checks since config is invalid
+            is_valid = len(errors) == 0
+            return is_valid, errors, warnings
+        
+        estimated_noise = np.sqrt(product) / target_epsilon
+        
+        # Safety: Cap noise and check for NaN/Inf
+        if np.isinf(estimated_noise) or np.isnan(estimated_noise):
+            estimated_noise = 100.0  # Max reasonable value
         
         if estimated_noise < 0.3:
+            # Safe epoch calculation - avoid divide-by-zero
+            if estimated_noise > 0.01:
+                suggested_epochs = max(5, int(epochs * 0.3 / estimated_noise))
+            else:
+                suggested_epochs = max(5, epochs // 20)  # Very conservative fallback
+            
             errors.append(
                 f"Configuration is mathematically infeasible. "
                 f"Cannot achieve ε={target_epsilon} with {epochs} epochs and batch_size {batch_size}. "
                 f"Options:\n"
-                f"  - Reduce epochs to {max(5, int(epochs * 0.3 / estimated_noise))}\n"
+                f"  - Reduce epochs to {suggested_epochs}\n"
                 f"  - Reduce batch_size to {max(32, batch_size // 5)}\n"
                 f"  - Increase target_epsilon to {target_epsilon * 5}"
             )

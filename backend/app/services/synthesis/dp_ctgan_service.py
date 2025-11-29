@@ -152,7 +152,40 @@ class DPCTGANService:
         # Use Opacus-style calculation: noise needed to achieve (epsilon, delta)-DP
         # For composition over T steps: noise_mult ≈ sqrt(T * ln(1/delta)) / epsilon
         # This is more conservative and accurate than the old heuristic
-        noise_mult = np.sqrt(2 * steps * np.log(1.0 / delta)) / self.target_epsilon
+        
+        # 🔒 SAFETY: Check for potential overflow BEFORE computing sqrt
+        log_term = np.log(1.0 / delta)
+        product = 2 * steps * log_term
+        
+        # Maximum reasonable noise multiplier (beyond this, privacy is meaningless)
+        MAX_NOISE_MULT = 100.0
+        
+        # Check if calculation would overflow to infinity
+        if product > 1e10:  # Would produce infinity/unreasonable values
+            logger.error(f"🔴 Configuration would require excessive noise!")
+            logger.error(f"   Steps: {steps}, log(1/δ): {log_term:.2f}")
+            logger.error(f"   This configuration CANNOT achieve ε={self.target_epsilon}")
+            logger.error(f"")
+            logger.error(f"   SOLUTIONS:")
+            logger.error(f"   1. Reduce epochs: {self.epochs} → {max(5, self.epochs // 10)}")
+            logger.error(f"   2. Increase batch_size: {self.batch_size} → {min(5000, self.batch_size * 5)}")
+            logger.error(f"   3. Increase epsilon (less privacy): {self.target_epsilon} → {self.target_epsilon * 5}")
+            logger.error(f"   4. Use regular 'ctgan' instead of 'dp-ctgan'")
+            
+            raise ValueError(
+                f"Configuration requires infinite noise. "
+                f"Cannot achieve ε={self.target_epsilon} with epochs={self.epochs}, "
+                f"batch_size={self.batch_size}. "
+                f"Try: epochs={max(5, self.epochs // 10)} OR "
+                f"batch_size={min(5000, self.batch_size * 5)}"
+            )
+        
+        noise_mult = np.sqrt(product) / self.target_epsilon
+        
+        # Safety: Cap at maximum even if calculation succeeded
+        if noise_mult > MAX_NOISE_MULT or np.isinf(noise_mult) or np.isnan(noise_mult):
+            logger.warning(f"⚠️ Capping noise multiplier from {noise_mult:.2f} to {MAX_NOISE_MULT}")
+            noise_mult = MAX_NOISE_MULT
         
         logger.info(f"Auto-computed noise multiplier: {noise_mult:.4f} for {steps} steps")
         
@@ -170,7 +203,7 @@ class DPCTGANService:
                 f"Try: reducing epochs to {max(10, self.epochs // 5)} or batch_size to {min(100, self.batch_size // 2)}"
             )
         
-        return max(0.5, noise_mult)  # Minimum 0.5 for meaningful privacy
+        return max(0.5, min(noise_mult, MAX_NOISE_MULT))  # Clamp between 0.5 and 100
     
     def train(
         self,
@@ -335,11 +368,22 @@ class DPCTGANService:
         sampling_rate = self.batch_size / dataset_size
         steps = self.epochs * (dataset_size // self.batch_size)
         
+        # 🔒 SAFETY: Cap steps to prevent overflow in range() iteration
+        # Python's range() can handle large numbers, but accountant might not
+        MAX_STEPS = 1000000  # 1 million steps is already excessive
+        if steps > MAX_STEPS:
+            logger.warning(f"⚠️ Capping privacy accounting steps from {steps} to {MAX_STEPS}")
+            logger.warning(f"   Actual privacy spent will be UNDERESTIMATED")
+            logger.warning(f"   Consider reducing epochs or increasing batch_size")
+            steps = MAX_STEPS
+        
         # Create RDP accountant
         accountant = RDPAccountant()
         
         # Compute privacy for each step
-        for _ in range(steps):
+        # Convert to int to be absolutely safe
+        steps_int = int(min(steps, MAX_STEPS))
+        for _ in range(steps_int):
             accountant.step(
                 noise_multiplier=noise_multiplier,
                 sample_rate=sampling_rate

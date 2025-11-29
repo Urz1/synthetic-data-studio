@@ -25,6 +25,7 @@ try:
         "app.jobs.routes",
         "app.evaluations.routes",
         "app.llm.routes",
+        "app.audit.routes",  # Enterprise audit logging
     ]
     
     for module_name in modules_to_load:

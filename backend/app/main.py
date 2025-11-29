@@ -14,6 +14,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.audit_middleware import AuditMiddleware
+
 
 # Explicitly import the api.py module to avoid conflict with api/ package
 # We need to access app.api.router where api is the api.py file, not the api/ folder
@@ -70,10 +72,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add audit logging middleware for enterprise compliance
+app.add_middleware(AuditMiddleware)
+
 if settings.debug:
     logger.warning("CORS: Allowing all origins (DEBUG mode)")
 else:
     logger.info(f"🔒 CORS: Allowing origins: {settings.allowed_origins}")
+
+logger.info("✅ Audit logging middleware enabled")
+
 
 
 # Root endpoint

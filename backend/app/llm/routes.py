@@ -305,3 +305,163 @@ async def model_card(
     except Exception as e:
         logger.error(f"Model card generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/model-card/export/pdf")
+async def export_model_card_pdf(
+    request: ModelCardRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Export model card as PDF."""
+    validate_uuid(request.generator_id, "generator_id")
+    
+    # Get generator
+    generator = generators_repo.get_generator_by_id(db, request.generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    try:
+        # Generate content
+        writer = ComplianceWriter()
+        metadata = {
+            "id": str(generator.id),
+            "name": generator.name,
+            "type": generator.type,
+            "parameters": generator.parameters_json,
+            "privacy_config": generator.privacy_config,
+            "training_metadata": generator.training_metadata,
+            "status": generator.status
+        }
+        
+        content = await writer.generate_model_card(generator_metadata=metadata)
+        if isinstance(content, dict):
+            content = content.get("model_card", "")
+            
+        # Export to PDF
+        from app.services.export import report_exporter
+        from fastapi.responses import Response
+        
+        pdf_bytes = report_exporter.export_to_pdf(
+            content_markdown=content,
+            title=f"Model Card: {generator.name}",
+            metadata={"generator_id": str(generator.id), "type": generator.type}
+        )
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=model_card_{generator.id}.pdf"}
+        )
+        
+    except Exception as e:
+        logger.error(f"PDF export failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/model-card/export/docx")
+async def export_model_card_docx(
+    request: ModelCardRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Export model card as Word document."""
+    validate_uuid(request.generator_id, "generator_id")
+    
+    # Get generator
+    generator = generators_repo.get_generator_by_id(db, request.generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    try:
+        # Generate content
+        writer = ComplianceWriter()
+        metadata = {
+            "id": str(generator.id),
+            "name": generator.name,
+            "type": generator.type,
+            "parameters": generator.parameters_json,
+            "privacy_config": generator.privacy_config,
+            "training_metadata": generator.training_metadata,
+            "status": generator.status
+        }
+        
+        content = await writer.generate_model_card(generator_metadata=metadata)
+        if isinstance(content, dict):
+            content = content.get("model_card", "")
+            
+        # Export to DOCX
+        from app.services.export import report_exporter
+        from fastapi.responses import FileResponse
+        import os
+        
+        file_path = report_exporter.export_to_docx(
+            content_markdown=content,
+            title=f"Model Card: {generator.name}",
+            metadata={"generator_id": str(generator.id), "type": generator.type}
+        )
+        
+        return FileResponse(
+            path=file_path,
+            filename=f"model_card_{generator.id}.docx",
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            background=None  # Let FastAPI handle cleanup if possible, or use background task
+        )
+        
+    except Exception as e:
+        logger.error(f"DOCX export failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/privacy-report/export/pdf")
+async def export_privacy_report_pdf(
+    request: PrivacyReportRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Export privacy report as PDF."""
+    validate_uuid(request.dataset_id, "dataset_id")
+    
+    generator = None
+    if request.generator_id:
+        generator = generators_repo.get_generator_by_id(db, request.generator_id)
+    
+    try:
+        # Generate content
+        writer = ComplianceWriter()
+        metadata = {
+            "type": generator.type if generator else "Unknown",
+            "privacy_config": generator.privacy_config if generator else {},
+            "training_metadata": generator.training_metadata if generator else {}
+        }
+        
+        content = await writer.generate_compliance_report(
+            generator_metadata=metadata,
+            framework="Privacy"
+        )
+        if isinstance(content, dict):
+            content = content.get("report", "")
+            
+        # Export to PDF
+        from app.services.export import report_exporter
+        from fastapi.responses import Response
+        
+        pdf_bytes = report_exporter.export_to_pdf(
+            content_markdown=content,
+            title="Privacy Compliance Report",
+            metadata={
+                "dataset_id": request.dataset_id,
+                "generator_id": request.generator_id
+            }
+        )
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=privacy_report.pdf"}
+        )
+        
+    except Exception as e:
+        logger.error(f"PDF export failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+

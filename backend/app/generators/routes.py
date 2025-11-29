@@ -139,42 +139,6 @@ def generate_from_schema(
     return _generate_from_schema(temp_generator, db)
 
 
-@router.post("/{generator_id}/generate")
-def start_generation(
-    generator_id: str,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-) -> GenerationStartResponse:
-    """Start synthetic data generation for a generator."""
-    generator = get_generator_by_id(db, generator_id)
-    if not generator:
-        raise HTTPException(status_code=404, detail="Generator not found")
-
-    # Create Job record to track this task
-    job = Job(
-        project_id=generator.dataset_id if generator.dataset_id else uuid.uuid4(),  # Use dataset's project or create temp
-        initiated_by=current_user.id,
-        generator_id=uuid.UUID(generator_id),
-        type="generation",
-        status="pending"
-    )
-    job = create_job(db, job)
-
-    # Update status to running
-    update_generator_status(db, generator_id, "running")
-    update_job_status(db, str(job.id), "running")
-
-    # Add background task
-    background_tasks.add_task(_generate_in_background, generator_id, str(job.id), db)
-
-    return GenerationStartResponse(
-        message="Generation started",
-        generator_id=generator_id,
-        job_id=str(job.id)
-    )
-
-
 @router.post("/dataset/{dataset_id}/generate")
 def generate_from_dataset(
     dataset_id: str,
@@ -271,6 +235,42 @@ def generate_from_dataset(
         except Exception as e:
             update_generator_status(db, str(generator.id), "failed")
             raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
+
+@router.post("/{generator_id}/generate")
+def start_generation(
+    generator_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> GenerationStartResponse:
+    """Start synthetic data generation for a generator."""
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+
+    # Create Job record to track this task
+    job = Job(
+        project_id=generator.dataset_id if generator.dataset_id else uuid.uuid4(),  # Use dataset's project or create temp
+        initiated_by=current_user.id,
+        generator_id=uuid.UUID(generator_id),
+        type="generation",
+        status="pending"
+    )
+    job = create_job(db, job)
+
+    # Update status to running
+    update_generator_status(db, generator_id, "running")
+    update_job_status(db, str(job.id), "running")
+
+    # Add background task
+    background_tasks.add_task(_generate_in_background, generator_id, str(job.id), db)
+
+    return GenerationStartResponse(
+        message="Generation started",
+        generator_id=generator_id,
+        job_id=str(job.id)
+    )
 
 
 @router.get("/{generator_id}/privacy-report")

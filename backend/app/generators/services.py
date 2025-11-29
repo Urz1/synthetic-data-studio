@@ -31,6 +31,14 @@ from app.services.synthesis.dp_ctgan_service import DPCTGANService
 from app.services.synthesis.dp_tvae_service import DPTVAEService
 from app.services.privacy.privacy_report_service import PrivacyReportService
 
+def _get_source_project_id(db: Session, generator):
+    """Get project_id from source dataset."""
+    source_dataset = db.get(Dataset, generator.dataset_id)
+    if not source_dataset:
+        raise ValueError(f"Source dataset {generator.dataset_id} not found")
+    return source_dataset.project_id
+
+
 # Local - Module
 from .models import Generator
 from .schemas import MLGenerationConfig
@@ -136,7 +144,7 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=uuid.uuid4(),  # TODO: Get from generator or user
+        project_id=_get_source_project_id(db, generator),  # TODO: Get from generator or user
         name=f"{generator.name}_copula_synthetic",
         original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
@@ -210,7 +218,7 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=uuid.uuid4(),  # TODO: Get from generator or user
+        project_id=_get_source_project_id(db, generator),  # TODO: Get from generator or user
         name=f"{generator.name}_ctgan_synthetic",
         original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
@@ -288,7 +296,7 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=uuid.uuid4(),  # TODO: Get from generator or user
+        project_id=_get_source_project_id(db, generator),  # TODO: Get from generator or user
         name=f"{generator.name}_tvae_synthetic",
         original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
@@ -382,7 +390,7 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=uuid.uuid4(),
+        project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_dp_ctgan_synthetic",
         original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,
@@ -479,7 +487,7 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=uuid.uuid4(),
+        project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_dp_tvae_synthetic",
         original_filename=unique_filename,
         size_bytes=file_path.stat().st_size,

@@ -5,6 +5,7 @@
 # ============================================================================
 
 # Standard library
+import math
 import logging
 import uuid
 from pathlib import Path
@@ -44,6 +45,22 @@ router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 # ============================================================================
 # ENDPOINTS
 # ============================================================================
+
+def sanitize_json_floats(obj):
+    """
+    Recursively replace NaN, Infinity, and -Infinity with None (null in JSON).
+    PostgreSQL JSONB does not support NaN/Infinity.
+    """
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, dict):
+        return {k: sanitize_json_floats(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_json_floats(v) for v in obj]
+    return obj
+
 
 @router.post("/run", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
 async def run_evaluation(
@@ -137,6 +154,9 @@ async def run_evaluation(
             include_ml_utility=request.include_ml_utility,
             include_privacy=request.include_privacy
         )
+        
+        # Sanitize report for JSON compliance (remove NaN/Infinity)
+        report = sanitize_json_floats(report)
         
         # Save evaluation to database
         evaluation = create_evaluation(
