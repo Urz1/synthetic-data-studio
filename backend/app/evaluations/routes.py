@@ -24,6 +24,7 @@ from app.core.validators import validate_uuid
 from app.datasets.repositories import get_dataset_by_id
 from app.generators.repositories import get_generator_by_id
 from app.services.llm.report_translator import ReportTranslator
+from app.services.risk import RiskAssessor
 
 # Local - Module
 from .quality_report import QualityReportGenerator
@@ -470,3 +471,118 @@ async def compare_evaluations(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate comparison: {str(e)}"
         )
+
+
+# ============================================================================
+# RISK ASSESSMENT ENDPOINTS
+# ============================================================================
+
+@router.post("/{evaluation_id}/assess-risk", response_model=Dict[str, Any])
+async def assess_risk(
+    evaluation_id: str,
+    privacy_weight: float = 0.6,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Calculate comprehensive risk assessment for an evaluation.
+    
+    Analyzes privacy risk, quality risk, and provides overall risk rating.
+    
+    Args:
+        evaluation_id: Evaluation ID
+        privacy_weight: Weight for privacy vs quality (0.0-1.0, default 0.6)
+    
+    Returns:
+        Risk assessment report with scores and recommendations
+    """
+    logger.info(f"Calculating risk assessment for evaluation {evaluation_id}")
+    
+    # Validate UUID
+    validate_uuid(evaluation_id, "evaluation_id")
+    
+    # Get evaluation
+    evaluation = get_evaluation(db, evaluation_id)
+    if not evaluation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Evaluation {evaluation_id} not found"
+        )
+    
+    # Validate privacy_weight
+    if not 0.0 <= privacy_weight <= 1.0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="privacy_weight must be between 0.0 and 1.0"
+        )
+    
+    try:
+        # Initialize risk assessor with evaluation report
+        risk_assessor = RiskAssessor(evaluation.report)
+        
+        # Calculate overall risk
+        risk_assessment = risk_assessor.calculate_overall_risk(privacy_weight=privacy_weight)
+        
+        # Update evaluation with risk data
+        evaluation.risk_score = risk_assessment['overall_score']
+        evaluation.risk_level = risk_assessment['risk_level']
+        evaluation.risk_details = risk_assessment
+        
+        # Save to database
+        db.add(evaluation)
+        db.commit()
+        db.refresh(evaluation)
+        
+        logger.info(f"✓ Risk assessment complete: {risk_assessment['overall_score']:.2f}/100 ({risk_assessment['risk_level']})")
+        
+        return risk_assessment
+        
+    except Exception as e:
+        logger.error(f"Risk assessment failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Risk assessment failed: {str(e)}"
+        )
+
+
+@router.get("/{evaluation_id}/risk-report", response_model=Dict[str, Any])
+async def get_risk_report(
+    evaluation_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get existing risk report for an evaluation.
+    
+    Returns cached risk assessment if available.
+    
+    Args:
+        evaluation_id: Evaluation ID
+    
+    Returns:
+        Cached risk assessment or error if not calculated
+    """
+    logger.info(f"Fetching risk report for evaluation {evaluation_id}")
+    
+    # Validate UUID
+    validate_uuid(evaluation_id, "evaluation_id")
+    
+    # Get evaluation
+    evaluation = get_evaluation(db, evaluation_id)
+    if not evaluation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Evaluation {evaluation_id} not found"
+        )
+    
+    # Check if risk assessment exists
+    if not evaluation.risk_details:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No risk assessment found for evaluation {evaluation_id}. Run POST /{evaluation_id}/assess-risk first."
+        )
+    
+    logger.info(f"✓ Risk report retrieved: {evaluation.risk_level}")
+    
+    return evaluation.risk_details
+

@@ -50,6 +50,9 @@ from .services import generate_synthetic_data, _generate_from_schema
 from app.jobs.models import Job
 from app.jobs.repositories import create_job, update_job_status
 
+# Tasks
+from app.tasks.generators import train_generator_task
+
 # ============================================================================
 # SETUP
 # ============================================================================
@@ -146,7 +149,6 @@ def generate_from_dataset(
     num_rows: Optional[int] = None,
     epochs: int = 50,
     batch_size: int = 500,
-    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -212,29 +214,23 @@ def generate_from_dataset(
     job = create_job(db, job)
 
     # Start generation
-    update_generator_status(db, str(generator.id), "running")
-    update_job_status(db, str(job.id), "running")
+    update_generator_status(db, str(generator.id), "queued")
+    update_job_status(db, str(job.id), "queued")
 
-    if background_tasks:
-        background_tasks.add_task(_generate_in_background, str(generator.id), str(job.id), db)
-        return {
-            "message": "Generation started",
-            "generator_id": str(generator.id),
-            "job_id": str(job.id)
-        }
-    else:
-        # Synchronous generation for testing
-        try:
-            output_dataset = generate_synthetic_data(generator, db)
-            update_generator_status(db, str(generator.id), "completed", str(output_dataset.id))
-            return {
-                "message": "Generation completed",
-                "generator_id": str(generator.id),
-                "output_dataset_id": str(output_dataset.id)
-            }
-        except Exception as e:
-            update_generator_status(db, str(generator.id), "failed")
-            raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+    # Dispatch to Celery
+    task = train_generator_task.delay(str(generator.id), str(job.id))
+    
+    # Update job with Celery task ID
+    job.celery_task_id = task.id
+    db.add(job)
+    db.commit()
+
+    return {
+        "message": "Generation queued",
+        "generator_id": str(generator.id),
+        "job_id": str(job.id),
+        "task_id": task.id
+    }
 
 
 @router.post("/{generator_id}/generate")

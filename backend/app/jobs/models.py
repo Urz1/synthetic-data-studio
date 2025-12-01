@@ -18,6 +18,13 @@ class Job(SQLModel, table=True):
     type: str
     params_hash: Optional[str] = Field(default=None)
     status: str = Field(default="queued")
+    
+    # Celery tracking
+    celery_task_id: Optional[str] = Field(default=None)
+    error_message: Optional[str] = Field(default=None)
+    started_at: Optional[datetime.datetime] = Field(default=None)
+    completed_at: Optional[datetime.datetime] = Field(default=None)
+    
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     deleted_at: Optional[datetime.datetime] = Field(default=None)

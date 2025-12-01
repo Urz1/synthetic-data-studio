@@ -16,6 +16,7 @@ class Settings:
     secret_key: str = os.getenv("SECRET_KEY", "")
     allowed_origins: List[str] = None
     upload_dir: str = os.getenv("UPLOAD_DIR", "uploads")
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
     def __post_init__(self):
         """Validate critical settings after initialization."""

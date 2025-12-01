@@ -18,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Import settings for database URL
 from app.core.config import settings
 
+# Import SQLModel
+from sqlmodel import SQLModel
+
 # Import ALL models so Alembic can detect them
 from app.database.database import Base
 
@@ -41,8 +44,8 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set target metadata from Base (which includes all SQLModel tables)
-target_metadata = Base.metadata
+# Set target metadata from SQLModel (which includes all SQLModel tables)
+target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
