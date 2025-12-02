@@ -20,7 +20,6 @@ from app.datasets.models import Dataset, DatasetFile  # noqa: F401
 from app.generators.models import Generator  # noqa: F401
 from app.jobs.models import Job  # noqa: F401
 # Note: synthetic_datasets reuses the datasets table, so we don't import it here
-from app.models.models import Model, ModelVersion  # noqa: F401
 from app.artifacts.models import Artifact  # noqa: F401
 from app.evaluations.models import Evaluation  # noqa: F401
 from app.compliance.models import ComplianceReport  # noqa: F401

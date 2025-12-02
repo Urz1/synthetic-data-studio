@@ -5,12 +5,14 @@ This guide will walk you through installing and setting up Synthetic Data Studio
 ## 📋 Prerequisites
 
 ### System Requirements
+
 - **Python**: 3.9 or higher
 - **RAM**: Minimum 4GB, recommended 8GB+
 - **Disk Space**: 2GB free space
 - **Operating System**: Windows 10+, macOS 10.15+, or Linux
 
 ### Required Software
+
 - **Git**: For cloning the repository
 - **Python**: Version 3.9 or higher
 - **pip**: Python package installer (comes with Python)
@@ -113,6 +115,7 @@ docker run -p 8000:8000 -v $(pwd)/uploads:/app/uploads synth-studio-backend
 ### Common Issues
 
 #### Python Version Issues
+
 ```bash
 # Check Python version
 python --version
@@ -122,13 +125,8 @@ python3 -m venv .venv
 source .venv/bin/activate  # Linux/macOS
 ```
 
-#### Permission Errors
-```bash
-# On Linux/macOS, make scripts executable
-chmod +x start_server.bat
-```
-
 #### Database Connection Issues
+
 ```bash
 # For PostgreSQL, ensure you have the driver
 pip install psycopg2-binary
@@ -138,6 +136,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/synth_studio
 ```
 
 #### Port Already in Use
+
 ```bash
 # Use a different port
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
@@ -146,13 +145,17 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ### Dependency Issues
 
 #### CUDA/GPU Support
+
 If you have CUDA-compatible GPU:
+
 ```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
 #### Memory Issues
+
 For systems with limited RAM:
+
 ```bash
 # Use smaller batch sizes in configuration
 # Set environment variable to limit memory usage
@@ -162,6 +165,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 ## 🧪 Testing Installation
 
 ### Run Basic Tests
+
 ```bash
 # Run all tests
 pytest
@@ -175,6 +179,7 @@ pytest -v
 ```
 
 ### Health Check
+
 ```bash
 # Check if server is responding
 curl http://localhost:8000/health

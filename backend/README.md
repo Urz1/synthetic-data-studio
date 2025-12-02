@@ -118,7 +118,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support & Community
 
-- **📖 Documentation**: [Full Documentation Index](docs/index.md)
+- **📖 Documentation**: [Full Documentation Index](docs/INDEX.md)
 - **🐛 Issues**: [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/Urz1/synthetic-data-studio/discussions)
 - **📧 Security**: security@synthetic-data-studio.com

@@ -6,32 +6,36 @@ Learn how to generate high-quality synthetic data using various synthesis method
 
 ### Available Methods
 
-| Method | Best For | Speed | Quality | Privacy |
-|--------|----------|-------|---------|---------|
-| **CTGAN** | Complex tabular data | Medium | Excellent | None |
-| **TVAE** | Mixed data types | Fast | Good | None |
-| **GaussianCopula** | Simple distributions | Very Fast | Fair | None |
-| **DP-CTGAN** | Privacy-preserving | Slow | Good | Excellent |
-| **DP-TVAE** | Fast privacy | Medium | Good | Excellent |
+| Method             | Best For             | Speed     | Quality   | Privacy   |
+| ------------------ | -------------------- | --------- | --------- | --------- |
+| **CTGAN**          | Complex tabular data | Medium    | Excellent | None      |
+| **TVAE**           | Mixed data types     | Fast      | Good      | None      |
+| **GaussianCopula** | Simple distributions | Very Fast | Fair      | None      |
+| **DP-CTGAN**       | Privacy-preserving   | Slow      | Good      | Excellent |
+| **DP-TVAE**        | Fast privacy         | Medium    | Good      | Excellent |
 
 ### Method Selection Guide
 
 **Choose CTGAN when:**
+
 - Your data has complex correlations
 - You need high-fidelity synthetic data
 - Training time is not a major constraint
 
 **Choose TVAE when:**
+
 - You have mixed data types (numeric + categorical)
 - You need faster training than CTGAN
 - Deterministic generation is preferred
 
 **Choose GaussianCopula when:**
+
 - You need very fast generation
 - Data follows simple statistical distributions
 - You're prototyping or need baseline comparisons
 
 **Choose DP-CTGAN/DP-TVAE when:**
+
 - Privacy guarantees are required
 - Data contains sensitive information
 - Regulatory compliance is needed
@@ -69,6 +73,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 ```
 
 **Parameters:**
+
 - `num_rows`: Number of synthetic rows to generate
 - `epochs`: Training iterations (50-300, higher = better quality)
 - `batch_size`: Training batch size (100-1000)
@@ -83,17 +88,6 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
     "num_rows": 1000,
     "epochs": 30,
     "batch_size": 200
-  }'
-```
-
-#### GaussianCopula Generation (Fastest)
-
-```bash
-curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "generator_type": "gaussian_copula",
-    "num_rows": 1000
   }'
 ```
 
@@ -136,6 +130,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 ```
 
 **Key Parameters:**
+
 - `target_epsilon`: Privacy budget (lower = more private)
 - `target_delta`: Failure probability (auto-calculated)
 - `max_grad_norm`: Gradient clipping (default: 1.0)
@@ -155,12 +150,12 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 
 ### Privacy Parameter Selection
 
-| Epsilon (ε) | Privacy Level | Use Case |
-|-------------|---------------|----------|
-| 0.1 - 1.0 | Very Strong | Clinical trials, genomic data |
-| 1.0 - 5.0 | Strong | Healthcare, financial records |
-| 5.0 - 10.0 | Moderate | Customer data, HR records |
-| 10.0 - 20.0 | Weak | Aggregated analytics |
+| Epsilon (ε) | Privacy Level | Use Case                      |
+| ----------- | ------------- | ----------------------------- |
+| 0.1 - 1.0   | Very Strong   | Clinical trials, genomic data |
+| 1.0 - 5.0   | Strong        | Healthcare, financial records |
+| 5.0 - 10.0  | Moderate      | Customer data, HR records     |
+| 10.0 - 20.0 | Weak          | Aggregated analytics          |
 
 ### Pre-Training Validation
 
@@ -179,6 +174,7 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 ```
 
 **Response:**
+
 ```json
 {
   "is_valid": true,
@@ -258,6 +254,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 ### Parameter Tuning Guide
 
 #### For High Quality (CTGAN)
+
 ```json
 {
   "epochs": 100,
@@ -268,6 +265,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 ```
 
 #### For Fast Training (TVAE)
+
 ```json
 {
   "epochs": 30,
@@ -278,6 +276,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 ```
 
 #### For Privacy (DP-CTGAN)
+
 ```json
 {
   "target_epsilon": 5.0,
@@ -338,24 +337,28 @@ curl http://localhost:8000/jobs/{job_id}
 ### Common Issues
 
 **Generation Fails**
+
 ```
 Error: Training failed
 Solution: Reduce epochs/batch_size, check data quality
 ```
 
 **Poor Quality Results**
+
 ```
 Issue: Synthetic data doesn't match real data
 Solution: Increase epochs, use CTGAN instead of GaussianCopula
 ```
 
 **Memory Issues**
+
 ```
 Error: Out of memory
 Solution: Reduce batch_size, use smaller dataset subset
 ```
 
 **Privacy Validation Fails**
+
 ```
 Error: Epsilon too low for parameters
 Solution: Increase epsilon or reduce epochs/batch_size
@@ -364,18 +367,21 @@ Solution: Increase epsilon or reduce epochs/batch_size
 ### Performance Optimization
 
 **Speed Up Training:**
+
 - Use TVAE instead of CTGAN
 - Reduce epochs initially
 - Increase batch_size
 - Use GPU if available
 
 **Improve Quality:**
+
 - Increase epochs gradually
 - Use CTGAN for complex data
 - Fine-tune learning rates
 - Add more training data
 
 **Reduce Memory Usage:**
+
 - Smaller batch sizes
 - Process in chunks
 - Use TVAE over CTGAN
@@ -384,28 +390,79 @@ Solution: Increase epsilon or reduce epochs/batch_size
 ## 📈 Best Practices
 
 ### Data Preparation
+
 1. **Profile First**: Always run profiling before synthesis
 2. **Clean Data**: Remove outliers and inconsistencies
 3. **Check PII**: Run PII detection for sensitive data
 4. **Scale Appropriately**: Start with smaller datasets
 
 ### Method Selection
+
 1. **CTGAN for Quality**: Best for complex, high-fidelity data
 2. **TVAE for Speed**: Good balance of quality and performance
 3. **DP Variants for Privacy**: When regulatory compliance required
 4. **GaussianCopula for Prototyping**: Fast baseline comparisons
 
 ### Parameter Tuning
+
 1. **Start Conservative**: Use recommended defaults first
 2. **Iterate Gradually**: Increase complexity step by step
 3. **Monitor Quality**: Evaluate after each parameter change
 4. **Balance Trade-offs**: Quality vs speed vs privacy
 
 ### Production Considerations
+
 1. **Validate Parameters**: Always test DP configs first
 2. **Monitor Resources**: Watch memory and compute usage
 3. **Version Control**: Track parameter sets and results
 4. **Audit Trail**: Maintain records for compliance
+
+## 📤 Exporting Reports
+
+### Export to S3
+
+Save evaluation reports (PDF/DOCX) directly to S3 for archival and compliance:
+
+```bash
+# Export evaluation as PDF to S3
+curl -X POST "http://localhost:8000/llm/evaluations/{evaluation_id}/export-pdf?save_to_s3=true"
+
+# Export as Word document to S3
+curl -X POST "http://localhost:8000/llm/evaluations/{evaluation_id}/export-docx?save_to_s3=true"
+```
+
+**Response:**
+```json
+{
+  "message": "Report exported successfully",
+  "download_url": "https://your-bucket.s3.amazonaws.com/exports/report_abc123.pdf",
+  "export_id": "export-uuid"
+}
+```
+
+### Managing Exports
+
+```bash
+# List all exports
+curl http://localhost:8000/exports/
+
+# Get exports for a specific generator
+curl http://localhost:8000/exports/generator/{generator_id}
+
+# Get exports for a dataset
+curl http://localhost:8000/exports/dataset/{dataset_id}
+
+# Download a specific export
+curl http://localhost:8000/exports/{export_id}/download
+```
+
+### Export Types
+
+| Type | Format | Use Case |
+|------|--------|----------|
+| **evaluation_report** | PDF/DOCX | Quality assessment documentation |
+| **compliance_report** | PDF/DOCX | Regulatory audit trail |
+| **model_card** | PDF/DOCX | Model documentation |
 
 ## 🔗 Next Steps
 

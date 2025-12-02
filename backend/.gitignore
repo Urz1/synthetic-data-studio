@@ -91,6 +91,9 @@ add_*_migration.py
 # Misc
 .pytest_cache/
 
+# Benchmark cache
+.benchmarks/
+
 # Ignore Python package cache directories
 __pypackages__/
 

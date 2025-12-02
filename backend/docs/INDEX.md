@@ -34,7 +34,7 @@ Welcome to the comprehensive documentation for Synthetic Data Studio, a producti
 
 ```
 docs/
-├── index.md                    # This navigation hub
+├── INDEX.md                    # This navigation hub
 ├── getting-started/           # First-time setup and basics
 ├── user-guide/                # Feature guides and workflows
 ├── tutorials/                 # Step-by-step tutorials

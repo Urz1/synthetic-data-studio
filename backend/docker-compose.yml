@@ -1,22 +1,9 @@
-version: '3.8'
+version: "3.8"
+
+# AWS Educate Deployment Configuration
+# Uses: Neon PostgreSQL (external), AWS S3 (external), Local Redis
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: synth_studio_prod
-      POSTGRES_USER: synth_studio
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U synth_studio"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     ports:
@@ -28,36 +15,36 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   backend:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://synth_studio:${DB_PASSWORD:-secure_password}@postgres:5432/synth_studio_prod
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_prod}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
-      DEBUG: "false"
-    volumes:
-      - ./uploads:/app/uploads
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=false
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
 
   celery_worker:
     build: .
-    command: celery -A app.worker worker --loglevel=info
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=1
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://synth_studio:${DB_PASSWORD:-secure_password}@postgres:5432/synth_studio_prod
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_prod}
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - redis
-      - postgres
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
 volumes:
-  postgres_data:
   redis_data:

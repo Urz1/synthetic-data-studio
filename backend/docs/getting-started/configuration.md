@@ -59,6 +59,7 @@ DATABASE_URL=postgresql://username:password@localhost:5432/synth_studio
 ```
 
 **Setup**:
+
 ```bash
 # Install PostgreSQL driver
 pip install psycopg2-binary
@@ -77,6 +78,7 @@ DATABASE_URL=mysql://username:password@localhost:3306/synth_studio
 ```
 
 **Setup**:
+
 ```bash
 # Install MySQL driver
 pip install pymysql
@@ -93,17 +95,15 @@ mysql -u root -p -e "CREATE DATABASE synth_studio;"
 # JWT Secret Key (REQUIRED - Generate a strong random key)
 SECRET_KEY=your-256-bit-secret-key-here
 
-# JWT Algorithm
-ALGORITHM=HS256
-
 # Token Expiration
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Refresh Token (Optional)
-REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
+> [!NOTE]
+> Algorithm is currently fixed to HS256.
+
 **Generating a secure secret key**:
+
 ```python
 import secrets
 print(secrets.token_hex(32))  # 256-bit key
@@ -132,13 +132,10 @@ ALLOW_HEADERS=*
 ```env
 # Upload Directory
 UPLOAD_DIR=./uploads
-
-# Maximum File Size
-MAX_FILE_SIZE=100MB
-
-# Allowed File Extensions
-ALLOWED_EXTENSIONS=csv,json,xlsx,parquet
 ```
+
+> [!NOTE]
+> File size limit (100MB) and allowed extensions (CSV, JSON) are currently enforced by the application and are not configurable via environment variables.
 
 ### AWS S3 Storage
 
@@ -220,35 +217,15 @@ OPENAI_TEMPERATURE=0.3
 
 ## 🔧 Synthesis Configuration
 
-### Default Synthesis Settings
+> [!NOTE]
+> Synthesis parameters (epochs, batch size, privacy budget) are configured per-job via the API. The defaults mentioned below are application-level defaults.
+
+### GPU Settings
 
 ```env
-# Default Generator
-DEFAULT_GENERATOR_TYPE=ctgan
-
-# Default Parameters
-DEFAULT_EPOCHS=50
-DEFAULT_BATCH_SIZE=500
-DEFAULT_NUM_ROWS=1000
-
 # GPU Settings
 USE_GPU=true
 CUDA_VISIBLE_DEVICES=0
-```
-
-### Differential Privacy Defaults
-
-```env
-# DP Defaults
-DEFAULT_EPSILON=10.0
-DEFAULT_DELTA=auto  # 1/dataset_size
-DEFAULT_MAX_GRAD_NORM=1.0
-
-# Safety Limits
-MAX_EPSILON=100.0
-MIN_EPSILON=0.1
-MAX_EPOCHS=500
-MIN_BATCH_SIZE=10
 ```
 
 ## 📊 Evaluation Configuration
@@ -409,18 +386,21 @@ ENABLE_METRICS=true
 The application validates configuration on startup. Common issues:
 
 **Database Connection**:
+
 ```
 ERROR: Database connection failed
 SOLUTION: Check DATABASE_URL format and credentials
 ```
 
 **Missing Secret Key**:
+
 ```
 ERROR: SECRET_KEY not set
 SOLUTION: Generate a secure random key
 ```
 
 **Invalid File Paths**:
+
 ```
 ERROR: UPLOAD_DIR does not exist
 SOLUTION: Create directory or update path

@@ -10,11 +10,10 @@ Synthetic Data Studio supports multiple data formats:
 
 - **CSV** (recommended): Comma-separated values with headers
 - **JSON**: JSON array of objects or newline-delimited JSON
-- **Excel**: .xlsx and .xls files (first sheet used)
 
 ### File Requirements
 
-- **Maximum Size**: 100MB (configurable)
+- **Maximum Size**: 100MB (fixed limit)
 - **Encoding**: UTF-8 preferred
 - **Headers**: First row should contain column names
 - **Data Types**: Automatic type inference for:
@@ -282,12 +281,12 @@ The platform provides comprehensive quality assessment:
 
 ### Quality Score Interpretation
 
-| Score | Quality Level | Description |
-|-------|---------------|-------------|
-| 0.9-1.0 | Excellent | High-quality, production-ready data |
-| 0.7-0.9 | Good | Suitable for most use cases |
-| 0.5-0.7 | Fair | May need cleaning or validation |
-| < 0.5 | Poor | Significant quality issues detected |
+| Score   | Quality Level | Description                         |
+| ------- | ------------- | ----------------------------------- |
+| 0.9-1.0 | Excellent     | High-quality, production-ready data |
+| 0.7-0.9 | Good          | Suitable for most use cases         |
+| 0.5-0.7 | Fair          | May need cleaning or validation     |
+| < 0.5   | Poor          | Significant quality issues detected |
 
 ## 🔧 Data Preprocessing
 
@@ -340,18 +339,21 @@ For advanced preprocessing, you can:
 ### Common Upload Issues
 
 **File Too Large**
+
 ```
 Error: File size exceeds maximum limit
 Solution: Split large files or increase MAX_FILE_SIZE in config
 ```
 
 **Invalid Format**
+
 ```
 Error: Unable to parse file
 Solution: Check CSV headers, JSON structure, or Excel format
 ```
 
 **Encoding Issues**
+
 ```
 Error: Character encoding not supported
 Solution: Save file as UTF-8 encoding
@@ -360,12 +362,14 @@ Solution: Save file as UTF-8 encoding
 ### Profile Issues
 
 **Profile Generation Fails**
+
 ```
 Error: Unable to analyze dataset
 Solution: Check for corrupted data or unsupported formats
 ```
 
 **Missing Statistics**
+
 ```
 Issue: Some columns lack statistics
 Solution: Check for non-numeric data in numeric columns
@@ -374,12 +378,14 @@ Solution: Check for non-numeric data in numeric columns
 ### PII Detection Issues
 
 **False Positives**
+
 ```
 Issue: Legitimate data flagged as PII
 Solution: Review detection results and adjust as needed
 ```
 
 **False Negatives**
+
 ```
 Issue: PII not detected
 Solution: Use enhanced detection or manual review

@@ -4,14 +4,13 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import pandas as pd
 from sqlmodel import Session
 
 from app.core.utils import calculate_checksum
 from app.services.profiling import profile_dataset
-from app.services.pii_detector import detect_pii, get_pii_recommendations
 from .models import Dataset, DatasetFile
 from .repositories import get_datasets, create_dataset, get_dataset_by_id
 
@@ -206,4 +205,89 @@ def detect_dataset_pii(dataset_id: str, db: Session) -> Dict[str, Any]:
     db.refresh(dataset)
     
     return pii_results
+
+
+# Compatibility functions for old PII detector API
+def detect_pii(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Compatibility wrapper for old PII detection API.
+    Now uses basic pattern matching since enhanced detector requires async context.
+    """
+    import re
+    from typing import Dict, List, Any
+
+    results = {
+        "columns": {},
+        "summary": {
+            "total_columns": len(df.columns),
+            "pii_columns": 0,
+            "high_risk_columns": 0
+        }
+    }
+
+    # Basic patterns for common PII
+    patterns = {
+        "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+        "phone": r'\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b',
+        "ssn": r'\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b',
+        "credit_card": r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
+    }
+
+    for col in df.columns:
+        col_results = {
+            "pii_detected": False,
+            "pii_types": [],
+            "confidence": 0.0,
+            "sample_matches": []
+        }
+
+        col_str = df[col].astype(str)
+
+        for pii_type, pattern in patterns.items():
+            matches = col_str.str.contains(pattern, regex=True, na=False)
+            if matches.any():
+                col_results["pii_detected"] = True
+                col_results["pii_types"].append(pii_type)
+                col_results["confidence"] = min(1.0, col_results["confidence"] + 0.8)
+                # Get sample matches (up to 3)
+                sample_matches = col_str[matches].head(3).tolist()
+                col_results["sample_matches"].extend(sample_matches)
+
+        # Check column name for sensitive keywords
+        col_lower = col.lower()
+        sensitive_keywords = ["email", "phone", "ssn", "name", "address", "social"]
+        if any(keyword in col_lower for keyword in sensitive_keywords):
+            if not col_results["pii_detected"]:
+                col_results["pii_detected"] = True
+                col_results["pii_types"].append("potential_pii")
+                col_results["confidence"] = 0.6
+
+        results["columns"][col] = col_results
+        if col_results["pii_detected"]:
+            results["summary"]["pii_columns"] += 1
+            if col_results["confidence"] > 0.8:
+                results["summary"]["high_risk_columns"] += 1
+
+    return results
+
+
+def get_pii_recommendations(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """
+    Compatibility wrapper for PII redaction recommendations.
+    """
+    recommendations = []
+    pii_results = detect_pii(df)
+
+    for col, result in pii_results["columns"].items():
+        if result["pii_detected"]:
+            rec = {
+                "column": col,
+                "action": "mask" if result["confidence"] > 0.8 else "review",
+                "pii_types": result["pii_types"],
+                "confidence": result["confidence"],
+                "rationale": f"Detected {', '.join(result['pii_types'])} patterns"
+            }
+            recommendations.append(rec)
+
+    return recommendations
 
