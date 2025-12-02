@@ -15,9 +15,9 @@ RUN apt-get update && apt-get install -y \
   shared-mime-info \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (use prod requirements for smaller image)
+COPY requirements-prod.txt requirements.txt ./
+RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Copy application
 COPY . .
