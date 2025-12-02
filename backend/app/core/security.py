@@ -1,13 +1,119 @@
 """
 Security utilities and authorization helpers.
 
-Provides reusable security functions for resource ownership verification
-and access control across all modules.
+Provides reusable security functions for resource ownership verification,
+access control, and security middleware.
 """
 
 import uuid
-from typing import Any, Optional
-from fastapi import HTTPException
+from typing import Any, Callable, Optional
+
+from fastapi import HTTPException, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+# ============================================================================
+# SECURITY HEADERS MIDDLEWARE
+# ============================================================================
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that adds security headers to all responses.
+    
+    Headers added:
+    - X-Content-Type-Options: Prevents MIME type sniffing
+    - X-Frame-Options: Prevents clickjacking
+    - X-XSS-Protection: Enables XSS filter in older browsers
+    - Strict-Transport-Security: Enforces HTTPS
+    - Referrer-Policy: Controls referrer information
+    - Permissions-Policy: Controls browser features
+    """
+    
+    def __init__(self, app, enable_hsts: bool = True):
+        """
+        Initialize security headers middleware.
+        
+        Args:
+            app: FastAPI application
+            enable_hsts: Enable HSTS header (disable for local development)
+        """
+        super().__init__(app)
+        self.enable_hsts = enable_hsts
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        response = await call_next(request)
+        
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # XSS protection for older browsers
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
+        # Control referrer information
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        # Disable browser features we don't use
+        response.headers["Permissions-Policy"] = (
+            "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+            "magnetometer=(), microphone=(), payment=(), usb=()"
+        )
+        
+        # HSTS - Enforce HTTPS (only in production)
+        if self.enable_hsts:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+        
+        return response
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that adds a unique request ID to each request.
+    
+    Useful for:
+    - Distributed tracing
+    - Log correlation
+    - Debugging
+    """
+    
+    HEADER_NAME = "X-Request-ID"
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Get existing request ID or generate new one
+        request_id = request.headers.get(self.HEADER_NAME) or str(uuid.uuid4())
+        
+        # Store in request state for access in route handlers
+        request.state.request_id = request_id
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Add request ID to response headers
+        response.headers[self.HEADER_NAME] = request_id
+        
+        return response
+
+
+def get_request_id(request: Request) -> str:
+    """
+    Get the request ID from the current request.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        Request ID string
+    """
+    return getattr(request.state, "request_id", "unknown")
+
+
+# ============================================================================
+# OWNERSHIP & AUTHORIZATION CHECKS
+# ============================================================================
 
 
 def check_resource_ownership(

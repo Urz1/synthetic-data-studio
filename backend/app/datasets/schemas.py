@@ -7,7 +7,7 @@ database models (models.py) following clean architecture principles.
 
 from typing import Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
 
@@ -39,6 +39,8 @@ class PIIDetectionRequest(BaseModel):
 
 class DatasetResponse(BaseModel):
     """Response model for dataset information."""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: uuid.UUID
     project_id: uuid.UUID
     name: str
@@ -55,9 +57,6 @@ class DatasetResponse(BaseModel):
     uploader_id: uuid.UUID
     uploaded_at: datetime
     deleted_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True  # Pydantic v2 (was orm_mode in v1)
 
 
 class DatasetListResponse(BaseModel):

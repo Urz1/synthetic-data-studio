@@ -5,8 +5,11 @@
 # ============================================================================
 
 # Standard library
-from typing import List
+from typing import List, Optional
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Third-party
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +20,13 @@ from pathlib import Path
 # Local - Core
 from app.core.dependencies import get_db, get_current_user
 from app.core.config import settings
+
+# Local - Storage
+from app.storage.s3 import (
+    get_storage_service,
+    S3ConfigurationError,
+    S3StorageError,
+)
 
 # Local - Datasets (reuse Dataset model)
 from app.datasets.models import Dataset
@@ -34,6 +44,20 @@ from .repositories import (
 # ============================================================================
 
 router = APIRouter(prefix="/synthetic-datasets", tags=["synthetic-datasets"])
+
+# S3 storage flag
+_s3_available: Optional[bool] = None
+
+def is_s3_available() -> bool:
+    """Check if S3 storage is configured and available."""
+    global _s3_available
+    if _s3_available is None:
+        try:
+            get_storage_service()
+            _s3_available = True
+        except S3ConfigurationError:
+            _s3_available = False
+    return _s3_available
 
 # ============================================================================
 # ENDPOINTS
@@ -81,7 +105,7 @@ def download_synthetic_dataset(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Download a synthetic dataset file."""
+    """Download a synthetic dataset file. Returns presigned S3 URL or local file."""
     try:
         dataset_uuid = uuid.UUID(dataset_id)
     except ValueError:
@@ -91,7 +115,20 @@ def download_synthetic_dataset(
     if not dataset:
         raise HTTPException(status_code=404, detail="Synthetic dataset not found")
     
-    # Get file path
+    # Try S3 first if configured and dataset has s3_key
+    if is_s3_available() and dataset.s3_key:
+        try:
+            storage = get_storage_service()
+            download_url = storage.generate_download_url(
+                key=dataset.s3_key,
+                filename=f"{dataset.name}.csv",
+                expires_in=3600
+            )
+            return {"download_url": download_url, "expires_in": 3600}
+        except S3StorageError as e:
+            logger.warning(f"S3 download failed, falling back to local: {e}")
+    
+    # Fallback to local file
     upload_dir = Path(settings.upload_dir)
     file_path = upload_dir / dataset.original_filename
     
@@ -114,7 +151,7 @@ def delete_synthetic(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Delete a synthetic dataset."""
+    """Delete a synthetic dataset from both S3 and local storage."""
     try:
         dataset_uuid = uuid.UUID(dataset_id)
     except ValueError:
@@ -125,7 +162,16 @@ def delete_synthetic(
     if not dataset:
         raise HTTPException(status_code=404, detail="Synthetic dataset not found")
     
-    # Delete physical file if it exists
+    # Delete from S3 if available
+    if is_s3_available() and dataset.s3_key:
+        try:
+            storage = get_storage_service()
+            storage.delete_file(dataset.s3_key)
+            logger.info(f"Deleted from S3: {dataset.s3_key}")
+        except S3StorageError as e:
+            logger.warning(f"S3 delete failed: {e}")
+    
+    # Delete local file if it exists
     if dataset.original_filename:
         upload_dir = Path(settings.upload_dir)
         file_path = upload_dir / dataset.original_filename

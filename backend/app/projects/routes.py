@@ -5,11 +5,11 @@
 # ============================================================================
 
 # Standard library
-from typing import List
+from typing import List, Optional
 import uuid
 
 # Third-party
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session
 
 # Local - Core
@@ -38,11 +38,14 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 @router.get("/", response_model=List[ProjectResponse])
 def list_projects(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Max records to return"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """List all projects."""
-    return get_projects(db)
+    """List projects owned by the current user."""
+    # Filter to only return user's own projects
+    return get_projects(db, owner_id=current_user.id, skip=skip, limit=limit)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)

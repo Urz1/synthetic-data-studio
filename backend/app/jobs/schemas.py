@@ -7,7 +7,7 @@ Separated from database models to follow Clean Architecture.
 from typing import Optional
 import uuid
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class JobBase(BaseModel):
@@ -35,11 +35,10 @@ class JobUpdate(BaseModel):
 
 class JobResponse(JobBase):
     """Schema for job response."""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: uuid.UUID
     initiated_by: uuid.UUID
     created_at: datetime.datetime
     updated_at: datetime.datetime
     deleted_at: Optional[datetime.datetime] = None
-
-    class Config:
-        from_attributes = True

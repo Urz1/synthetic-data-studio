@@ -23,6 +23,13 @@ from sqlmodel import Session
 # Local - Core
 from app.core.config import settings
 
+# Local - Storage
+from app.storage.s3 import (
+    get_storage_service,
+    S3ConfigurationError,
+    S3StorageError,
+)
+
 # Local - Services
 from app.datasets.models import Dataset
 from app.datasets.repositories import create_dataset, get_dataset_by_id
@@ -37,6 +44,67 @@ def _get_source_project_id(db: Session, generator):
     if not source_dataset:
         raise ValueError(f"Source dataset {generator.dataset_id} not found")
     return source_dataset.project_id
+
+
+def _is_s3_available() -> bool:
+    """Check if S3 storage is configured."""
+    try:
+        get_storage_service()
+        return True
+    except S3ConfigurationError:
+        return False
+
+
+def _upload_synthetic_to_s3(
+    file_path: Path,
+    user_id: str,
+    dataset_id: str,
+    filename: str
+) -> Optional[str]:
+    """Upload synthetic data to S3 and return the key."""
+    if not _is_s3_available():
+        return None
+    
+    try:
+        storage = get_storage_service()
+        with open(file_path, "rb") as f:
+            result = storage.upload_synthetic_data(
+                file_obj=f,
+                user_id=user_id,
+                dataset_id=dataset_id,
+                filename=filename,
+                content_type="text/csv",
+            )
+        logger.info(f"Uploaded synthetic data to S3: {result['key']}")
+        return result["key"]
+    except S3StorageError as e:
+        logger.warning(f"S3 upload failed, using local only: {e}")
+        return None
+
+
+def _upload_model_to_s3(
+    model_path: Path,
+    user_id: str,
+    model_type: str
+) -> Optional[str]:
+    """Upload trained model to S3 and return the key."""
+    if not _is_s3_available():
+        return None
+    
+    try:
+        storage = get_storage_service()
+        with open(model_path, "rb") as f:
+            result = storage.upload_model(
+                file_obj=f,
+                user_id=user_id,
+                filename=model_path.name,
+                model_type=model_type,
+            )
+        logger.info(f"Uploaded model to S3: {result['key']}")
+        return result["key"]
+    except S3StorageError as e:
+        logger.warning(f"S3 model upload failed: {e}")
+        return None
 
 
 # Local - Module
@@ -133,20 +201,30 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
     copula_service = GaussianCopulaService()
     copula_service.create_from_schema(schema)
     df = copula_service.generate_with_constraints(num_rows, schema)
-    csv_content = df.to_csv(index=False)
 
-    # Save to file
+    # Save to file locally
     UPLOAD_DIR = Path(settings.upload_dir)
     unique_filename = f"{generator.id}_copula_synthetic.csv"
     file_path = UPLOAD_DIR / unique_filename
-    df.to_csv(file_path, index=False)    # Calculate checksum
+    df.to_csv(file_path, index=False)
+    
+    # Upload to S3
+    s3_key = _upload_synthetic_to_s3(
+        file_path,
+        str(generator.created_by),
+        str(generator.id),  # Use generator ID as dataset_id for schema-based
+        unique_filename
+    )
+    
+    # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),  # TODO: Get from generator or user
+        project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_copula_synthetic",
         original_filename=unique_filename,
+        s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
         row_count=len(df),
         schema_data={
@@ -193,40 +271,56 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     logger.info(f"Training CTGAN on {len(real_data)} rows...")
     training_summary = ctgan_service.train(real_data, column_types=column_types)
     
-    # Save model
+    # Save model locally
     UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_ctgan.pkl"
     ctgan_service.save_model(str(model_path))
     
+    # Upload model to S3
+    s3_model_key = _upload_model_to_s3(
+        model_path, str(generator.created_by), "ctgan"
+    )
+    
     # Update generator with model path and training metadata
     generator.model_path = str(model_path)
+    generator.s3_model_key = s3_model_key  # Save S3 key to generator
     generator.training_metadata = training_summary
     
     # Generate synthetic data
     logger.info(f"Generating {num_rows} synthetic rows...")
     synthetic_data = ctgan_service.generate(num_rows, conditions=conditions)
     
-    # Save synthetic data
+    # Save synthetic data locally
     unique_filename = f"{generator.id}_ctgan_synthetic.csv"
     file_path = UPLOAD_DIR / unique_filename
     synthetic_data.to_csv(file_path, index=False)
+    
+    # Upload synthetic data to S3
+    s3_key = _upload_synthetic_to_s3(
+        file_path,
+        str(generator.created_by),
+        str(generator.dataset_id),
+        unique_filename
+    )
     
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),  # TODO: Get from generator or user
+        project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_ctgan_synthetic",
         original_filename=unique_filename,
+        s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
             "generation_method": "ctgan",
             "training_summary": training_summary,
-            "source_dataset_id": str(generator.dataset_id)
+            "source_dataset_id": str(generator.dataset_id),
+            "s3_model_key": s3_model_key
         },
         checksum=checksum,
         uploader_id=generator.created_by
@@ -269,15 +363,21 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     logger.info(f"Training TVAE on {len(real_data)} rows...")
     training_summary = tvae_service.train(real_data, column_types=column_types)
     
-    # Save model
+    # Save model locally
     UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_tvae.pkl"
     tvae_service.save_model(str(model_path))
     
+    # Upload model to S3
+    s3_model_key = _upload_model_to_s3(
+        model_path, str(generator.created_by), "tvae"
+    )
+    
     # Update generator with model path and training metadata
     generator.model_path = str(model_path)
+    generator.s3_model_key = s3_model_key  # Save S3 key to generator
     generator.training_metadata = training_summary
     generator.status = "generating"
     update_generator(db, generator)
@@ -286,25 +386,35 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     logger.info(f"Generating {num_rows} synthetic rows...")
     synthetic_data = tvae_service.generate(num_rows, conditions=conditions)
     
-    # Save synthetic data
+    # Save synthetic data locally
     unique_filename = f"{generator.id}_tvae_synthetic.csv"
     file_path = UPLOAD_DIR / unique_filename
     synthetic_data.to_csv(file_path, index=False)
+    
+    # Upload synthetic data to S3
+    s3_key = _upload_synthetic_to_s3(
+        file_path,
+        str(generator.created_by),
+        str(generator.dataset_id),
+        unique_filename
+    )
     
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),  # TODO: Get from generator or user
+        project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_tvae_synthetic",
         original_filename=unique_filename,
+        s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
             "generation_method": "tvae",
             "training_summary": training_summary,
-            "source_dataset_id": str(generator.dataset_id)
+            "source_dataset_id": str(generator.dataset_id),
+            "s3_model_key": s3_model_key
         },
         checksum=checksum,
         uploader_id=generator.created_by
@@ -336,8 +446,9 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     target_delta = params.get('target_delta')
     max_grad_norm = params.get('max_grad_norm', 1.0)
     noise_multiplier = params.get('noise_multiplier')
+    force = params.get('force', False)  # User acknowledged risks
     
-    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}")
+    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, force={force}")
     
     # Initialize DP-CTGAN service
     dp_ctgan_service = DPCTGANService(
@@ -351,7 +462,8 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
         target_delta=target_delta,
         max_grad_norm=max_grad_norm,
         noise_multiplier=noise_multiplier,
-        verbose=True
+        verbose=True,
+        force=force
     )
     
     # Train model with DP
@@ -361,15 +473,21 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     # Get privacy report
     privacy_report = dp_ctgan_service.get_privacy_report()
     
-    # Save model
+    # Save model locally
     UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_dp_ctgan.pkl"
     dp_ctgan_service.save_model(str(model_path))
     
+    # Upload model to S3
+    s3_model_key = _upload_model_to_s3(
+        model_path, str(generator.created_by), "dp-ctgan"
+    )
+    
     # Update generator with privacy information
     generator.model_path = str(model_path)
+    generator.s3_model_key = s3_model_key  # Save S3 key to generator
     generator.training_metadata = training_summary
     generator.privacy_config = training_summary.get("privacy_config")
     generator.privacy_spent = training_summary.get("privacy_spent")
@@ -380,10 +498,18 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     logger.info(f"Generating {num_rows} synthetic rows with DP-CTGAN...")
     synthetic_data = dp_ctgan_service.generate(num_rows, conditions=conditions)
     
-    # Save synthetic data
+    # Save synthetic data locally
     unique_filename = f"{generator.id}_dp_ctgan_synthetic.csv"
     file_path = UPLOAD_DIR / unique_filename
     synthetic_data.to_csv(file_path, index=False)
+    
+    # Upload synthetic data to S3
+    s3_key = _upload_synthetic_to_s3(
+        file_path,
+        str(generator.created_by),
+        str(generator.dataset_id),
+        unique_filename
+    )
     
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
@@ -393,13 +519,15 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
         project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_dp_ctgan_synthetic",
         original_filename=unique_filename,
+        s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
             "generation_method": "dp-ctgan",
             "training_summary": training_summary,
             "privacy_report": privacy_report,
-            "source_dataset_id": str(generator.dataset_id)
+            "source_dataset_id": str(generator.dataset_id),
+            "s3_model_key": s3_model_key
         },
         checksum=checksum,
         uploader_id=generator.created_by
@@ -432,8 +560,9 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     target_delta = params.get('target_delta')
     max_grad_norm = params.get('max_grad_norm', 1.0)
     noise_multiplier = params.get('noise_multiplier')
+    force = params.get('force', False)  # User acknowledged risks
     
-    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}")
+    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, force={force}")
     
     # Initialize DP-TVAE service
     dp_tvae_service = DPTVAEService(
@@ -448,7 +577,8 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
         target_delta=target_delta,
         max_grad_norm=max_grad_norm,
         noise_multiplier=noise_multiplier,
-        verbose=False
+        verbose=False,
+        force=force
     )
     
     # Train model with DP
@@ -458,15 +588,21 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     # Get privacy report
     privacy_report = dp_tvae_service.get_privacy_report()
     
-    # Save model
+    # Save model locally
     UPLOAD_DIR = Path(settings.upload_dir)
     model_dir = UPLOAD_DIR / "models"
     model_dir.mkdir(exist_ok=True)
     model_path = model_dir / f"{generator.id}_dp_tvae.pkl"
     dp_tvae_service.save_model(str(model_path))
     
+    # Upload model to S3
+    s3_model_key = _upload_model_to_s3(
+        model_path, str(generator.created_by), "dp-tvae"
+    )
+    
     # Update generator with privacy information
     generator.model_path = str(model_path)
+    generator.s3_model_key = s3_model_key  # Save S3 key to generator
     generator.training_metadata = training_summary
     generator.privacy_config = training_summary.get("privacy_config")
     generator.privacy_spent = training_summary.get("privacy_spent")
@@ -477,10 +613,18 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     logger.info(f"Generating {num_rows} synthetic rows with DP-TVAE...")
     synthetic_data = dp_tvae_service.generate(num_rows, conditions=conditions)
     
-    # Save synthetic data
+    # Save synthetic data locally
     unique_filename = f"{generator.id}_dp_tvae_synthetic.csv"
     file_path = UPLOAD_DIR / unique_filename
     synthetic_data.to_csv(file_path, index=False)
+    
+    # Upload synthetic data to S3
+    s3_key = _upload_synthetic_to_s3(
+        file_path,
+        str(generator.created_by),
+        str(generator.dataset_id),
+        unique_filename
+    )
     
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
@@ -490,13 +634,15 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
         project_id=_get_source_project_id(db, generator),
         name=f"{generator.name}_dp_tvae_synthetic",
         original_filename=unique_filename,
+        s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
             "generation_method": "dp-tvae",
             "training_summary": training_summary,
             "privacy_report": privacy_report,
-            "source_dataset_id": str(generator.dataset_id)
+            "source_dataset_id": str(generator.dataset_id),
+            "s3_model_key": s3_model_key
         },
         checksum=checksum,
         uploader_id=generator.created_by

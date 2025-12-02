@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import uuid
 import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AuditLogCreate(BaseModel):
@@ -28,6 +28,7 @@ class AuditLogCreate(BaseModel):
 
 class AuditLogResponse(BaseModel):
     """Schema for audit log responses."""
+    model_config = ConfigDict(from_attributes=True)
     
     id: uuid.UUID
     user_id: Optional[uuid.UUID]
@@ -45,9 +46,6 @@ class AuditLogResponse(BaseModel):
     audit_metadata: Optional[Dict[str, Any]]
     session_id: Optional[uuid.UUID]
     error_message: Optional[str]
-    
-    class Config:
-        from_attributes = True
 
 
 class AuditLogFilter(BaseModel):

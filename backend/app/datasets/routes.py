@@ -25,6 +25,13 @@ from app.core.validators import validate_uuid, validate_filename, validate_file_
 # Local - Services
 from app.services.llm.enhanced_pii_detector import EnhancedPIIDetector
 
+# Local - Storage
+from app.storage.s3 import (
+    get_storage_service,
+    S3ConfigurationError,
+    S3StorageError,
+)
+
 # Local - Module
 from .models import Dataset
 from .repositories import get_dataset_by_id, delete_dataset as delete_dataset_repo
@@ -42,10 +49,28 @@ from .services import (
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# Use absolute path from settings or default to backend/uploads
+from app.core.config import settings
+UPLOAD_DIR = Path(settings.upload_dir).absolute()
+UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
+
+# S3 storage flag - checked at runtime
+_s3_available: Optional[bool] = None
+
+def is_s3_available() -> bool:
+    """Check if S3 storage is configured and available."""
+    global _s3_available
+    if _s3_available is None:
+        try:
+            get_storage_service()
+            _s3_available = True
+            logger.info("S3 storage is available")
+        except S3ConfigurationError:
+            _s3_available = False
+            logger.warning("S3 not configured, using local storage")
+    return _s3_available
 
 # ============================================================================
 # ENDPOINTS
@@ -84,8 +109,8 @@ def download_dataset(
     dataset_id: str,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> FileResponse:
-    """Download a dataset file."""
+):
+    """Download a dataset file. Returns presigned S3 URL or local file."""
     dataset_uuid = validate_uuid(dataset_id, "dataset_id")
     dataset = get_dataset_by_id(db, str(dataset_uuid))
     
@@ -94,7 +119,21 @@ def download_dataset(
     
     # Security: Verify ownership
     check_resource_ownership(dataset, current_user.id)
-
+    
+    # Try S3 first if configured and dataset has s3_key
+    if is_s3_available() and dataset.s3_key:
+        try:
+            storage = get_storage_service()
+            download_url = storage.generate_download_url(
+                key=dataset.s3_key,
+                filename=dataset.original_filename,
+                expires_in=3600  # 1 hour
+            )
+            return {"download_url": download_url, "expires_in": 3600}
+        except S3StorageError as e:
+            logger.warning(f"S3 download failed, falling back to local: {e}")
+    
+    # Fallback to local file
     file_path = UPLOAD_DIR / dataset.original_filename
     if not file_path.exists():
         raise HTTPException(
@@ -120,7 +159,7 @@ async def upload_dataset(
     Upload a dataset file (CSV/JSON) and create dataset record.
     
     Args:
-        file: CSV or JSON file to upload
+        file: CSV or JSON file to upload (max 100MB)
         project_id: Optional project ID (defaults to 'default-project')
         db: Database session
         current_user: Authenticated user
@@ -128,6 +167,9 @@ async def upload_dataset(
     Returns:
         Created dataset object
     """
+    # Maximum file size: 100MB
+    MAX_FILE_SIZE = 100 * 1024 * 1024
+    
     # Use default project if not provided
     if not project_id:
         project_id = "00000000-0000-0000-0000-000000000001"
@@ -143,8 +185,36 @@ async def upload_dataset(
     unique_filename = f"{uuid.uuid4()}_{safe_filename}"
     file_path = UPLOAD_DIR / unique_filename
     
+    # Stream file and check size
+    total_size = 0
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        while chunk := await file.read(1024 * 1024):  # Read 1MB chunks
+            total_size += len(chunk)
+            if total_size > MAX_FILE_SIZE:
+                buffer.close()
+                file_path.unlink()  # Clean up partial file
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+                )
+            buffer.write(chunk)
+    
+    # Upload to S3 if available
+    s3_key = None
+    if is_s3_available():
+        try:
+            storage = get_storage_service()
+            with open(file_path, "rb") as f:
+                result = storage.upload_dataset(
+                    file_obj=f,
+                    user_id=str(current_user.id),
+                    filename=safe_filename,
+                    content_type="text/csv" if safe_filename.endswith(".csv") else "application/json",
+                )
+                s3_key = result["key"]
+                logger.info(f"Uploaded to S3: {s3_key}")
+        except S3StorageError as e:
+            logger.warning(f"S3 upload failed, using local storage: {e}")
 
     # Process file and create dataset
     try:
@@ -154,7 +224,8 @@ async def upload_dataset(
             unique_filename=unique_filename,
             project_id=uuid.UUID(project_id),
             uploader_id=current_user.id,
-            db=db
+            db=db,
+            s3_key=s3_key,  # Pass S3 key if uploaded
         )
         return dataset
     except Exception as e:
@@ -356,7 +427,7 @@ def delete_dataset(
     current_user = Depends(get_current_user)
 ) -> DatasetDeleteResponse:
     """
-    Delete a dataset (soft delete by setting deleted_at timestamp).
+    Delete a dataset from both S3 and local storage.
     
     Args:
         dataset_id: Dataset UUID
@@ -376,7 +447,23 @@ def delete_dataset(
     
     check_resource_ownership(dataset, current_user.id)
     
-    # Delete the dataset
+    # Delete from S3 if available
+    if is_s3_available() and dataset.s3_key:
+        try:
+            storage = get_storage_service()
+            storage.delete_file(dataset.s3_key)
+            logger.info(f"Deleted from S3: {dataset.s3_key}")
+        except S3StorageError as e:
+            logger.warning(f"S3 delete failed: {e}")
+    
+    # Delete local file if exists
+    if dataset.original_filename:
+        local_path = UPLOAD_DIR / dataset.original_filename
+        if local_path.exists():
+            local_path.unlink()
+            logger.info(f"Deleted local file: {local_path}")
+    
+    # Delete the dataset from database
     deleted_dataset = delete_dataset_repo(db, str(dataset_uuid))
     
     if not deleted_dataset:

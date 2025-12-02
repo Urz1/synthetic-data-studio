@@ -41,7 +41,9 @@ class DPTVAEService:
         target_delta: Optional[float] = None,
         max_grad_norm: float = 1.0,
         noise_multiplier: Optional[float] = None,
-        verbose: bool = False
+        verbose: bool = False,
+        # Force flag - bypass soft validation errors
+        force: bool = False
     ):
         """
         Initialize DP-TVAE service with hyperparameters.
@@ -59,6 +61,7 @@ class DPTVAEService:
             max_grad_norm: Maximum gradient norm for clipping (default: 1.0)
             noise_multiplier: Noise scale for DP-SGD (auto-computed if None)
             verbose: Whether to show training progress
+            force: If True, proceed despite soft validation errors (user acknowledged risks)
         """
         self.epochs = epochs
         self.batch_size = batch_size
@@ -74,6 +77,9 @@ class DPTVAEService:
         self.target_delta = target_delta
         self.max_grad_norm = max_grad_norm
         self.noise_multiplier = noise_multiplier
+        
+        # Force flag
+        self.force = force
         
         # State
         self.synthesizer: Optional[TVAESynthesizer] = None
@@ -180,7 +186,8 @@ class DPTVAEService:
             epochs=self.epochs,
             batch_size=self.batch_size,
             target_epsilon=self.target_epsilon,
-            target_delta=self.target_delta
+            target_delta=self.target_delta,
+            force=self.force
         )
         
         # Log warnings
@@ -189,9 +196,22 @@ class DPTVAEService:
         
         # Raise error if invalid
         if not is_valid:
-            error_msg = "Configuration validation failed:\n" + "\n".join(f"❌ {e}" for e in errors)
+            # Get parameter limits to show user valid ranges
+            limits = DPConfigValidator.get_parameter_limits(len(train_data), self.target_epsilon)
+            error_msg = (
+                f"Configuration validation failed:\n"
+                + "\n".join(f"❌ {e}" for e in errors)
+                + f"\n\n📊 Valid parameter ranges for your dataset ({len(train_data)} rows):\n"
+                + f"   • batch_size: {limits['batch_size']['min']}-{limits['batch_size']['max']} (recommended: {limits['batch_size']['recommended']})\n"
+                + f"   • epochs: {limits['epochs']['min']}-{limits['epochs']['max']} (recommended: {limits['epochs']['recommended']})\n"
+                + f"   • epsilon: {limits['epsilon']['min']}-{limits['epsilon']['max']} (recommended: 1-20)\n"
+                + f"\n💡 Tip: Use force=true to proceed despite warnings (at your own risk)."
+            )
             logger.error(error_msg)
             raise ValueError(error_msg)
+        
+        if self.force:
+            logger.warning("⚠️ Training with force=True - user acknowledged configuration risks")
         
         logger.info("✅ Configuration validated successfully")
         

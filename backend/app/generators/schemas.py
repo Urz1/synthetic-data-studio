@@ -7,7 +7,7 @@ database models (models.py) following clean architecture principles.
 
 from typing import Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
 
@@ -51,15 +51,14 @@ class MLGenerationConfig(BaseModel):
 
 class GeneratorCreateRequest(BaseModel):
     """Request to create a new generator."""
+    model_config = ConfigDict(populate_by_name=True)
+    
     dataset_id: Optional[uuid.UUID] = None
     model_version_id: Optional[uuid.UUID] = None
     type: str = Field(..., description="Generator type")
     parameters_json: Dict[str, Any] = Field(default_factory=dict)
     generator_schema: Optional[Dict[str, Any]] = Field(None, alias="schema_json")
     name: str = Field(..., min_length=1, max_length=255)
-    
-    class Config:
-        populate_by_name = True  # Allow both field name and alias
 
 
 # ============================================================================
@@ -68,6 +67,8 @@ class GeneratorCreateRequest(BaseModel):
 
 class GeneratorResponse(BaseModel):
     """Response model for generator information."""
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     id: uuid.UUID
     dataset_id: Optional[uuid.UUID] = None
     model_version_id: Optional[uuid.UUID] = None
@@ -84,10 +85,6 @@ class GeneratorResponse(BaseModel):
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-        populate_by_name = True
 
 
 class GeneratorDeleteResponse(BaseModel):

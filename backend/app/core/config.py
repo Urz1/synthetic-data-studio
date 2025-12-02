@@ -18,6 +18,19 @@ class Settings:
     upload_dir: str = os.getenv("UPLOAD_DIR", "uploads")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
+    # OAuth - Google
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
+    
+    # OAuth - GitHub
+    github_client_id: str = os.getenv("GITHUB_CLIENT_ID", "")
+    github_client_secret: str = os.getenv("GITHUB_CLIENT_SECRET", "")
+    github_redirect_uri: str = os.getenv("GITHUB_REDIRECT_URI", "http://localhost:8000/auth/github/callback")
+    
+    # Frontend URL (for OAuth redirects)
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
     def __post_init__(self):
         """Validate critical settings after initialization."""
         # Secret key validation

@@ -11,11 +11,21 @@ from app.jobs.models import Job
 from app.jobs.repositories import update_job_status
 from app.generators.models import Generator
 from app.datasets.models import Dataset
+
+# Import all models to ensure metadata is loaded
+from app.auth.models import User
+from app.projects.models import Project
+from app.evaluations.models import Evaluation
+from app.compliance.models import ComplianceReport
+from app.audit.models import AuditLog
+
 from app.services.synthesis.copula_service import GaussianCopulaService
 from app.services.synthesis.tvae_service import TVAEService
 from app.services.synthesis.ctgan_service import CTGANService
 from app.services.synthesis.dp_ctgan_service import DPCTGANService
 from app.services.synthesis.dp_tvae_service import DPTVAEService
+
+from app.generators.services import _generate_from_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +33,18 @@ logger = logging.getLogger(__name__)
 @celery_app.task(bind=True, base=DatabaseTask)
 def train_generator_task(self, generator_id: str, job_id: str):
     """
-    Background task to train a generator.
+    Background task to train a generator and generate synthetic data.
     
     Args:
         generator_id: UUID of the generator to train
         job_id: UUID of the tracking job
     """
-    logger.info(f"Starting training task for generator {generator_id} (Job {job_id})")
+    logger.info(f"Starting generation task for generator {generator_id} (Job {job_id})")
     
     db = self.db
+    job = None
+    generator = None
+    
     try:
         # 1. Update Job status to RUNNING
         job_uuid = uuid.UUID(job_id)
@@ -52,53 +65,31 @@ def train_generator_task(self, generator_id: str, job_id: str):
         if not generator:
             raise ValueError(f"Generator {generator_id} not found")
 
-        # 3. Get Dataset
-        dataset = db.get(Dataset, generator.dataset_id)
-        if not dataset:
-            raise ValueError(f"Dataset {generator.dataset_id} not found")
+        # 3. Run the entire generation pipeline (train + generate)
+        # This uses the existing _generate_from_dataset function which handles:
+        # - Loading the dataset
+        # - Training the model
+        # - Generating synthetic data
+        # - Saving models and data
+        # - Creating output dataset record
+        logger.info(f"Running generation pipeline for {generator.type}...")
+        output_dataset = _generate_from_dataset(generator, db)
 
-        # 4. Initialize Service based on type
-        if generator.type == "copula":
-            service = GaussianCopulaService()
-        elif generator.type == "tvae":
-            service = TVAEService()
-        elif generator.type == "ctgan":
-            service = CTGANService()
-        elif generator.type == "dp-ctgan":
-            service = DPCTGANService()
-        elif generator.type == "dp-tvae":
-            service = DPTVAEService()
-        else:
-            raise ValueError(f"Unknown generator type: {generator.type}")
-
-        # 5. Train Model
-        # Note: We assume the services handle file loading and saving internally
-        # You might need to adjust this based on your actual service signatures
-        service.fit(
-            dataset_path=dataset.file_path,
-            save_path=generator.model_path,
-            **generator.parameters_json
-        )
-
-        # 6. Update Generator Status
-        generator.status = "trained"
-        generator.updated_at = datetime.utcnow()
-        db.add(generator)
-        
-        # 7. Update Job Status to COMPLETED
+        # 4. Update Job Status to COMPLETED
         job.status = "completed"
         job.completed_at = datetime.utcnow()
         db.add(job)
         db.commit()
         
-        logger.info(f"Successfully trained generator {generator_id}")
+        logger.info(f"✓ Successfully completed generation for {generator_id}")
+        logger.info(f"✓ Generated {output_dataset.row_count} rows → Dataset {output_dataset.id}")
 
     except Exception as e:
-        logger.error(f"Training failed: {e}", exc_info=True)
+        logger.error(f"Generation failed: {e}", exc_info=True)
         # Update Job to FAILED
         if job:
             job.status = "failed"
-            job.error_message = str(e)
+            job.error_message = str(e)[:500]  # Truncate long errors
             job.completed_at = datetime.utcnow()
             db.add(job)
             

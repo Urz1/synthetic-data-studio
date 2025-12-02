@@ -7,7 +7,7 @@ Separated from database models to follow Clean Architecture.
 from typing import Optional
 import uuid
 import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ComplianceReportBase(BaseModel):
@@ -26,8 +26,7 @@ class ComplianceReportCreate(ComplianceReportBase):
 
 class ComplianceReportResponse(ComplianceReportBase):
     """Schema for compliance report response."""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: uuid.UUID
     created_at: datetime.datetime
-
-    class Config:
-        from_attributes = True

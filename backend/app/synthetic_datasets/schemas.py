@@ -7,7 +7,7 @@ Separated from database models to follow Clean Architecture.
 from typing import Optional
 import uuid
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SyntheticDatasetBase(BaseModel):
@@ -27,8 +27,7 @@ class SyntheticDatasetCreate(SyntheticDatasetBase):
 
 class SyntheticDatasetResponse(SyntheticDatasetBase):
     """Schema for synthetic dataset response."""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: uuid.UUID
     uploaded_at: datetime.datetime
-
-    class Config:
-        from_attributes = True

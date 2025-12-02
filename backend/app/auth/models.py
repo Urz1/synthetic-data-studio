@@ -23,6 +23,12 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    
+    # OAuth fields
+    oauth_provider: Optional[str] = Field(default=None, index=True)  # "google", "github", None
+    oauth_id: Optional[str] = Field(default=None, index=True)  # Provider's user ID
+    name: Optional[str] = Field(default=None)  # Display name from OAuth
+    avatar_url: Optional[str] = Field(default=None)  # Profile picture URL
 
 
 class APIKey(SQLModel, table=True):

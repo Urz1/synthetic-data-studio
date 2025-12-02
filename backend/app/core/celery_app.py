@@ -17,11 +17,11 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # Task routing (optional, but good for future scaling)
-    task_routes={
-        "app.tasks.generators.*": {"queue": "generators"},
-        "app.tasks.evaluations.*": {"queue": "evaluations"},
-    },
+    # Task routing disabled - using default queue for simplicity
+    # task_routes={
+    #     "app.tasks.generators.*": {"queue": "generators"},
+    #     "app.tasks.evaluations.*": {"queue": "evaluations"},
+    # },
     # Task execution settings
     task_track_started=True,
     task_time_limit=3600 * 4,  # 4 hours max per task

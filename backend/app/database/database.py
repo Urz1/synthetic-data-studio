@@ -1,13 +1,25 @@
 import os
+import sys
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, JSON
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
 
 load_dotenv()
 
 db_url = os.getenv("DATABASE_URL")
+
+# Validate DATABASE_URL is set
+if not db_url:
+    print("\n" + "=" * 60)
+    print("❌ CRITICAL ERROR: DATABASE_URL not set")
+    print("=" * 60)
+    print("Please set DATABASE_URL in your .env file.")
+    print("Examples:")
+    print("  SQLite: DATABASE_URL=sqlite:///./synth_studio.db")
+    print("  PostgreSQL: DATABASE_URL=postgresql://user:pass@localhost:5432/dbname")
+    print("=" * 60 + "\n")
+    sys.exit(1)
 
 # Production-ready connection pooling settings
 if "postgresql" in db_url:

@@ -310,10 +310,17 @@ async def model_card(
 @router.post("/model-card/export/pdf")
 async def export_model_card_pdf(
     request: ModelCardRequest,
+    save_to_s3: bool = False,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Export model card as PDF."""
+    """
+    Export model card as PDF.
+    
+    Args:
+        request: Model card request with generator_id
+        save_to_s3: If True, save to S3 and return download URL instead of file
+    """
     validate_uuid(request.generator_id, "generator_id")
     
     # Get generator
@@ -337,22 +344,60 @@ async def export_model_card_pdf(
         content = await writer.generate_model_card(generator_metadata=metadata)
         if isinstance(content, dict):
             content = content.get("model_card", "")
+        
+        title = f"Model Card: {generator.name}"
+        
+        if save_to_s3:
+            # Save to S3 and create export record
+            from app.services.export import report_exporter
+            from app.exports.models import ExportCreate, ExportType, ExportFormat
+            from app.exports import repositories as exports_repo
             
-        # Export to PDF
-        from app.services.export import report_exporter
-        from fastapi.responses import Response
-        
-        pdf_bytes = report_exporter.export_to_pdf(
-            content_markdown=content,
-            title=f"Model Card: {generator.name}",
-            metadata={"generator_id": str(generator.id), "type": generator.type}
-        )
-        
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=model_card_{generator.id}.pdf"}
-        )
+            pdf_bytes, s3_info = report_exporter.export_pdf_to_s3(
+                content_markdown=content,
+                title=title,
+                user_id=str(current_user.id),
+                export_type="model_card",
+                metadata={"generator_id": str(generator.id), "type": generator.type}
+            )
+            
+            # Create export record
+            export_data = ExportCreate(
+                export_type=ExportType.MODEL_CARD,
+                format=ExportFormat.PDF,
+                title=title,
+                generator_id=generator.id,
+                s3_key=s3_info["s3_key"],
+                s3_bucket=s3_info["s3_bucket"],
+                file_size_bytes=s3_info["file_size_bytes"],
+                metadata_json={"generator_type": generator.type}
+            )
+            export_record = exports_repo.create_export(db, export_data, current_user.id)
+            
+            return {
+                "export_id": str(export_record.id),
+                "download_url": s3_info["download_url"],
+                "filename": s3_info["filename"],
+                "file_size_bytes": s3_info["file_size_bytes"],
+                "expires_in": 3600,
+                "message": "Export saved to S3. Use download_url to retrieve."
+            }
+        else:
+            # Direct download (original behavior)
+            from app.services.export import report_exporter
+            from fastapi.responses import Response
+            
+            pdf_bytes = report_exporter.export_to_pdf(
+                content_markdown=content,
+                title=title,
+                metadata={"generator_id": str(generator.id), "type": generator.type}
+            )
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename=model_card_{generator.id}.pdf"}
+            )
         
     except Exception as e:
         logger.error(f"PDF export failed: {e}", exc_info=True)
@@ -362,10 +407,17 @@ async def export_model_card_pdf(
 @router.post("/model-card/export/docx")
 async def export_model_card_docx(
     request: ModelCardRequest,
+    save_to_s3: bool = False,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Export model card as Word document."""
+    """
+    Export model card as Word document.
+    
+    Args:
+        request: Model card request with generator_id
+        save_to_s3: If True, save to S3 and return download URL instead of file
+    """
     validate_uuid(request.generator_id, "generator_id")
     
     # Get generator
@@ -389,24 +441,66 @@ async def export_model_card_docx(
         content = await writer.generate_model_card(generator_metadata=metadata)
         if isinstance(content, dict):
             content = content.get("model_card", "")
+        
+        title = f"Model Card: {generator.name}"
+        
+        if save_to_s3:
+            # Save to S3 and create export record
+            from app.services.export import report_exporter
+            from app.exports.models import ExportCreate, ExportType, ExportFormat
+            from app.exports import repositories as exports_repo
             
-        # Export to DOCX
-        from app.services.export import report_exporter
-        from fastapi.responses import FileResponse
-        import os
-        
-        file_path = report_exporter.export_to_docx(
-            content_markdown=content,
-            title=f"Model Card: {generator.name}",
-            metadata={"generator_id": str(generator.id), "type": generator.type}
-        )
-        
-        return FileResponse(
-            path=file_path,
-            filename=f"model_card_{generator.id}.docx",
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            background=None  # Let FastAPI handle cleanup if possible, or use background task
-        )
+            local_path, s3_info = report_exporter.export_docx_to_s3(
+                content_markdown=content,
+                title=title,
+                user_id=str(current_user.id),
+                export_type="model_card",
+                metadata={"generator_id": str(generator.id), "type": generator.type}
+            )
+            
+            # Create export record
+            export_data = ExportCreate(
+                export_type=ExportType.MODEL_CARD,
+                format=ExportFormat.DOCX,
+                title=title,
+                generator_id=generator.id,
+                s3_key=s3_info["s3_key"],
+                s3_bucket=s3_info["s3_bucket"],
+                file_size_bytes=s3_info["file_size_bytes"],
+                metadata_json={"generator_type": generator.type}
+            )
+            export_record = exports_repo.create_export(db, export_data, current_user.id)
+            
+            # Clean up local temp file
+            import os
+            if os.path.exists(local_path):
+                os.remove(local_path)
+            
+            return {
+                "export_id": str(export_record.id),
+                "download_url": s3_info["download_url"],
+                "filename": s3_info["filename"],
+                "file_size_bytes": s3_info["file_size_bytes"],
+                "expires_in": 3600,
+                "message": "Export saved to S3. Use download_url to retrieve."
+            }
+        else:
+            # Direct download (original behavior)
+            from app.services.export import report_exporter
+            from fastapi.responses import FileResponse
+            
+            file_path = report_exporter.export_to_docx(
+                content_markdown=content,
+                title=title,
+                metadata={"generator_id": str(generator.id), "type": generator.type}
+            )
+            
+            return FileResponse(
+                path=file_path,
+                filename=f"model_card_{generator.id}.docx",
+                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                background=None
+            )
         
     except Exception as e:
         logger.error(f"DOCX export failed: {e}", exc_info=True)
@@ -416,10 +510,17 @@ async def export_model_card_docx(
 @router.post("/privacy-report/export/pdf")
 async def export_privacy_report_pdf(
     request: PrivacyReportRequest,
+    save_to_s3: bool = False,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Export privacy report as PDF."""
+    """
+    Export privacy report as PDF.
+    
+    Args:
+        request: Privacy report request with dataset_id and optional generator_id
+        save_to_s3: If True, save to S3 and return download URL instead of file
+    """
     validate_uuid(request.dataset_id, "dataset_id")
     
     generator = None
@@ -441,25 +542,68 @@ async def export_privacy_report_pdf(
         )
         if isinstance(content, dict):
             content = content.get("report", "")
+        
+        title = "Privacy Compliance Report"
+        
+        if save_to_s3:
+            # Save to S3 and create export record
+            from app.services.export import report_exporter
+            from app.exports.models import ExportCreate, ExportType, ExportFormat
+            from app.exports import repositories as exports_repo
+            import uuid as uuid_lib
             
-        # Export to PDF
-        from app.services.export import report_exporter
-        from fastapi.responses import Response
-        
-        pdf_bytes = report_exporter.export_to_pdf(
-            content_markdown=content,
-            title="Privacy Compliance Report",
-            metadata={
-                "dataset_id": request.dataset_id,
-                "generator_id": request.generator_id
+            pdf_bytes, s3_info = report_exporter.export_pdf_to_s3(
+                content_markdown=content,
+                title=title,
+                user_id=str(current_user.id),
+                export_type="privacy_report",
+                metadata={
+                    "dataset_id": request.dataset_id,
+                    "generator_id": request.generator_id
+                }
+            )
+            
+            # Create export record
+            export_data = ExportCreate(
+                export_type=ExportType.PRIVACY_REPORT,
+                format=ExportFormat.PDF,
+                title=title,
+                generator_id=uuid_lib.UUID(request.generator_id) if request.generator_id else None,
+                dataset_id=uuid_lib.UUID(request.dataset_id),
+                s3_key=s3_info["s3_key"],
+                s3_bucket=s3_info["s3_bucket"],
+                file_size_bytes=s3_info["file_size_bytes"],
+                metadata_json={"framework": "Privacy"}
+            )
+            export_record = exports_repo.create_export(db, export_data, current_user.id)
+            
+            return {
+                "export_id": str(export_record.id),
+                "download_url": s3_info["download_url"],
+                "filename": s3_info["filename"],
+                "file_size_bytes": s3_info["file_size_bytes"],
+                "expires_in": 3600,
+                "message": "Export saved to S3. Use download_url to retrieve."
             }
-        )
-        
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=privacy_report.pdf"}
-        )
+        else:
+            # Direct download (original behavior)
+            from app.services.export import report_exporter
+            from fastapi.responses import Response
+            
+            pdf_bytes = report_exporter.export_to_pdf(
+                content_markdown=content,
+                title=title,
+                metadata={
+                    "dataset_id": request.dataset_id,
+                    "generator_id": request.generator_id
+                }
+            )
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": "attachment; filename=privacy_report.pdf"}
+            )
         
     except Exception as e:
         logger.error(f"PDF export failed: {e}", exc_info=True)

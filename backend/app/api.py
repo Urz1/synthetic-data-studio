@@ -26,6 +26,8 @@ try:
         "app.evaluations.routes",
         "app.llm.routes",
         "app.audit.routes",  # Enterprise audit logging
+        "app.billing.routes",  # Usage tracking & quotas
+        "app.exports.routes",  # Export storage & retrieval
     ]
     
     for module_name in modules_to_load:

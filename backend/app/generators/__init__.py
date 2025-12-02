@@ -1,8 +1,5 @@
 """Generators module package."""
 
-from . import models, repositories, schemas, routes
+from . import models, repositories, schemas
 
-__all__ = ["models", "repositories", "schemas", "routes", "router"]
-
-# Export router directly for convenience
-from .routes import router
+__all__ = ["models", "repositories", "schemas"]

@@ -40,7 +40,6 @@ from app.datasets.models import Dataset
 from app.evaluations.models import Evaluation
 from app.generators.models import Generator
 from app.jobs.models import Job
-from app.models.models import Model, ModelVersion
 from app.projects.models import Project
 
 # Test database URL (in-memory SQLite)

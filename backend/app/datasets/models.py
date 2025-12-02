@@ -20,6 +20,7 @@ class Dataset(SQLModel, table=True):
     name: str
     original_filename: Optional[str] = None  # UUID-prefixed filename on disk
     file_path: Optional[str] = None  # Full path to file
+    s3_key: Optional[str] = None  # S3 object key (if stored in S3)
     size_bytes: Optional[int] = None
     row_count: Optional[int] = None
     # Renamed from 'schema_json' to 'schema_data' to avoid SQLModel reserved word warning

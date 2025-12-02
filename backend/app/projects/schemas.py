@@ -7,7 +7,7 @@ Separated from database models to follow Clean Architecture.
 from typing import Optional
 import uuid
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectBase(BaseModel):
@@ -31,10 +31,9 @@ class ProjectUpdate(BaseModel):
 
 class ProjectResponse(ProjectBase):
     """Schema for project response."""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: uuid.UUID
     owner_id: uuid.UUID
     created_at: datetime.datetime
     updated_at: datetime.datetime
-
-    class Config:
-        from_attributes = True

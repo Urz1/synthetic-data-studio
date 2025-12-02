@@ -5,7 +5,7 @@ These Pydantic models define the API contract for chat, compliance, and feature 
 """
 
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ============================================================================
@@ -32,11 +32,10 @@ class ChatResponse(BaseModel):
 
 class FeatureGenerationRequest(BaseModel):
     """Request for generating features from schema."""
+    model_config = ConfigDict(populate_by_name=True)
+    
     data_schema: Dict[str, Any] = Field(alias="schema")
     context: Optional[str] = None
-    
-    class Config:
-        populate_by_name = True  # Allow both field name and alias
 
 
 # ============================================================================

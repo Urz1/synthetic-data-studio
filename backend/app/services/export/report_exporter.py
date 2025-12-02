@@ -3,13 +3,15 @@ Report Export Service.
 
 Handles conversion of LLM Markdown outputs to PDF and Word documents.
 Uses WeasyPrint for PDF generation and python-docx for Word documents.
+Supports optional S3 storage for audit trails and re-downloads.
 """
 
 import os
+import io
 import datetime
 import markdown2
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import logging
 
 # Template engine
@@ -24,6 +26,17 @@ from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 logger = logging.getLogger(__name__)
+
+
+def _get_storage_service():
+    """Get S3 storage service if available."""
+    try:
+        from app.storage.s3 import get_storage_service
+        return get_storage_service()
+    except Exception as e:
+        logger.debug(f"S3 not available: {e}")
+        return None
+
 
 class ReportExporter:
     """Service for exporting reports to PDF and Word formats."""
@@ -207,6 +220,152 @@ class ReportExporter:
         except Exception as e:
             logger.error(f"Failed to export DOCX: {e}")
             raise
+
+    # ==================== S3 Upload Methods ====================
+
+    def export_pdf_to_s3(
+        self,
+        content_markdown: str,
+        title: str,
+        user_id: str,
+        export_type: str = "report",
+        metadata: Dict[str, Any] = None,
+    ) -> Tuple[bytes, Dict[str, Any]]:
+        """
+        Export Markdown to PDF and upload to S3.
+        
+        Args:
+            content_markdown: Markdown content
+            title: Report title
+            user_id: User ID for S3 path
+            export_type: Type of export (model_card, privacy_report, etc.)
+            metadata: Additional metadata
+            
+        Returns:
+            Tuple of (pdf_bytes, s3_info) where s3_info contains:
+            - s3_key: The S3 object key
+            - s3_bucket: The bucket name
+            - file_size_bytes: File size
+            - download_url: Presigned download URL
+        """
+        # Generate PDF
+        pdf_bytes = self.export_to_pdf(
+            content_markdown=content_markdown,
+            title=title,
+            metadata=metadata
+        )
+        
+        # Upload to S3
+        storage = _get_storage_service()
+        if not storage:
+            raise RuntimeError("S3 storage not available")
+        
+        # Create filename
+        safe_title = "".join(c if c.isalnum() or c in "-_" else "_" for c in title[:50])
+        filename = f"{safe_title}.pdf"
+        
+        # Upload
+        file_obj = io.BytesIO(pdf_bytes)
+        upload_result = storage.upload_export(
+            file_obj=file_obj,
+            user_id=user_id,
+            filename=filename,
+            export_type=export_type,
+            content_type="application/pdf",
+            metadata={
+                "title": title,
+                "export_type": export_type,
+                **(metadata or {})
+            }
+        )
+        
+        # Generate download URL
+        download_url = storage.generate_download_url(
+            key=upload_result["key"],
+            filename=filename,
+            expires_in=3600  # 1 hour
+        )
+        
+        return pdf_bytes, {
+            "s3_key": upload_result["key"],
+            "s3_bucket": storage.bucket_name,
+            "file_size_bytes": len(pdf_bytes),
+            "download_url": download_url,
+            "filename": filename
+        }
+
+    def export_docx_to_s3(
+        self,
+        content_markdown: str,
+        title: str,
+        user_id: str,
+        export_type: str = "report",
+        metadata: Dict[str, Any] = None,
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Export Markdown to DOCX and upload to S3.
+        
+        Args:
+            content_markdown: Markdown content
+            title: Report title
+            user_id: User ID for S3 path
+            export_type: Type of export (model_card, privacy_report, etc.)
+            metadata: Additional metadata
+            
+        Returns:
+            Tuple of (local_path, s3_info) where s3_info contains:
+            - s3_key: The S3 object key
+            - s3_bucket: The bucket name
+            - file_size_bytes: File size
+            - download_url: Presigned download URL
+        """
+        # Generate DOCX
+        local_path = self.export_to_docx(
+            content_markdown=content_markdown,
+            title=title,
+            metadata=metadata
+        )
+        
+        # Upload to S3
+        storage = _get_storage_service()
+        if not storage:
+            raise RuntimeError("S3 storage not available")
+        
+        # Create filename
+        safe_title = "".join(c if c.isalnum() or c in "-_" else "_" for c in title[:50])
+        filename = f"{safe_title}.docx"
+        
+        # Read file and upload
+        with open(local_path, "rb") as f:
+            file_size = os.path.getsize(local_path)
+            upload_result = storage.upload_export(
+                file_obj=f,
+                user_id=user_id,
+                filename=filename,
+                export_type=export_type,
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                metadata={
+                    "title": title,
+                    "export_type": export_type,
+                    **(metadata or {})
+                }
+            )
+        
+        # Generate download URL
+        download_url = storage.generate_download_url(
+            key=upload_result["key"],
+            filename=filename,
+            expires_in=3600  # 1 hour
+        )
+        
+        return local_path, {
+            "s3_key": upload_result["key"],
+            "s3_bucket": storage.bucket_name,
+            "file_size_bytes": file_size,
+            "download_url": download_url,
+            "filename": filename
+        }
+
 
 # Singleton instance
 report_exporter = ReportExporter()

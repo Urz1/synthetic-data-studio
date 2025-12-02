@@ -6,7 +6,7 @@ These Pydantic models define the API contract.
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 
@@ -31,14 +31,13 @@ class EvaluationRequest(BaseModel):
 
 class EvaluationResponse(BaseModel):
     """Response model for evaluation."""
+    model_config = ConfigDict(from_attributes=True)
+    
     evaluation_id: str
     generator_id: str
     dataset_id: str
     status: str
     report: Dict[str, Any]
-    
-    class Config:
-        from_attributes = True
 
 
 class EvaluationListResponse(BaseModel):

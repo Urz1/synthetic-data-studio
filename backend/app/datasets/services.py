@@ -18,7 +18,15 @@ from .repositories import get_datasets, create_dataset, get_dataset_by_id
 logger = logging.getLogger(__name__)
 
 
-async def process_uploaded_file(file_path: Path, filename: str, unique_filename: str, project_id: uuid.UUID, uploader_id: uuid.UUID, db: Session):
+async def process_uploaded_file(
+    file_path: Path,
+    filename: str,
+    unique_filename: str,
+    project_id: uuid.UUID,
+    uploader_id: uuid.UUID,
+    db: Session,
+    s3_key: str = None,
+):
     """Process uploaded file, detect schema, and create dataset record.
     
     Args:
@@ -28,6 +36,7 @@ async def process_uploaded_file(file_path: Path, filename: str, unique_filename:
         project_id: Project ID
         uploader_id: User ID who uploaded
         db: Database session
+        s3_key: S3 object key if uploaded to S3
     """
 
     # Read file and detect schema
@@ -51,11 +60,20 @@ async def process_uploaded_file(file_path: Path, filename: str, unique_filename:
     for col in df.columns:
         dtype = str(df[col].dtype)
         if dtype == 'object':
-            # Check if looks like date
-            try:
-                pd.to_datetime(df[col].head(), errors='coerce')
-                schema[col] = 'datetime'
-            except:
+            # Check if looks like date by sampling values
+            sample = df[col].dropna().head(5)
+            if len(sample) > 0:
+                try:
+                    # Try parsing with infer_datetime_format disabled to avoid warnings
+                    parsed = pd.to_datetime(sample, errors='coerce', format='mixed')
+                    # If most values parsed successfully, it's likely a date
+                    if parsed.notna().sum() >= len(sample) * 0.8:
+                        schema[col] = 'datetime'
+                    else:
+                        schema[col] = 'string'
+                except Exception:
+                    schema[col] = 'string'
+            else:
                 schema[col] = 'string'
         elif 'int' in dtype:
             schema[col] = 'integer'
@@ -71,6 +89,7 @@ async def process_uploaded_file(file_path: Path, filename: str, unique_filename:
         name=filename,
         original_filename=unique_filename,  # Store the UUID-prefixed filename
         file_path=str(file_path),  # Store full path
+        s3_key=s3_key,  # Store S3 key if uploaded to S3
         size_bytes=file_path.stat().st_size,
         row_count=len(df),
         schema_data=schema,

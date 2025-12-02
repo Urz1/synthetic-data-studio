@@ -30,6 +30,7 @@ class Generator(SQLModel, table=True):
     status: str = Field(default="pending")  # pending, training, generating, completed, failed
     output_dataset_id: Optional[uuid.UUID] = Field(default=None, foreign_key="datasets.id")
     model_path: Optional[str] = None
+    s3_model_key: Optional[str] = None  # S3 key for the trained model
     training_metadata: Optional[dict] = Field(default=None, sa_column=Column(JSONType))
     privacy_config: Optional[dict] = Field(default=None, sa_column=Column(JSONType))
     privacy_spent: Optional[dict] = Field(default=None, sa_column=Column(JSONType))

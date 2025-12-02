@@ -20,6 +20,13 @@ from app.core.config import settings
 from app.core.dependencies import get_db, get_current_user
 from app.core.validators import validate_uuid
 
+# Local - Storage
+from app.storage.s3 import (
+    get_storage_service,
+    S3ConfigurationError,
+    S3StorageError,
+)
+
 # Local - Services
 from app.datasets.repositories import get_dataset_by_id
 from app.evaluations.repositories import list_evaluations_by_generator
@@ -50,8 +57,7 @@ from .services import generate_synthetic_data, _generate_from_schema
 from app.jobs.models import Job
 from app.jobs.repositories import create_job, update_job_status
 
-# Tasks
-from app.tasks.generators import train_generator_task
+# NOTE: train_generator_task is imported inside the route function to avoid circular import
 
 # ============================================================================
 # SETUP
@@ -60,6 +66,20 @@ from app.tasks.generators import train_generator_task
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/generators", tags=["generators"])
+
+# S3 storage flag
+_s3_available: Optional[bool] = None
+
+def is_s3_available() -> bool:
+    """Check if S3 storage is configured."""
+    global _s3_available
+    if _s3_available is None:
+        try:
+            get_storage_service()
+            _s3_available = True
+        except S3ConfigurationError:
+            _s3_available = False
+    return _s3_available
 
 # ============================================================================
 # ENDPOINTS
@@ -95,16 +115,136 @@ def delete_generator_endpoint(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> GeneratorDeleteResponse:
-    """Delete a generator."""
+    """Delete a generator and its associated model from S3."""
     validate_uuid(generator_id, "generator_id")
     
-    generator = delete_generator(db, generator_id)
+    # Get generator first to access S3 key
+    generator = get_generator_by_id(db, generator_id)
     if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # Delete model from S3 if exists
+    if is_s3_available() and generator.s3_model_key:
+        try:
+            storage = get_storage_service()
+            storage.delete_file(generator.s3_model_key)
+            logger.info(f"Deleted model from S3: {generator.s3_model_key}")
+        except S3StorageError as e:
+            logger.warning(f"S3 model delete failed: {e}")
+    
+    # Delete local model file if exists
+    if generator.model_path:
+        model_path = Path(generator.model_path)
+        if model_path.exists():
+            model_path.unlink()
+            logger.info(f"Deleted local model: {model_path}")
+    
+    # Delete from database
+    deleted = delete_generator(db, generator_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail="Generator not found")
     
     return GeneratorDeleteResponse(
         message="Generator deleted successfully",
         id=generator_id
+    )
+
+
+@router.get("/{generator_id}/download-model")
+def download_generator_model(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Download the trained model file for a generator.
+    
+    Returns a presigned S3 URL (valid for 1 hour) or falls back to local file.
+    """
+    validate_uuid(generator_id, "generator_id")
+    
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # Check if model exists
+    if generator.status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model not ready. Generator status: {generator.status}"
+        )
+    
+    if not generator.model_path and not generator.s3_model_key:
+        raise HTTPException(
+            status_code=404,
+            detail="No trained model found for this generator"
+        )
+    
+    # Try S3 first
+    if is_s3_available() and generator.s3_model_key:
+        try:
+            storage = get_storage_service()
+            download_url = storage.generate_download_url(
+                key=generator.s3_model_key,
+                filename=f"{generator.name}_{generator.type}.pkl",
+                expires_in=3600
+            )
+            return {
+                "download_url": download_url,
+                "expires_in": 3600,
+                "filename": f"{generator.name}_{generator.type}.pkl",
+                "storage": "s3"
+            }
+        except S3StorageError as e:
+            logger.warning(f"S3 download failed, checking local: {e}")
+    
+    # Fallback to local file info
+    if generator.model_path:
+        model_path = Path(generator.model_path)
+        if model_path.exists():
+            return {
+                "message": "Model available locally. Use /download-model-file endpoint.",
+                "filename": model_path.name,
+                "size_bytes": model_path.stat().st_size,
+                "storage": "local"
+            }
+    
+    raise HTTPException(
+        status_code=404,
+        detail="Model file not found in S3 or local storage"
+    )
+
+
+@router.get("/{generator_id}/download-model-file")
+def download_generator_model_file(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Download the trained model file directly (for local storage fallback).
+    
+    Use /download-model first to get presigned S3 URL when available.
+    """
+    from fastapi.responses import FileResponse
+    
+    validate_uuid(generator_id, "generator_id")
+    
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    if not generator.model_path:
+        raise HTTPException(status_code=404, detail="No model path found")
+    
+    model_path = Path(generator.model_path)
+    if not model_path.exists():
+        raise HTTPException(status_code=404, detail="Model file not found on disk")
+    
+    return FileResponse(
+        path=model_path,
+        filename=f"{generator.name}_{generator.type}.pkl",
+        media_type="application/octet-stream"
     )
 
 
@@ -149,6 +289,8 @@ def generate_from_dataset(
     num_rows: Optional[int] = None,
     epochs: int = 50,
     batch_size: int = 500,
+    target_epsilon: float = 10.0,
+    force: bool = False,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -161,8 +303,13 @@ def generate_from_dataset(
         num_rows: Number of synthetic rows to generate. If None, matches original dataset size.
         epochs: Number of training epochs
         batch_size: Batch size for training
+        target_epsilon: Target privacy budget for DP models (lower = more private)
+        force: If True, proceed despite soft validation errors (user acknowledged risks)
     
     Note:
+        For DP models (dp-ctgan, dp-tvae), use GET /generators/dp/parameter-limits/{dataset_id}
+        to get valid parameter ranges before submitting.
+        
         num_rows validation:
         - Minimum: 100 rows
         - Maximum: 1,000,000 rows
@@ -194,7 +341,9 @@ def generate_from_dataset(
         parameters_json={
             "num_rows": num_rows,
             "epochs": epochs,
-            "batch_size": batch_size
+            "batch_size": batch_size,
+            "target_epsilon": target_epsilon,
+            "force": force
         },
         name=f"{dataset.name}_{generator_type}_gen",
         created_by=current_user.id
@@ -217,7 +366,8 @@ def generate_from_dataset(
     update_generator_status(db, str(generator.id), "queued")
     update_job_status(db, str(job.id), "queued")
 
-    # Dispatch to Celery
+    # Dispatch to Celery (lazy import to avoid circular import)
+    from app.tasks.generators import train_generator_task
     task = train_generator_task.delay(str(generator.id), str(job.id))
     
     # Update job with Celery task ID
@@ -306,6 +456,63 @@ def get_privacy_report(
     )
     
     return report
+
+
+@router.get("/dp/parameter-limits/{dataset_id}")
+def get_dp_parameter_limits(
+    dataset_id: str,
+    target_epsilon: float = 10.0,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get strict parameter limits for DP generators based on dataset size.
+    
+    Call this BEFORE submitting a generation request to show valid ranges in the UI.
+    
+    Returns:
+        - batch_size: min, max, recommended
+        - epochs: min, max, recommended
+        - epsilon: min, max, recommended_range
+        - auto_adjusted: If user's intended params are out of range, shows corrected values
+    """
+    from app.services.privacy.dp_config_validator import DPConfigValidator
+    
+    # Verify dataset exists
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Get dataset size
+    try:
+        df = pd.read_csv(dataset.file_path)
+        dataset_size = len(df)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not read dataset: {str(e)}")
+    
+    # Get parameter limits
+    limits = DPConfigValidator.get_parameter_limits(dataset_size, target_epsilon)
+    
+    # Get recommended config
+    recommended = DPConfigValidator.get_recommended_config(
+        dataset_size=dataset_size,
+        target_epsilon=target_epsilon,
+        desired_quality="balanced"
+    )
+    
+    return {
+        "dataset_id": dataset_id,
+        "dataset_name": dataset.name,
+        "dataset_size": dataset_size,
+        "parameter_limits": limits,
+        "recommended_config": recommended,
+        "notes": {
+            "batch_size": "Must be between min and max. Larger batches = fewer steps but harder to achieve target epsilon.",
+            "epochs": "More epochs = better model quality but consumes more privacy budget.",
+            "epsilon": "Lower = stronger privacy but lower data quality. Range 1-20 recommended for most use cases.",
+            "force": "Set force=true to proceed despite soft validation errors (not recommended)."
+        }
+    }
 
 
 @router.post("/dp/validate-config")

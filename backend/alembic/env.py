@@ -33,6 +33,7 @@ from app.evaluations.models import Evaluation
 from app.compliance.models import ComplianceReport
 from app.jobs.models import Job
 from app.audit.models import AuditLog
+from app.exports.models import Export
 
 # this is the Alembic Config object
 config = context.config
