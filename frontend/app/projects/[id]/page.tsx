@@ -46,15 +46,18 @@ const mockDatasets: Dataset[] = [
     name: "patient_records.csv",
     description: "De-identified patient clinical records",
     file_path: "/uploads/patient_records.csv",
-    format: "csv",
     size_bytes: 15400000,
     num_rows: 50000,
-    num_columns: 45,
-    schema_json: {},
-    has_header: true,
-    delimiter: ",",
+    row_count: 50000,
+    schema_data: {
+      columns: ["patient_id", "age", "diagnosis", "treatment"],
+      dtypes: { "patient_id": "string", "age": "integer", "diagnosis": "string", "treatment": "string" },
+    },
+    status: "profiled",
+    checksum: "abc123def456",
+    version: 1,
+    uploader_id: "user1",
     uploaded_at: "2024-11-15T10:30:00Z",
-    uploaded_by: "user1",
   },
   {
     id: "ds-2",
@@ -62,15 +65,18 @@ const mockDatasets: Dataset[] = [
     name: "clinical_trials.csv",
     description: "Phase III clinical trial outcomes",
     file_path: "/uploads/clinical_trials.csv",
-    format: "csv",
     size_bytes: 8200000,
     num_rows: 12000,
-    num_columns: 32,
-    schema_json: {},
-    has_header: true,
-    delimiter: ",",
+    row_count: 12000,
+    schema_data: {
+      columns: ["trial_id", "drug_name", "outcome", "participant_count"],
+      dtypes: { "trial_id": "string", "drug_name": "string", "outcome": "string", "participant_count": "integer" },
+    },
+    status: "profiled",
+    checksum: "xyz789ghi012",
+    version: 1,
+    uploader_id: "user1",
     uploaded_at: "2024-11-20T14:00:00Z",
-    uploaded_by: "user1",
   },
 ]
 
@@ -107,16 +113,8 @@ const mockEvaluations: Evaluation[] = [
   {
     id: "eval-1",
     generator_id: "gen-1",
-    real_dataset_id: "ds-1",
-    status: "completed",
-    metrics_json: {
-      statistical_similarity: 0.92,
-      ml_utility: 0.88,
-      privacy_score: 0.85,
-    },
-    created_by: "user1",
+    dataset_id: "ds-1",
     created_at: "2024-12-01T14:00:00Z",
-    updated_at: "2024-12-01T14:30:00Z",
   },
 ]
 
@@ -232,7 +230,10 @@ export default function ProjectDetailPage() {
                     {
                       key: "size",
                       header: "Size",
-                      accessor: (row: Dataset) => `${(row.size_bytes / 1024 / 1024).toFixed(1)} MB`,
+                      accessor: (row: Dataset) => 
+                        row.size_bytes 
+                          ? `${(row.size_bytes / 1024 / 1024).toFixed(1)} MB` 
+                          : "—",
                     },
                     {
                       key: "uploaded",
@@ -344,12 +345,14 @@ export default function ProjectDetailPage() {
                       ),
                     },
                     {
-                      key: "status",
-                      header: "Status",
-                      accessor: (row: Evaluation) => (
-                        <Badge variant={row.status === "completed" ? "default" : "secondary"}>
-                          {row.status}
+                      key: "risk_level",
+                      header: "Risk Level",
+                      accessor: (row: Evaluation) => row.risk_level ? (
+                        <Badge variant={row.risk_level === "low" ? "default" : row.risk_level === "medium" ? "secondary" : "destructive"}>
+                          {row.risk_level}
                         </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
                       ),
                     },
                     {

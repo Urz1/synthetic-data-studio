@@ -75,6 +75,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Datasets", href: "/datasets", icon: Database, description: "Upload & manage data" },
       { label: "Generators", href: "/generators", icon: Zap, description: "Train synthetic models" },
+      { label: "Synthetic Datasets", href: "/synthetic-datasets", icon: Boxes, description: "Generated outputs" },
       { label: "Schema Generator", href: "/generators/schema", icon: Code, description: "No training needed" },
     ],
   },

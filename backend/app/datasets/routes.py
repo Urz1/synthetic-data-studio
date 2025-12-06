@@ -16,6 +16,8 @@ import pandas as pd
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlmodel import Session
+from sqlmodel import select
+
 
 # Local - Core
 from app.core.dependencies import get_db, get_current_user
@@ -82,7 +84,10 @@ def list_datasets(
     current_user = Depends(get_current_user)
 ) -> list[Dataset]:
     """List all datasets for the current user."""
-    return get_all_datasets(db)
+    # SECURITY: Filter to only return datasets uploaded by current user
+    statement = select(Dataset).where(Dataset.uploader_id == current_user.id)
+    datasets = db.exec(statement).all()
+    return datasets
 
 
 @router.get("/{dataset_id}")

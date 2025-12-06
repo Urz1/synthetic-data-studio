@@ -2,17 +2,18 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 
 function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { completeOAuthLogin } = useAuth()
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [error, setError] = useState<string>("")
 
   useEffect(() => {
-    const code = searchParams.get("code")
-    const state = searchParams.get("state")
+    // Get token from URL params (backend redirects here with token)
+    const token = searchParams.get("token")
     const errorParam = searchParams.get("error")
 
     if (errorParam) {
@@ -21,27 +22,29 @@ function CallbackContent() {
       return
     }
 
-    if (!code || !state) {
+    if (!token) {
       setStatus("error")
-      setError("Invalid callback parameters")
+      setError("No authentication token received")
       return
     }
 
-    api
-      .handleGoogleCallback(code, state)
+    // Complete OAuth login
+    completeOAuthLogin(token)
       .then(() => {
         setStatus("success")
-        setTimeout(() => router.push("/dashboard"), 1000)
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 500)
       })
       .catch((err) => {
         setStatus("error")
-        setError(err.message || "Authentication failed")
+        setError(err.message || "Failed to complete login")
       })
-  }, [searchParams, router])
+  }, [searchParams, router, completeOAuthLogin])
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">
-      <p>Authenticating...</p>
+      <p>Completing sign in...</p>
     </div>
   }
 
@@ -53,7 +56,7 @@ function CallbackContent() {
   }
 
   return <div className="flex min-h-screen items-center justify-center">
-    <p>Success! Redirecting...</p>
+    <p>Success! Redirecting to dashboard...</p>
   </div>
 }
 

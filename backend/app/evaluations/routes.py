@@ -15,6 +15,7 @@ from typing import Optional, List, Dict, Any
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlmodel import select
 
 # Local - Core
 from app.core.dependencies import get_db, get_current_user
@@ -25,6 +26,9 @@ from app.datasets.repositories import get_dataset_by_id
 from app.generators.repositories import get_generator_by_id
 from app.services.llm.report_translator import ReportTranslator
 from app.services.risk import RiskAssessor
+from .models import Evaluation
+from app.generators.models import Generator
+
 
 # Local - Module
 from .quality_report import QualityReportGenerator
@@ -61,6 +65,38 @@ def sanitize_json_floats(obj):
     elif isinstance(obj, list):
         return [sanitize_json_floats(v) for v in obj]
     return obj
+
+
+@router.get("/", response_model=List[EvaluationResponse])
+def list_evaluations(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> List[EvaluationResponse]:
+    """
+    List all evaluations for the current user.
+    
+    Returns evaluations where the user created the generator being evaluated.
+    """
+ 
+    
+    # Join evaluations with generators to filter by generator owner
+    statement = (
+        select(Evaluation)
+        .join(Generator, Evaluation.generator_id == Generator.id)
+        .where(Generator.created_by == current_user.id)
+    )
+    evaluations = db.exec(statement).all()
+    
+    return [
+        EvaluationResponse(
+            evaluation_id=str(e.id),
+            generator_id=str(e.generator_id),
+            dataset_id=str(e.dataset_id),
+            status="completed",
+            report=e.report
+        )
+        for e in evaluations
+    ]
 
 
 @router.post("/run", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)

@@ -8,71 +8,39 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GeneratorCard } from "@/components/generators/generator-card"
-import { Plus, Search, Filter } from "lucide-react"
+import { Plus, Search, Filter, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { api } from "@/lib/api"
 import type { Generator } from "@/lib/types"
-
-// Mock data
-const mockGenerators: Generator[] = [
-  {
-    id: "1",
-    dataset_id: "d1",
-    name: "Patient Records Generator",
-    type: "dp-ctgan",
-    status: "completed",
-    parameters_json: { epochs: 300, batch_size: 500 },
-    privacy_config: { use_differential_privacy: true, target_epsilon: 10.0, target_delta: 1e-5 },
-    privacy_spent: { epsilon: 8.7, delta: 9.8e-6 },
-    training_metadata: { duration_seconds: 342, final_loss: 0.023 },
-    created_by: "user1",
-    created_at: "2024-12-10T10:00:00Z",
-    updated_at: "2024-12-10T12:00:00Z",
-  },
-  {
-    id: "2",
-    dataset_id: "d2",
-    name: "Financial Transactions",
-    type: "ctgan",
-    status: "training",
-    parameters_json: { epochs: 500, batch_size: 256 },
-    created_by: "user1",
-    created_at: "2024-12-14T08:00:00Z",
-    updated_at: "2024-12-14T08:30:00Z",
-  },
-  {
-    id: "3",
-    dataset_id: "d3",
-    name: "Customer Demographics",
-    type: "dp-tvae",
-    status: "completed",
-    parameters_json: { epochs: 200, batch_size: 128 },
-    privacy_config: { use_differential_privacy: true, target_epsilon: 5.0, target_delta: 1e-6 },
-    privacy_spent: { epsilon: 4.8, delta: 9.5e-7 },
-    training_metadata: { duration_seconds: 180, final_loss: 0.018 },
-    created_by: "user1",
-    created_at: "2024-12-12T14:00:00Z",
-    updated_at: "2024-12-12T15:30:00Z",
-  },
-  {
-    id: "4",
-    dataset_id: "d1",
-    name: "Time Series Test",
-    type: "timegan",
-    status: "failed",
-    parameters_json: { epochs: 100, batch_size: 64 },
-    created_by: "user1",
-    created_at: "2024-12-13T09:00:00Z",
-    updated_at: "2024-12-13T09:30:00Z",
-  },
-]
 
 export default function GeneratorsPage() {
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [modelFilter, setModelFilter] = React.useState<string>("all")
+  const [generators, setGenerators] = React.useState<Generator[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
   const { user } = useAuth()
 
-  const filteredGenerators = mockGenerators.filter((gen) => {
+  React.useEffect(() => {
+    loadGenerators()
+  }, [])
+
+  async function loadGenerators() {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await api.listGenerators()
+      setGenerators(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load generators")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredGenerators = generators.filter((gen) => {
     const matchesSearch = gen.name.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === "all" || gen.status === statusFilter
     const matchesModel = modelFilter === "all" || gen.type === modelFilter
@@ -94,8 +62,20 @@ export default function GeneratorsPage() {
         }
       />
 
-      {/* Filters */}
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center">
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -158,6 +138,8 @@ export default function GeneratorsPage() {
             </Button>
           )}
         </div>
+      )}
+      </>
       )}
     </AppShell>
   )

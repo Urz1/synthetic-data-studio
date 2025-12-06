@@ -203,11 +203,15 @@ export interface SyntheticDataset {
 }
 
 export interface Evaluation {
+  status: string;
   id: string;
   generator_id: string;
   dataset_id: string;
-  status: "pending" | "running" | "completed" | "failed";
   report?: EvaluationReport;
+  insights?: Record<string, any>;
+  risk_score?: number;
+  risk_level?: "low" | "medium" | "high";
+  risk_details?: Record<string, any>;
   created_at: string;
 }
 

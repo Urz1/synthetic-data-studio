@@ -234,12 +234,16 @@ async def google_callback(
     # Generate JWT token
     jwt_token = create_access_token(data={"sub": user.email})
     
-    return OAuthCallbackResponse(
-        access_token=jwt_token,
-        token_type="bearer",
-        user=UserResponse.model_validate(user),
-        is_new_user=is_new
-    )
+    # Redirect to frontend callback with token
+    from urllib.parse import urlencode
+    params = urlencode({
+        "token": jwt_token,
+        "user_id": str(user.id),
+        "email": user.email,
+        "is_new": str(is_new).lower()
+    })
+    redirect_url = f"{settings.frontend_url}/auth/google/callback?{params}"
+    return RedirectResponse(url=redirect_url)
 
 
 # --- GitHub OAuth ---
@@ -344,12 +348,16 @@ async def github_callback(
     # Generate JWT token
     jwt_token = create_access_token(data={"sub": user.email})
     
-    return OAuthCallbackResponse(
-        access_token=jwt_token,
-        token_type="bearer",
-        user=UserResponse.model_validate(user),
-        is_new_user=is_new
-    )
+    # Redirect to frontend callback with token
+    from urllib.parse import urlencode
+    params = urlencode({
+        "token": jwt_token,
+        "user_id": str(user.id),
+        "email": user.email,
+        "is_new": str(is_new).lower()
+    })
+    redirect_url = f"{settings.frontend_url}/auth/github/callback?{params}"
+    return RedirectResponse(url=redirect_url)
 
 
 # ============================================================================

@@ -14,6 +14,8 @@ from typing import Optional, Dict, Any
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlmodel import Session
+from sqlmodel import select
+
 
 # Local - Core
 from app.core.config import settings
@@ -90,8 +92,11 @@ def list_generators(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> list[GeneratorResponse]:
-    """List all generators."""
-    return get_generators(db)
+    """List all generators for the current user."""
+    # SECURITY: Filter to only return generators created by current user
+    statement = select(Generator).where(Generator.created_by == current_user.id)
+    generators = db.exec(statement).all()
+    return generators
 
 
 @router.get("/{generator_id}", response_model=GeneratorResponse)

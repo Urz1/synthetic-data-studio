@@ -6,9 +6,10 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, FolderOpen, Database, Zap, FileBarChart, MoreVertical, Calendar, Loader2, AlertCircle } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Plus, Search, FolderOpen, Database, Zap, FileBarChart, MoreVertical, Calendar, Loader2, AlertCircle, Trash2 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
@@ -20,6 +21,9 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadProjects()
@@ -42,6 +46,22 @@ export default function ProjectsPage() {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  async function handleDelete() {
+    if (!projectToDelete) return
+    
+    setDeleting(true)
+    try {
+      await api.deleteProject(projectToDelete.id)
+      await loadProjects() // Reload list
+      setDeleteDialogOpen(false)
+      setProjectToDelete(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete project")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <AppShell user={user || { full_name: "", email: "" }}>
@@ -113,10 +133,22 @@ export default function ProjectsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/projects/${project.id}`}>View</Link>
+                        <Link href={`/projects/${project.id}`}>View Details</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem className="text-risk">Delete</DropdownMenuItem>
+                      <DropdownMenuItem disabled>
+                        Edit (Coming Soon)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => {
+                          setProjectToDelete(project)
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Project
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -150,6 +182,37 @@ export default function ProjectsPage() {
           </Link>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{projectToDelete?.name}</strong>?
+              This will permanently delete all datasets, generators, and evaluations in this project.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Project"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   )
 }

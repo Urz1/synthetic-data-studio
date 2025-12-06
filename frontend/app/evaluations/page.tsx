@@ -8,89 +8,46 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { EvaluationCard } from "@/components/evaluations/evaluation-card"
-import { Plus, Search, Filter } from "lucide-react"
+import { Plus, Search, Filter, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { api } from "@/lib/api"
 import type { Evaluation } from "@/lib/types"
-
-// Mock data
-const mockEvaluations: Evaluation[] = [
-  {
-    id: "e1",
-    generator_id: "g1",
-    dataset_id: "d1",
-    status: "completed",
-    report: {
-      statistical_similarity: {
-        overall_score: 0.92,
-        column_scores: {},
-        correlation_difference: 0.03,
-      },
-      ml_utility: {
-        train_on_synthetic_test_on_real: { accuracy: 0.84, f1: 0.82 },
-        train_on_real_test_on_real: { accuracy: 0.87, f1: 0.85 },
-        utility_preservation: 0.96,
-      },
-      privacy: {
-        membership_inference_auc: 0.52,
-        attribute_inference_accuracy: 0.48,
-        nearest_neighbor_distance: { min: 2.3, mean: 15.7, std: 8.2 },
-        privacy_risk: "low",
-      },
-      overall_quality_score: 0.89,
-      recommendations: ["High quality synthetic data suitable for analytics"],
-    },
-    created_at: "2024-12-14T10:00:00Z",
-  },
-  {
-    id: "e2",
-    generator_id: "g2",
-    dataset_id: "d2",
-    status: "completed",
-    report: {
-      statistical_similarity: {
-        overall_score: 0.78,
-        column_scores: {},
-        correlation_difference: 0.08,
-      },
-      ml_utility: {
-        train_on_synthetic_test_on_real: { accuracy: 0.72, f1: 0.7 },
-        train_on_real_test_on_real: { accuracy: 0.87, f1: 0.85 },
-        utility_preservation: 0.82,
-      },
-      privacy: {
-        membership_inference_auc: 0.58,
-        attribute_inference_accuracy: 0.55,
-        nearest_neighbor_distance: { min: 1.8, mean: 12.3, std: 6.1 },
-        privacy_risk: "medium",
-      },
-      overall_quality_score: 0.72,
-      recommendations: ["Consider increasing training epochs"],
-    },
-    created_at: "2024-12-13T14:00:00Z",
-  },
-  {
-    id: "e3",
-    generator_id: "g3",
-    dataset_id: "d3",
-    status: "running",
-    created_at: "2024-12-15T09:00:00Z",
-  },
-]
-
-const mockGeneratorNames: Record<string, string> = {
-  g1: "Patient Records Generator",
-  g2: "Financial Transactions",
-  g3: "Customer Demographics",
-}
 
 export default function EvaluationsPage() {
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
   const { user } = useAuth()
 
-  const filteredEvaluations = mockEvaluations.filter((evaluation) => {
-    const generatorName = mockGeneratorNames[evaluation.generator_id] || ""
-    const matchesSearch = generatorName.toLowerCase().includes(search.toLowerCase())
+  React.useEffect(() => {
+    loadEvaluations()
+  }, [])
+
+  async function loadEvaluations() {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await api.listEvaluations()
+
+      if (Array.isArray(data)) {
+        setEvaluations(data as Evaluation[])
+      } else if (data && Array.isArray((data as any).evaluations)) {
+        setEvaluations((data as any).evaluations as Evaluation[])
+      } else {
+        setEvaluations([])
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load evaluations")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredEvaluations = evaluations.filter((evaluation) => {
+    const matchesSearch = evaluation.generator_id?.toLowerCase().includes(search.toLowerCase()) || false
     const matchesStatus = statusFilter === "all" || evaluation.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -110,8 +67,20 @@ export default function EvaluationsPage() {
         }
       />
 
-      {/* Filters */}
-      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center">
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -145,7 +114,6 @@ export default function EvaluationsPage() {
             <EvaluationCard
               key={evaluation.id}
               evaluation={evaluation}
-              generatorName={mockGeneratorNames[evaluation.generator_id]}
             />
           ))}
         </div>
@@ -163,6 +131,9 @@ export default function EvaluationsPage() {
             </Button>
           )}
         </div>
+       
+      )}
+      </>
       )}
     </AppShell>
   )
