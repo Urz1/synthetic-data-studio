@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { api } from "@/lib/api"
 
 export default function NewProjectPage() {
   const router = useRouter()
@@ -23,9 +24,18 @@ export default function NewProjectPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    router.push("/projects")
+    try {
+      await api.createProject({
+        name,
+        description: description || undefined,
+        default_retention_days: parseInt(retention, 10),
+      })
+      router.push("/projects")
+    } catch (err) {
+      console.error("Failed to create project:", err)
+      alert(err instanceof Error ? err.message : "Failed to create project")
+      setIsSubmitting(false)
+    }
   }
 
   return (

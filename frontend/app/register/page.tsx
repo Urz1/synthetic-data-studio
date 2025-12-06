@@ -119,14 +119,18 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full min-h-[44px] cursor-pointer" 
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
+                    Creating Account...
                   </>
                 ) : (
-                  "Create account"
+                  "Create Account"
                 )}
               </Button>
 
@@ -146,6 +150,7 @@ export default function RegisterPage() {
                   type="button" 
                   variant="outline" 
                   disabled={loading}
+                  className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200 min-h-[44px]"
                   onClick={() => {
                     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`
                   }}
@@ -174,6 +179,7 @@ export default function RegisterPage() {
                   type="button" 
                   variant="outline" 
                   disabled={loading}
+                  className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200 min-h-[44px]"
                   onClick={() => {
                     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github`
                   }}

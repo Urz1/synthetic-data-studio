@@ -91,14 +91,18 @@ export default function LoginPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full min-h-[44px] cursor-pointer" 
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Signing In...
                   </>
                 ) : (
-                  "Sign in"
+                  "Sign In"
                 )}
               </Button>
 
@@ -118,8 +122,8 @@ export default function LoginPage() {
                   type="button" 
                   variant="outline" 
                   disabled={loading}
+                  className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200"
                   onClick={() => {
-                    // OAuth flow would be implemented here
                     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`
                   }}
                 >
@@ -147,8 +151,8 @@ export default function LoginPage() {
                   type="button" 
                   variant="outline" 
                   disabled={loading}
+                  className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200"
                   onClick={() => {
-                    // OAuth flow would be implemented here
                     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github`
                   }}
                 >

@@ -14,6 +14,7 @@ import type {
   ModelType,
   PrivacyConfig,
   OAuthProvider,
+  OAuthCallbackResponse,
   PiiDetectionEnhancedResult,
   SchemaGeneratorConfig,
   ComplianceReport,
@@ -158,6 +159,58 @@ class ApiClient {
 
   async listOAuthProviders(): Promise<{ providers: OAuthProvider[] }> {
     return this.request("/auth/providers");
+  }
+
+  async handleGoogleCallback(
+    code: string,
+    state: string
+  ): Promise<OAuthCallbackResponse> {
+    const params = new URLSearchParams({ code, state });
+    const response = await fetch(`${API_BASE}/auth/google/callback?${params}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ detail: "OAuth callback failed" }));
+      throw new Error(
+        typeof error.detail === "string"
+          ? error.detail
+          : "OAuth authentication failed"
+      );
+    }
+
+    const data = await response.json();
+    this.setToken(data.access_token);
+    return data;
+  }
+
+  async handleGitHubCallback(
+    code: string,
+    state: string
+  ): Promise<OAuthCallbackResponse> {
+    const params = new URLSearchParams({ code, state });
+    const response = await fetch(`${API_BASE}/auth/github/callback?${params}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ detail: "OAuth callback failed" }));
+      throw new Error(
+        typeof error.detail === "string"
+          ? error.detail
+          : "OAuth authentication failed"
+      );
+    }
+
+    const data = await response.json();
+    this.setToken(data.access_token);
+    return data;
   }
 
   // Projects

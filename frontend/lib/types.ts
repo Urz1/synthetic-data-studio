@@ -19,6 +19,13 @@ export interface OAuthProvider {
   auth_url: string | null;
 }
 
+export interface OAuthCallbackResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+  is_new_user: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
