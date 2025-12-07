@@ -175,6 +175,7 @@ def google_login():
 
 @router.get(
     "/google/callback",
+    response_model=OAuthCallbackResponse,
     summary="Google OAuth callback",
     description="Handle Google OAuth callback and create/login user"
 )
@@ -230,19 +231,20 @@ async def google_callback(
     # Find or create user
     user, is_new = await _find_or_create_oauth_user(db, user_info)
     
-    # Generate JWT token
-    jwt_token = create_access_token(data={"sub": user.email})
-    
-    # Redirect to frontend callback with token
-    from urllib.parse import urlencode
-    params = urlencode({
-        "token": jwt_token,
-        "user_id": str(user.id),
-        "email": user.email,
-        "is_new": str(is_new).lower()
+    # Generate JWT token with user ID and role
+    jwt_token = create_access_token(data={
+        "sub": user.email,
+        "uid": str(user.id),
+        "role": user.role
     })
-    redirect_url = f"{settings.frontend_url}/auth/google/callback?{params}"
-    return RedirectResponse(url=redirect_url)
+    
+    # Return JSON with complete user object
+    return OAuthCallbackResponse(
+        access_token=jwt_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
+        is_new_user=is_new
+    )
 
 
 # --- GitHub OAuth ---
@@ -275,6 +277,7 @@ def github_login():
 
 @router.get(
     "/github/callback",
+    response_model=OAuthCallbackResponse,
     summary="GitHub OAuth callback",
     description="Handle GitHub OAuth callback and create/login user"
 )
@@ -343,19 +346,20 @@ async def github_callback(
     # Find or create user
     user, is_new = await _find_or_create_oauth_user(db, user_info)
     
-    # Generate JWT token
-    jwt_token = create_access_token(data={"sub": user.email})
-    
-    # Redirect to frontend callback with token
-    from urllib.parse import urlencode
-    params = urlencode({
-        "token": jwt_token,
-        "user_id": str(user.id),
-        "email": user.email,
-        "is_new": str(is_new).lower()
+    # Generate JWT token with user ID and role
+    jwt_token = create_access_token(data={
+        "sub": user.email,
+        "uid": str(user.id),
+        "role": user.role
     })
-    redirect_url = f"{settings.frontend_url}/auth/github/callback?{params}"
-    return RedirectResponse(url=redirect_url)
+    
+    # Return JSON with complete user object
+    return OAuthCallbackResponse(
+        access_token=jwt_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
+        is_new_user=is_new
+    )
 
 
 # ============================================================================

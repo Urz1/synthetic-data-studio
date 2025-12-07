@@ -7,28 +7,46 @@ import { useAuth } from "@/lib/auth-context"
 function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { completeOAuthLogin } = useAuth()
-  const token = searchParams.get("token")
+  const code = searchParams.get("code")
+  const state = searchParams.get("state")
   const errorParam = searchParams.get("error")
 
   const derivedError = useMemo(() => {
     if (errorParam) return errorParam === "access_denied" ? "You cancelled the login" : errorParam
-    if (!token) return "No authentication token received"
+    if (!code) return "No authorization code received"
     return ""
-  }, [errorParam, token])
+  }, [errorParam, code])
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading")
   const [error, setError] = useState<string>(derivedError)
 
   useEffect(() => {
-    if (derivedError || !token) return
+    if (derivedError || !code) return
 
-    // Complete OAuth login
+    // Fetch OAuth token from backend
     let cancelled = false
 
     const run = async () => {
       try {
-        await completeOAuthLogin(token)
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'
+        const response = await fetch(`${apiUrl}/auth/google/callback?code=${code}&state=${state || ''}`)
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || "OAuth authentication failed")
+        }
+        
+        const data = await response.json()
+        const { access_token, user } = data
+        
+        if (!access_token) {
+          throw new Error("No access token received from server")
+        }
+
+        // Store token and user data
+        localStorage.setItem("token", access_token)
+        localStorage.setItem("user", JSON.stringify(user))
+        
         if (cancelled) return
         setStatus("success")
         // Use window.location for clean redirect after OAuth
@@ -45,7 +63,7 @@ function CallbackContent() {
     return () => {
       cancelled = true
     }
-  }, [derivedError, token, completeOAuthLogin, router])
+  }, [derivedError, code, state, router])
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">
