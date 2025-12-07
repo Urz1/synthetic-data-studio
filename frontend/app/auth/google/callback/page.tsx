@@ -7,44 +7,43 @@ import { useAuth } from "@/lib/auth-context"
 function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const code = searchParams.get("code")
-  const state = searchParams.get("state")
+  const token = searchParams.get("token")
   const errorParam = searchParams.get("error")
 
   const derivedError = useMemo(() => {
     if (errorParam) return errorParam === "access_denied" ? "You cancelled the login" : errorParam
-    if (!code) return "No authorization code received"
+    if (!token) return "No authentication token received"
     return ""
-  }, [errorParam, code])
+  }, [errorParam, token])
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading")
   const [error, setError] = useState<string>(derivedError)
 
   useEffect(() => {
-    if (derivedError || !code) return
+    if (derivedError || !token) return
 
-    // Fetch OAuth token from backend
+    // Backend already validated and sent token in URL
     let cancelled = false
 
     const run = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'
-        const response = await fetch(`${apiUrl}/auth/google/callback?code=${code}&state=${state || ''}`)
+        // Extract user data from URL params
+        const userId = searchParams.get("user_id")
+        const email = searchParams.get("email")
+        const name = searchParams.get("name")
+        const avatarUrl = searchParams.get("avatar_url")
+        const role = searchParams.get("role")
         
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.detail || "OAuth authentication failed")
-        }
-        
-        const data = await response.json()
-        const { access_token, user } = data
-        
-        if (!access_token) {
-          throw new Error("No access token received from server")
+        const user = {
+          id: userId,
+          email: email,
+          name: name,
+          avatar_url: avatarUrl,
+          role: role
         }
 
         // Store token and user data
-        localStorage.setItem("token", access_token)
+        localStorage.setItem("token", token)
         localStorage.setItem("user", JSON.stringify(user))
         
         if (cancelled) return
@@ -63,7 +62,7 @@ function CallbackContent() {
     return () => {
       cancelled = true
     }
-  }, [derivedError, code, state, router])
+  }, [derivedError, token, searchParams, router])
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">

@@ -7,15 +7,14 @@ import { useAuth } from "@/lib/auth-context"
 function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const code = searchParams.get("code")
-  const state = searchParams.get("state")
+  const token = searchParams.get("token")
   const errorParam = searchParams.get("error")
 
   const derivedError = useMemo(() => {
     if (errorParam) return errorParam === "access_denied" ? "You cancelled the authorization" : errorParam
-    if (!code) return "No authorization code received"
+    if (!token) return "No authentication token received"
     return ""
-  }, [errorParam, code])
+  }, [errorParam, token])
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading")
   const [error, setError] = useState<string>(derivedError)
@@ -28,8 +27,7 @@ function CallbackContent() {
 
     const run = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'
-        const response = await fetch(`${apiUrl}/auth/github/callback?code=${code}&state=${state || ''}`)
+        const response = await fetch(`/api/auth/github/callback?code=${code}&state=${state || ''})
         
         if (!response.ok) {
           const errorData = await response.json()

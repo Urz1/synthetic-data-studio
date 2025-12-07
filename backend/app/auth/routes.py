@@ -175,7 +175,6 @@ def google_login():
 
 @router.get(
     "/google/callback",
-    response_model=OAuthCallbackResponse,
     summary="Google OAuth callback",
     description="Handle Google OAuth callback and create/login user"
 )
@@ -277,7 +276,6 @@ def github_login():
 
 @router.get(
     "/github/callback",
-    response_model=OAuthCallbackResponse,
     summary="GitHub OAuth callback",
     description="Handle GitHub OAuth callback and create/login user"
 )
