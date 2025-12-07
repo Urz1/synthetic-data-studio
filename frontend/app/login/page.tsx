@@ -124,7 +124,9 @@ export default function LoginPage() {
                   disabled={loading}
                   className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200"
                   onClick={() => {
-                    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'
+                    console.log('OAuth Google URL:', `${apiUrl}/auth/google`)
+                    window.location.href = `${apiUrl}/auth/google`
                   }}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
@@ -153,7 +155,9 @@ export default function LoginPage() {
                   disabled={loading}
                   className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200"
                   onClick={() => {
-                    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github`
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'
+                    console.log('OAuth GitHub URL:', `${apiUrl}/auth/github`)
+                    window.location.href = `${apiUrl}/auth/github`
                   }}
                 >
                   <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">

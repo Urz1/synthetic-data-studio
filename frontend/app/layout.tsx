@@ -51,8 +51,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         {/* STRATEGY 3: Kill the handshake wait */}
-        <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'} crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'} />
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio'} />
         
         {/* Preconnect to CDN (when using assetPrefix) */}
         {process.env.NEXT_PUBLIC_CDN_URL && (

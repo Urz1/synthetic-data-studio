@@ -65,7 +65,7 @@ class Settings:
                     print("")
                     print("To fix: Set ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com")
                     print("="*60 + "\n")
-                    self.allowed_origins = ["http://localhost:3000", "http://localhost:8000"]
+                    self.allowed_origins = ["http://localhost:3000", "http://localhost:8000","https://synthdata.studio"]
                 else:
                     self.allowed_origins = [origin.strip() for origin in origins_env.split(",")]
 

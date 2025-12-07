@@ -29,10 +29,12 @@ const nextConfig = {
   // assetPrefix: process.env.NODE_ENV === 'production' ? 'https://cdn.yourdomain.com' : '',
 
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://synthdata.studio';
+    console.log('API URL for rewrites:', apiUrl);
     return [
       {
         source: '/api/:path*',
-        destination: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/:path*',
+        destination: `${apiUrl}/:path*`,
       },
     ];
   },
