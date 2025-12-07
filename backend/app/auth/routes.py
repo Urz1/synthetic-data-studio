@@ -237,13 +237,19 @@ async def google_callback(
         "role": user.role
     })
     
-    # Return JSON with complete user object
-    return OAuthCallbackResponse(
-        access_token=jwt_token,
-        token_type="bearer",
-        user=UserResponse.model_validate(user),
-        is_new_user=is_new
-    )
+    # Redirect to frontend with token and user data in URL params
+    from urllib.parse import urlencode
+    params = urlencode({
+        "token": jwt_token,
+        "user_id": str(user.id),
+        "email": user.email,
+        "name": user.name or "",
+        "avatar_url": user.avatar_url or "",
+        "role": user.role,
+        "is_new": str(is_new).lower()
+    })
+    frontend_callback = f"{settings.frontend_url}/auth/google/callback?{params}"
+    return RedirectResponse(url=frontend_callback)
 
 
 # --- GitHub OAuth ---
@@ -351,13 +357,19 @@ async def github_callback(
         "role": user.role
     })
     
-    # Return JSON with complete user object
-    return OAuthCallbackResponse(
-        access_token=jwt_token,
-        token_type="bearer",
-        user=UserResponse.model_validate(user),
-        is_new_user=is_new
-    )
+    # Redirect to frontend with token and user data in URL params
+    from urllib.parse import urlencode
+    params = urlencode({
+        "token": jwt_token,
+        "user_id": str(user.id),
+        "email": user.email,
+        "name": user.name or "",
+        "avatar_url": user.avatar_url or "",
+        "role": user.role,
+        "is_new": str(is_new).lower()
+    })
+    frontend_callback = f"{settings.frontend_url}/auth/github/callback?{params}"
+    return RedirectResponse(url=frontend_callback)
 
 
 # ============================================================================
