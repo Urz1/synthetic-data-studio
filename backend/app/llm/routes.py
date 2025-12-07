@@ -11,9 +11,11 @@ Interactive chat interface for evaluation exploration.
 import logging
 import uuid
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 # Third-party
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 # Local - Core
@@ -49,13 +51,79 @@ router = APIRouter(prefix="/llm", tags=["llm"])
 # ENDPOINTS
 # ============================================================================
 
+@router.post("/chat/stream")
+@router.post("/chat/stream/")
+async def chat_stream(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Interactive chat with streaming response"""
+    logger.info(f"Chat stream request: {request.message[:50]}...")
+    
+    # Build context from evaluation or generator
+    context = {}
+    
+    if request.evaluation_id:
+        validate_uuid(request.evaluation_id, "evaluation_id")
+        evaluation = evaluations_repo.get_evaluation(db, request.evaluation_id)
+        if not evaluation:
+            raise HTTPException(status_code=404, detail="Evaluation not found")
+        
+        context["evaluation_id"] = str(evaluation.id)
+        context["evaluation"] = evaluation.report
+        context["generator_id"] = str(evaluation.generator_id)
+        
+        # Get generator info
+        generator = generators_repo.get_generator_by_id(db, str(evaluation.generator_id))
+        if generator:
+            context["generator_type"] = generator.type
+    
+    elif request.generator_id:
+        validate_uuid(request.generator_id, "generator_id")
+        generator = generators_repo.get_generator_by_id(db, request.generator_id)
+        if not generator:
+            raise HTTPException(status_code=404, detail="Generator not found")
+        
+        context["generator_id"] = str(generator.id)
+        context["generator_type"] = generator.type
+    
+    try:
+        chat_service = ChatService()
+        
+        async def event_generator():
+            async for chunk in chat_service.chat_stream(
+                message=request.message,
+                context=context,
+                history=request.history
+            ):
+                yield f"data: {chunk}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
+        )
+    
+    except Exception as e:
+        logger.error(f"Chat stream failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat stream failed: {str(e)}"
+        )
+
+
 @router.post("/chat", response_model=ChatResponse)
+@router.post("/chat/", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> ChatResponse:
-    """Interactive chat for evaluation exploration"""
+    """Interactive chat for evaluation exploration (non-streaming)"""
     logger.info(f"Chat request: {request.message[:50]}...")
     
     # Build context from evaluation or generator
@@ -110,6 +178,7 @@ async def chat(
 
 
 @router.post("/suggest-improvements/{evaluation_id}")
+@router.post("/suggest-improvements/{evaluation_id}/")
 async def suggest_improvements(
     evaluation_id: str,
     db: Session = Depends(get_db),
@@ -147,9 +216,10 @@ async def suggest_improvements(
 
 
 @router.get("/explain-metric")
+@router.get("/explain-metric/")
 async def explain_metric(
     metric_name: str,
-    metric_value: str,
+    metric_value: Optional[str] = None,
     current_user = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Get plain English explanation of a technical metric"""
@@ -179,18 +249,20 @@ async def explain_metric(
 
 
 @router.post("/generate-features")
+@router.post("/generate-features/")
 async def generate_features(
     request: FeatureGenerationRequest,
     current_user = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Generate new features based on schema using LLM."""
-    if not request.schema:
+    schema = request.data_schema
+    if not schema:
          raise HTTPException(status_code=422, detail="Schema cannot be empty")
          
     try:
         chat_service = ChatService()
         features = await chat_service.generate_features(
-            schema=request.schema,
+            schema=schema,
             context=request.context
         )
         return {"features": features}
@@ -200,6 +272,7 @@ async def generate_features(
 
 
 @router.post("/detect-pii")
+@router.post("/detect-pii/")
 async def detect_pii(
     request: PIIDetectionRequest,
     current_user = Depends(get_current_user)
@@ -225,13 +298,78 @@ async def detect_pii(
         }
 
 
+@router.get("/privacy-report/{generator_id}")
+@router.get("/privacy-report/{generator_id}/")
+async def get_privacy_report_cached(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Get cached privacy report from S3 if available, otherwise generate new one."""
+    validate_uuid(generator_id, "generator_id")
+    
+    # Check if cached version exists in S3
+    from app.exports import repositories as exports_repo
+    from app.exports.models import ExportType
+    
+    exports = exports_repo.list_exports_by_generator(db, uuid.UUID(generator_id), limit=5)
+    privacy_export = next(
+        (e for e in exports if e.export_type == ExportType.PRIVACY_REPORT.value and e.format == "pdf"),
+        None
+    )
+    
+    if privacy_export:
+        # Return cached version with download URL
+        from app.storage.s3 import get_storage_service
+        try:
+            storage = get_storage_service()
+            download_url = storage.generate_presigned_url(privacy_export.s3_key, expires_in=3600)
+            logger.info(f"✓ Returning cached privacy report from S3: {privacy_export.id}")
+            return {
+                "cached": True,
+                "export_id": str(privacy_export.id),
+                "download_url": download_url,
+                "created_at": privacy_export.created_at.isoformat(),
+                "file_size_bytes": privacy_export.file_size_bytes,
+                "message": "Using cached privacy report from S3"
+            }
+        except Exception as e:
+            logger.warning(f"Failed to get cached privacy report from S3: {e}")
+            # Fall through to generate new one
+    
+    # No cached version, generate new one
+    generator = generators_repo.get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    try:
+        writer = ComplianceWriter()
+        metadata = {
+            "type": generator.type,
+            "privacy_config": generator.privacy_config,
+            "training_metadata": generator.training_metadata
+        }
+        
+        report = await writer.generate_compliance_report(
+            generator_metadata=metadata,
+            framework="Privacy"
+        )
+        if isinstance(report, str):
+            return {"report": report, "framework": "Privacy", "cached": False}
+        return {**report, "cached": False}
+    except Exception as e:
+        logger.error(f"Privacy report generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/privacy-report")
+@router.post("/privacy-report/")
 async def privacy_report(
     request: PrivacyReportRequest,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> Dict[str, Any]:
-    """Generate a privacy compliance report."""
+    """Generate a privacy compliance report in markdown format (for JSON download)."""
     validate_uuid(request.dataset_id, "dataset_id")
     if request.generator_id:
         validate_uuid(request.generator_id, "generator_id")
@@ -246,26 +384,96 @@ async def privacy_report(
         
         # Build generator metadata
         metadata = {
+            "id": str(generator.id) if generator else None,
+            "name": generator.name if generator else "Unknown",
             "type": generator.type if generator else "Unknown",
             "privacy_config": generator.privacy_config if generator else {},
-            "training_metadata": generator.training_metadata if generator else {}
+            "training_metadata": generator.training_metadata if generator else {},
+            "status": generator.status if generator else "Unknown"
         }
         
-        # Use generate_compliance_report for privacy compliance
-        report = await writer.generate_compliance_report(
-            generator_metadata=metadata,
-            framework="Privacy"
-        )
-        # Wrap in dict if it's a string
-        if isinstance(report, str):
-            return {"report": report, "framework": "Privacy"}
-        return report
+        # Generate privacy report in markdown format
+        report_markdown = await writer.generate_privacy_report(generator_metadata=metadata)
+        
+        return {
+            "report": report_markdown,
+            "generator_id": str(generator.id) if generator else None,
+            "generator_name": generator.name if generator else "Unknown",
+            "generator_type": generator.type if generator else "Unknown",
+            "generated_at": datetime.now().isoformat()
+        }
     except Exception as e:
         logger.error(f"Privacy report generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/model-card/{generator_id}")
+@router.get("/model-card/{generator_id}/")
+async def get_model_card_cached(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Get cached model card from S3 if available, otherwise generate new one."""
+    validate_uuid(generator_id, "generator_id")
+    
+    # Check if cached version exists in S3
+    from app.exports import repositories as exports_repo
+    from app.exports.models import ExportType
+    
+    exports = exports_repo.list_exports_by_generator(db, uuid.UUID(generator_id), limit=5)
+    model_card_export = next(
+        (e for e in exports if e.export_type == ExportType.MODEL_CARD.value and e.format == "pdf"),
+        None
+    )
+    
+    if model_card_export:
+        # Return cached version with download URL
+        from app.storage.s3 import get_storage_service
+        try:
+            storage = get_storage_service()
+            download_url = storage.generate_presigned_url(model_card_export.s3_key, expires_in=3600)
+            logger.info(f"✓ Returning cached model card from S3: {model_card_export.id}")
+            return {
+                "cached": True,
+                "export_id": str(model_card_export.id),
+                "download_url": download_url,
+                "created_at": model_card_export.created_at.isoformat(),
+                "file_size_bytes": model_card_export.file_size_bytes,
+                "message": "Using cached model card from S3"
+            }
+        except Exception as e:
+            logger.warning(f"Failed to get cached model card from S3: {e}")
+            # Fall through to generate new one
+    
+    # No cached version, generate new one
+    generator = generators_repo.get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    try:
+        writer = ComplianceWriter()
+        metadata = {
+            "id": str(generator.id),
+            "name": generator.name,
+            "type": generator.type,
+            "parameters": generator.parameters_json,
+            "privacy_config": generator.privacy_config,
+            "training_metadata": generator.training_metadata,
+            "status": generator.status
+        }
+        
+        card = await writer.generate_model_card(generator_metadata=metadata)
+        if isinstance(card, str):
+            return {"model_card": card, "generator_id": str(generator.id), "cached": False}
+        return {**card, "cached": False}
+    except Exception as e:
+        logger.error(f"Model card generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/model-card")
+@router.post("/model-card/")
 async def model_card(
     request: ModelCardRequest,
     db: Session = Depends(get_db),
@@ -308,9 +516,10 @@ async def model_card(
 
 
 @router.post("/model-card/export/pdf")
+@router.post("/model-card/export/pdf/")
 async def export_model_card_pdf(
     request: ModelCardRequest,
-    save_to_s3: bool = False,
+    save_to_s3: bool = True,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -319,7 +528,7 @@ async def export_model_card_pdf(
     
     Args:
         request: Model card request with generator_id
-        save_to_s3: If True, save to S3 and return download URL instead of file
+        save_to_s3: If True (default), save to S3 and return download URL instead of file
     """
     validate_uuid(request.generator_id, "generator_id")
     
@@ -405,6 +614,7 @@ async def export_model_card_pdf(
 
 
 @router.post("/model-card/export/docx")
+@router.post("/model-card/export/docx/")
 async def export_model_card_docx(
     request: ModelCardRequest,
     save_to_s3: bool = False,
@@ -508,9 +718,10 @@ async def export_model_card_docx(
 
 
 @router.post("/privacy-report/export/pdf")
+@router.post("/privacy-report/export/pdf/")
 async def export_privacy_report_pdf(
     request: PrivacyReportRequest,
-    save_to_s3: bool = False,
+    save_to_s3: bool = True,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -519,7 +730,7 @@ async def export_privacy_report_pdf(
     
     Args:
         request: Privacy report request with dataset_id and optional generator_id
-        save_to_s3: If True, save to S3 and return download URL instead of file
+        save_to_s3: If True (default), save to S3 and return download URL instead of file
     """
     validate_uuid(request.dataset_id, "dataset_id")
     
@@ -528,22 +739,124 @@ async def export_privacy_report_pdf(
         generator = generators_repo.get_generator_by_id(db, request.generator_id)
     
     try:
-        # Generate content
+        # Generate comprehensive privacy report using LLM (markdown format)
         writer = ComplianceWriter()
         metadata = {
+            "id": str(generator.id) if generator else None,
+            "name": generator.name if generator else "Unknown",
             "type": generator.type if generator else "Unknown",
             "privacy_config": generator.privacy_config if generator else {},
-            "training_metadata": generator.training_metadata if generator else {}
+            "training_metadata": generator.training_metadata if generator else {},
+            "status": generator.status if generator else "Unknown"
         }
         
-        content = await writer.generate_compliance_report(
-            generator_metadata=metadata,
-            framework="Privacy"
-        )
-        if isinstance(content, dict):
-            content = content.get("report", "")
+        # Generate privacy report in markdown format (like model card)
+        content = await writer.generate_privacy_report(generator_metadata=metadata)
         
-        title = "Privacy Compliance Report"
+        title = f"Privacy Report: {generator.name if generator else 'Unknown Generator'}"
+        
+        if save_to_s3:
+            # Save to S3 and create export record
+            from app.services.export import report_exporter
+            from app.exports.models import ExportCreate, ExportType, ExportFormat
+            from app.exports import repositories as exports_repo
+            import uuid as uuid_lib
+            
+            pdf_bytes, s3_info = report_exporter.export_pdf_to_s3(
+                content_markdown=content,
+                title=title,
+                user_id=str(current_user.id),
+                export_type="privacy_report",
+                metadata={
+                    "dataset_id": request.dataset_id,
+                    "generator_id": request.generator_id
+                }
+            )
+            
+            # Create export record
+            export_data = ExportCreate(
+                export_type=ExportType.PRIVACY_REPORT,
+                format=ExportFormat.PDF,
+                title=title,
+                generator_id=uuid_lib.UUID(request.generator_id) if request.generator_id else None,
+                dataset_id=uuid_lib.UUID(request.dataset_id),
+                s3_key=s3_info["s3_key"],
+                s3_bucket=s3_info["s3_bucket"],
+                file_size_bytes=s3_info["file_size_bytes"],
+                metadata_json={"framework": "Privacy"}
+            )
+            export_record = exports_repo.create_export(db, export_data, current_user.id)
+            
+            return {
+                "export_id": str(export_record.id),
+                "download_url": s3_info["download_url"],
+                "filename": s3_info["filename"],
+                "file_size_bytes": s3_info["file_size_bytes"],
+                "expires_in": 3600,
+                "message": "Export saved to S3. Use download_url to retrieve."
+            }
+        else:
+            # Direct download (original behavior)
+            from app.services.export import report_exporter
+            from fastapi.responses import Response
+            
+            pdf_bytes = report_exporter.export_to_pdf(
+                content_markdown=content,
+                title=title,
+                metadata={
+                    "dataset_id": request.dataset_id,
+                    "generator_id": request.generator_id
+                }
+            )
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": "attachment; filename=privacy_report.pdf"}
+            )
+        
+    except Exception as e:
+        logger.error(f"PDF export failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/privacy-report/export/docx")
+@router.post("/privacy-report/export/docx/")
+async def export_privacy_report_docx(
+    request: PrivacyReportRequest,
+    save_to_s3: bool = True,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Export privacy report as DOCX.
+    
+    Args:
+        request: Privacy report request with dataset_id and optional generator_id
+        save_to_s3: If True (default), save to S3 and return download URL instead of file
+    """
+    validate_uuid(request.dataset_id, "dataset_id")
+    
+    generator = None
+    if request.generator_id:
+        generator = generators_repo.get_generator_by_id(db, request.generator_id)
+    
+    try:
+        # Generate comprehensive privacy report using LLM (markdown format)
+        writer = ComplianceWriter()
+        metadata = {
+            "id": str(generator.id) if generator else None,
+            "name": generator.name if generator else "Unknown",
+            "type": generator.type if generator else "Unknown",
+            "privacy_config": generator.privacy_config if generator else {},
+            "training_metadata": generator.training_metadata if generator else {},
+            "status": generator.status if generator else "Unknown"
+        }
+        
+        # Generate privacy report in markdown format (like model card)
+        content = await writer.generate_privacy_report(generator_metadata=metadata)
+        
+        title = f"Privacy Report: {generator.name if generator else 'Unknown Generator'}"
         
         if save_to_s3:
             # Save to S3 and create export record

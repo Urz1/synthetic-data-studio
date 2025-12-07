@@ -7,39 +7,25 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, ArrowLeft, RefreshCw, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react"
+import { Sparkles, ArrowLeft, RefreshCw, Loader2, AlertTriangle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import Link from "next/link"
+import { api } from "@/lib/api"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock explanation data
-const mockExplanation = {
-  evaluation_id: "eval-123",
-  dataset_name: "Synthetic Patient Data V1",
-  overall_score: 0.88,
-  summary: "The synthetic dataset demonstrates high fidelity to the original data, with strong statistical similarity (KS-Test: 0.92). Privacy guarantees are robust (ε=8.2), though there is a slight trade-off in correlation retention for complex feature interactions.",
-  key_insights: [
-    {
-      title: "Strong Distribution Matching",
-      description: "Univariate distributions for 'age', 'income', and 'diagnosis' match the original data with >95% accuracy.",
-      sentiment: "positive"
-    },
-    {
-      title: "Privacy-Utility Balance",
-      description: "The model successfully suppresses outliers while maintaining general trends, effectively mitigating re-identification risks.",
-      sentiment: "positive"
-    },
-    {
-      title: "Correlation Drift",
-      description: "Correlations between 'medication' and 'side_effects' are weaker in the synthetic data (0.65 vs 0.82 original). This is expected due to the differential privacy noise injection.",
-      sentiment: "neutral"
-    }
-  ],
-  recommendations: [
-    "Consider increasing the training epochs to improve correlation capture.",
-    "If privacy budget allows, relax the epsilon constraint slightly to 9.0 for better utility.",
-    "Validate the downstream ML performance on a specific classification task."
-  ]
+interface Explanation {
+  evaluation_id: string
+  explanation?: string
+  key_findings?: string[]
+  concerns?: string[]
+  recommendations?: string[]
+  _metadata?: {
+    provider: string
+    model: string
+    tokens_used: number
+  }
 }
 
 export default function EvaluationExplainPage() {
@@ -47,24 +33,50 @@ export default function EvaluationExplainPage() {
   const params = useParams()
   const evaluationId = params?.id as string
   const [loading, setLoading] = useState(true)
-  const [explanation, setExplanation] = useState<typeof mockExplanation | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [explanation, setExplanation] = useState<Explanation | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setExplanation(mockExplanation)
-      setLoading(false)
-    }, 1500)
-    return () => clearTimeout(timer)
-  }, [])
+    if (evaluationId) {
+      loadExplanation()
+    }
+  }, [evaluationId])
 
-  const handleRegenerate = () => {
-    setLoading(true)
-    setExplanation(null)
-    setTimeout(() => {
-      setExplanation(mockExplanation)
+  async function loadExplanation() {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await api.explainEvaluation(evaluationId)
+      setExplanation(data as Explanation)
+    } catch (err) {
+      console.error("Failed to load explanation:", err)
+      setError(err instanceof Error ? err.message : "Failed to load explanation")
+    } finally {
       setLoading(false)
-    }, 2000)
+    }
+  }
+
+  async function handleRegenerate() {
+    try {
+      setGenerating(true)
+      setError(null)
+      const data = await api.explainEvaluation(evaluationId)
+      setExplanation(data as Explanation)
+      toast({
+        title: "Analysis Regenerated",
+        description: "New insights have been generated.",
+      })
+    } catch (err) {
+      toast({
+        title: "Regeneration Failed",
+        description: err instanceof Error ? err.message : "Failed to regenerate analysis",
+        variant: "destructive",
+      })
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -81,28 +93,33 @@ export default function EvaluationExplainPage() {
                   Back to Evaluation
                 </Link>
               </Button>
-              <Button onClick={handleRegenerate} disabled={loading}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Regenerate Analysis
+              <Button onClick={handleRegenerate} disabled={loading || generating}>
+                {generating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Regenerate Analysis
+                  </>
+                )}
               </Button>
             </div>
           }
         />
 
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {loading ? (
-          <div className="space-y-6">
-            <Card className="animate-pulse">
-              <CardHeader className="h-32 bg-muted/50" />
-              <CardContent className="h-48 bg-muted/20" />
-            </Card>
-            <div className="grid md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader className="h-24 bg-muted/50" />
-                  <CardContent className="h-32 bg-muted/20" />
-                </Card>
-              ))}
-            </div>
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : explanation ? (
           <div className="space-y-6">
@@ -115,59 +132,92 @@ export default function EvaluationExplainPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-lg leading-relaxed">{explanation.summary}</p>
+                <p className="text-lg leading-relaxed">{explanation.explanation || "No explanation available"}</p>
               </CardContent>
             </Card>
 
-            {/* Key Insights */}
-            <div className="grid md:grid-cols-3 gap-6">
-              {explanation.key_insights.map((insight, idx) => (
-                <Card key={idx} className="flex flex-col">
-                  <CardHeader>
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant={insight.sentiment === "positive" ? "default" : "secondary"}>
-                        {insight.sentiment === "positive" ? "Strength" : "Observation"}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-base">{insight.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <p className="text-sm text-muted-foreground">{insight.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {/* Key Findings */}
+            {explanation.key_findings && explanation.key_findings.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Key Findings</CardTitle>
+                  <CardDescription>Important observations from the evaluation</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {explanation.key_findings.map((finding, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <div className="bg-primary/10 p-1.5 rounded-full mt-0.5">
+                          <div className="h-2 w-2 bg-primary rounded-full" />
+                        </div>
+                        <span className="text-sm pt-0.5">{finding}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Concerns */}
+            {explanation.concerns && explanation.concerns.length > 0 && (
+              <Card className="border-yellow-500/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-yellow-600">
+                    <AlertTriangle className="h-5 w-5" />
+                    Concerns
+                  </CardTitle>
+                  <CardDescription>Areas that may need attention</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {explanation.concerns.map((concern, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <div className="bg-yellow-500/10 p-1.5 rounded-full mt-0.5">
+                          <div className="h-2 w-2 bg-yellow-500 rounded-full" />
+                        </div>
+                        <span className="text-sm pt-0.5">{concern}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Recommendations */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommendations</CardTitle>
-                <CardDescription>Actionable steps to improve future generations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-4">
-                  {explanation.recommendations.map((rec, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <div className="bg-primary/10 p-2 rounded-full mt-0.5">
-                        <MessageSquare className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="text-sm pt-1.5">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+            {explanation.recommendations && explanation.recommendations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommendations</CardTitle>
+                  <CardDescription>Actionable steps to improve future generations</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {explanation.recommendations.map((rec, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <div className="bg-green-500/10 p-1.5 rounded-full mt-0.5">
+                          <div className="h-2 w-2 bg-green-500 rounded-full" />
+                        </div>
+                        <span className="text-sm pt-0.5">{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Feedback */}
-            <div className="flex justify-center gap-4 pt-4">
-              <span className="text-sm text-muted-foreground self-center">Was this explanation helpful?</span>
-              <Button variant="outline" size="sm" className="gap-2">
-                <ThumbsUp className="h-4 w-4" /> Yes
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2">
-                <ThumbsDown className="h-4 w-4" /> No
-              </Button>
-            </div>
+            {/* Metadata */}
+            {explanation._metadata && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Analysis Metadata</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground space-y-1">
+                  <div>Provider: {explanation._metadata.provider}</div>
+                  <div>Model: {explanation._metadata.model}</div>
+                  <div>Tokens Used: {explanation._metadata.tokens_used?.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : null}
       </AppShell>

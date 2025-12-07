@@ -1,172 +1,186 @@
 "use client"
-
-import { useParams } from "next/navigation"
+import * as React from "react"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, FileText, Database, Activity, Shield, ArrowRight, BarChart } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { ArrowLeft, Download, Loader2, Zap, Trash2 } from "lucide-react"
+import { api } from "@/lib/api"
+import type { SyntheticDataset, Generator } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
-import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-// Mock synthetic dataset data
-const mockSyntheticDataset = {
-  id: "sd-123",
-  name: "Synthetic_Patients_v1.csv",
-  generator_id: "gen-123",
-  generator_name: "Patient Records Generator",
-  project_id: "proj-1",
-  created_at: "2024-12-03T14:30:00Z",
-  size_bytes: 15400000, // 15.4 MB
-  num_rows: 50000,
-  num_columns: 45,
-  format: "CSV",
-  status: "Available",
-  quality_score: 0.88,
-  privacy_score: 0.92,
-  sample_data: [
-    { id: 1, age: 34, gender: "F", diagnosis: "E11.9", zip: "100**", income: "45000-55000" },
-    { id: 2, age: 56, gender: "M", diagnosis: "I10", zip: "100**", income: "65000-75000" },
-    { id: 3, age: 28, gender: "F", diagnosis: "J01.9", zip: "100**", income: "35000-45000" },
-    { id: 4, age: 45, gender: "M", diagnosis: "E78.5", zip: "100**", income: "85000-95000" },
-    { id: 5, age: 62, gender: "F", diagnosis: "M54.5", zip: "100**", income: "55000-65000" },
-  ]
-}
-
-export default function SyntheticDatasetPage() {
-  const { user } = useAuth()
+export default function SyntheticDatasetDetailPage() {
   const params = useParams()
+  const router = useRouter()
+  const { user } = useAuth()
   const id = params?.id as string
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
+  // State
+  const [dataset, setDataset] = React.useState<SyntheticDataset | null>(null)
+  const [generator, setGenerator] = React.useState<Generator | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const { toast } = useToast()
+
+  // Load data
+  React.useEffect(() => {
+    if (!id) return
+    loadSyntheticDatasetDetails()
+  }, [id])
+
+  const [downloading, setDownloading] = React.useState(false)
+
+  async function loadSyntheticDatasetDetails() {
+    console.log("loadSyntheticDatasetDetails ID:", id)
+    try {
+      setLoading(true)
+      setError(null)
+
+      const data = await api.getSyntheticDatasetDetails(id)
+      
+      setDataset(data.dataset)
+      setGenerator(data.generator)
+    } catch (err) {
+      console.error("Failed to load synthetic dataset:", err)
+      setError("Failed to load synthetic dataset details")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await api.deleteSyntheticDataset(id)
+      toast({
+        title: "Deleted",
+        description: "Synthetic dataset has been deleted successfully.",
+      })
+      router.push("/synthetic-datasets")
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete synthetic dataset",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!dataset) return
+    
+    setDownloading(true)
+    try {
+      const result = await api.downloadSyntheticDataset(id)
+      if (result.download_url) {
+        const link = document.createElement('a');
+        link.href = result.download_url;
+        link.download = result.filename || "synthetic_dataset.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Download Started",
+          description: "Your file is being downloaded",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Download Failed",
+        description: err instanceof Error ? err.message : "Failed to download dataset",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const formatBytes = (bytes?: number) => {
+    if (!bytes) return "0 Bytes"
     const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+    const sizes = ["Bytes", "KB", "MB", "GB"]
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <ProtectedRoute>
+        <AppShell user={user || { full_name: "", email: "" }}>
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  // Error state
+  if (error || !dataset) {
+    return (
+      <ProtectedRoute>
+        <AppShell user={user || { full_name: "", email: "" }}>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error || "Synthetic dataset not found"}</AlertDescription>
+          </Alert>
+          <Button onClick={() => router.push("/synthetic-datasets")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Synthetic Datasets
+          </Button>
+        </AppShell>
+      </ProtectedRoute>
+    )
   }
 
   return (
     <ProtectedRoute>
       <AppShell user={user || { full_name: "", email: "" }}>
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/synthetic-datasets">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Synthetic Datasets
+            </Link>
+          </Button>
+        </div>
+
         <PageHeader
-          title="Synthetic Dataset Details"
-          description={`Manage and download ${mockSyntheticDataset.name}`}
+          title={dataset.name}
+          description={`Generated ${dataset.uploaded_at ? new Date(dataset.uploaded_at).toLocaleDateString() : 'Unknown'}`}
           actions={
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link href={`/generators/${mockSyntheticDataset.generator_id}`}>
-                  View Generator
-                </Link>
-              </Button>
-              <Button>
-                <Download className="mr-2 h-4 w-4" />
-                Download CSV
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleDownload} disabled={downloading}>
+                {downloading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {downloading ? "Downloading..." : "Download"}
               </Button>
             </div>
           }
         />
 
-        <div className="grid gap-6 md:grid-cols-3 mb-6">
-          {/* Stats Cards */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Dataset Size</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatBytes(mockSyntheticDataset.size_bytes)}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mockSyntheticDataset.num_rows.toLocaleString()} rows • {mockSyntheticDataset.num_columns} columns
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <div className="text-2xl font-bold text-blue-600">{(mockSyntheticDataset.quality_score * 100).toFixed(0)}%</div>
-                <Activity className="h-4 w-4 text-blue-600" />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Statistical fidelity to original
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Privacy Score</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <div className="text-2xl font-bold text-green-600">{(mockSyntheticDataset.privacy_score * 100).toFixed(0)}%</div>
-                <Shield className="h-4 w-4 text-green-600" />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Privacy protection level
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="preview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="preview">Data Preview</TabsTrigger>
-            <TabsTrigger value="metadata">Metadata</TabsTrigger>
-            <TabsTrigger value="lineage">Lineage</TabsTrigger>
-          </TabsList>
-
-          {/* Data Preview */}
-          <TabsContent value="preview">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Sample Records</CardTitle>
-                    <CardDescription>First 5 rows of generated data</CardDescription>
-                  </div>
-                  <Badge variant="outline">Preview Mode</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {Object.keys(mockSyntheticDataset.sample_data[0]).map((key) => (
-                          <TableHead key={key} className="capitalize">{key}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockSyntheticDataset.sample_data.map((row, idx) => (
-                        <TableRow key={idx}>
-                          {Object.values(row).map((val, i) => (
-                            <TableCell key={i}>{val}</TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                <div className="mt-4 flex justify-center">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    View All Columns <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Metadata */}
-          <TabsContent value="metadata">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle>Dataset Information</CardTitle>
@@ -174,75 +188,104 @@ export default function SyntheticDatasetPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">ID</p>
-                    <p className="font-mono text-sm">{mockSyntheticDataset.id}</p>
+                    <p className="text-sm text-muted-foreground">Rows</p>
+                    <p className="text-2xl font-bold">{dataset.row_count?.toLocaleString() || 0}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Created At</p>
-                    <p className="text-sm">{new Date(mockSyntheticDataset.created_at).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Format</p>
-                    <Badge variant="secondary">{mockSyntheticDataset.format}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <Badge className="bg-green-500">{mockSyntheticDataset.status}</Badge>
+                    <p className="text-sm text-muted-foreground">Size</p>
+                    <p className="text-2xl font-bold">{formatBytes(dataset.size_bytes)}</p>
                   </div>
                 </div>
+                {dataset.schema_data?.columns && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Columns ({dataset.schema_data.columns.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {dataset.schema_data.columns.map((col) => (
+                        <Badge key={col} variant="outline">{col}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
 
-          {/* Lineage */}
-          <TabsContent value="lineage">
-            <Card>
-              <CardHeader>
-                <CardTitle>Data Lineage</CardTitle>
-                <CardDescription>Trace the origin of this synthetic dataset</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="relative border-l-2 border-muted ml-4 space-y-8 py-2">
-                  <div className="relative pl-6">
-                    <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-muted border-2 border-background" />
-                    <p className="text-sm font-medium">Original Dataset</p>
-                    <p className="text-xs text-muted-foreground">Uploaded by User</p>
-                  </div>
-                  
-                  <div className="relative pl-6">
-                    <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-muted border-2 border-background" />
-                    <p className="text-sm font-medium">Generator Training</p>
-                    <Link href={`/generators/${mockSyntheticDataset.generator_id}`} className="text-xs text-primary hover:underline">
-                      {mockSyntheticDataset.generator_name}
+          <div className="space-y-4">
+            {generator && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Generated By</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                    <Link href={`/generators/${generator.id}`} className="text-sm text-primary hover:underline">
+                      {generator.name}
                     </Link>
                   </div>
-
-                  <div className="relative pl-6">
-                    <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-primary border-2 border-background" />
-                    <p className="text-sm font-medium text-primary">Synthetic Generation</p>
-                    <p className="text-xs text-muted-foreground">Current Dataset</p>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Type: {generator.type}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ID</span>
+                  <code className="text-xs">{dataset.id.slice(0, 12)}...</code>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Created</span>
+                  <span>{dataset.uploaded_at ? new Date(dataset.uploaded_at).toLocaleDateString() : 'Unknown'}</span>
+                </div>
+                {dataset.status && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant="secondary">{dataset.status}</Badge>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
 
-        {/* Call to Action */}
-        <Card className="mt-6 bg-muted/50">
-          <CardContent className="flex items-center justify-between p-6">
-            <div className="space-y-1">
-              <h3 className="font-semibold">Validate Quality</h3>
-              <p className="text-sm text-muted-foreground">Run a comprehensive evaluation report for this dataset</p>
-            </div>
-            <Button asChild>
-              <Link href="/evaluations/new">
-                <BarChart className="mr-2 h-4 w-4" />
-                Run Evaluation
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+            <Card className="border-destructive/20">
+              <CardHeader>
+                <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="w-full">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Synthetic Dataset
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Synthetic Dataset</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this synthetic dataset? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </AppShell>
     </ProtectedRoute>
   )

@@ -236,6 +236,179 @@ Use professional language. Be concise but complete. Format times clearly."""
         
         return narrative
     
+    async def generate_privacy_report(
+        self,
+        generator_metadata: Dict[str, Any]
+    ) -> str:
+        """Generate comprehensive privacy compliance report in markdown
+        
+        Args:
+            generator_metadata: Generator configuration and privacy settings
+            
+        Returns:
+            Markdown-formatted privacy compliance report
+        """
+        logger.info(f"Generating privacy report for generator")
+        
+        system_prompt = """You are a privacy compliance expert specializing in differential privacy and synthetic data.
+Generate comprehensive, professional privacy compliance reports following industry best practices.
+Use clear, precise language suitable for both technical stakeholders and auditors."""
+        
+        user_prompt = f"""Create a detailed privacy compliance report for this synthetic data generator:
+
+Generator Metadata:
+{json.dumps(generator_metadata, indent=2)}
+
+Generate a privacy compliance report in Markdown format with these sections:
+
+# Privacy Compliance Report
+
+## Generator Information
+- Generator Name and Type
+- Privacy Mechanism (e.g., Differential Privacy, k-Anonymity)
+- Report Generation Date
+
+## Privacy Budget Analysis
+**Epsilon (ε) Budget:**
+- Target epsilon value
+- Spent epsilon (if tracking)
+- Remaining budget
+- Interpretation of epsilon level (lower = stronger privacy)
+
+**Delta (δ) Budget:**
+- Target delta value
+- Probability of privacy failure
+- Risk assessment
+
+**Budget Utilization:**
+- Percentage of budget consumed
+- Recommendations for remaining budget
+
+## Privacy Metrics
+**K-Anonymity:**
+- Minimum group size for re-identification
+- Risk level assessment
+
+**L-Diversity:**
+- Diversity of sensitive attributes
+- Protection against homogeneity attacks
+
+**T-Closeness:**
+- Distribution similarity to original
+- Protection against attribute disclosure
+
+**Differential Privacy Guarantee:**
+- Whether DP is maintained
+- Mathematical proof summary
+
+## Risk Assessment
+Evaluate privacy risks:
+- **Re-identification Risk:** [Very Low/Low/Medium/High]
+- **Linkage Attack Risk:** [Very Low/Low/Medium/High]
+- **Membership Inference Risk:** [Very Low/Low/Medium/High]
+- **Attribute Disclosure Risk:** [Very Low/Low/Medium/High]
+
+For each risk, explain:
+1. Current protection measures
+2. Potential vulnerabilities
+3. Mitigation strategies
+
+## Recommendations
+Provide actionable recommendations:
+1. **High Priority:** Critical privacy improvements needed
+2. **Medium Priority:** Recommended enhancements
+3. **Low Priority:** Optional optimizations
+
+Each recommendation should include:
+- What to do
+- Why it's important
+- How to implement
+
+## Compliance Status
+Map privacy measures to frameworks:
+
+**GDPR (Article 25 - Data Protection by Design):**
+- Privacy by design implementation
+- Data minimization measures
+- Pseudonymization techniques
+
+**HIPAA Privacy Rule:**
+- De-identification methods
+- Safe harbor compliance
+- Expert determination approach
+
+**CCPA:**
+- Consumer privacy rights protection
+- Data security measures
+- Disclosure prevention
+
+For each framework, indicate: ✓ Compliant, ⚠ Partial, or ✗ Non-Compliant
+
+## Technical Details
+- Privacy algorithm details
+- Implementation notes
+- Audit trail information
+
+Generate a comprehensive, audit-ready report with specific privacy metrics and compliance mappings."""
+
+        request = LLMRequest(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.1,  # Low temperature for consistency
+            max_tokens=2500
+        )
+        
+        try:
+            response = await self.router.generate(request, use_case="compliance")
+            logger.info(f"Privacy report generated using {response.provider}")
+            return response.content
+        
+        except Exception as e:
+            logger.error(f"Privacy report generation failed: {e}")
+            return self._fallback_privacy_report(generator_metadata)
+    
+    def _fallback_privacy_report(self, metadata: Dict[str, Any]) -> str:
+        """Generate basic privacy report if LLM fails
+        
+        Args:
+            metadata: Generator metadata
+            
+        Returns:
+            Basic privacy report
+        """
+        logger.warning("Using fallback privacy report")
+        
+        generator_type = metadata.get("type", "Unknown")
+        privacy_config = metadata.get("privacy_config", {})
+        
+        report = f"""# Privacy Compliance Report
+
+## Generator Information
+- **Type:** {generator_type}
+- **Report Date:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+## Privacy Configuration
+"""
+        
+        if privacy_config:
+            for key, value in privacy_config.items():
+                report += f"- **{key}:** {value}\n"
+        else:
+            report += "- No privacy configuration available\n"
+        
+        report += """
+## Privacy Assessment
+This is a basic privacy report generated automatically.
+For comprehensive privacy analysis, please ensure the LLM service is properly configured.
+
+## Recommendations
+1. Configure LLM service for detailed privacy analysis
+2. Review privacy configuration settings
+3. Consult privacy experts for compliance validation
+"""
+        
+        return report
+
     async def generate_compliance_report(
         self,
         generator_metadata: Dict[str, Any],

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Sparkles, User, Loader2, Lightbulb, RefreshCw } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import type { ChatMessage } from "@/lib/types"
+import { api } from "@/lib/api"
 
 interface AiChatPanelProps {
   open: boolean
@@ -58,15 +59,49 @@ export function AiChatPanel({ open, onClose, contextGeneratorId, contextEvaluati
     setInput("")
     setIsLoading(true)
 
-    // Simulated response - in production, this would call the API
-    setTimeout(() => {
-      const response: ChatMessage = {
-        role: "assistant",
-        content: generateMockResponse(text, contextGeneratorId, contextEvaluationId),
+    // Add placeholder for streaming response
+    const assistantMessage: ChatMessage = {
+      role: "assistant",
+      content: "",
+    }
+    setMessages((prev) => [...prev, assistantMessage])
+
+    try {
+      let fullResponse = ""
+
+      for await (const chunk of api.chatStream(text, {
+        generator_id: contextGeneratorId,
+        evaluation_id: contextEvaluationId,
+        history: messages.slice(1), // Skip the initial welcome message
+      })) {
+        fullResponse += chunk
+
+        // Update the last message with accumulated content
+        setMessages((prev) => {
+          const newMessages = [...prev]
+          newMessages[newMessages.length - 1] = {
+            ...newMessages[newMessages.length - 1],
+            content: fullResponse,
+          }
+          return newMessages
+        })
       }
-      setMessages((prev) => [...prev, response])
+    } catch (err) {
+      console.error("Chat failed:", err)
+      // Remove both user and failed assistant messages
+      setMessages((prev) => prev.slice(0, -2))
+      // Show fallback message
+      setMessages((prev) => [
+        ...prev,
+        userMessage,
+        {
+          role: "assistant",
+          content: "I'm having trouble processing your question right now. Please try again.",
+        },
+      ])
+    } finally {
       setIsLoading(false)
-    }, 1200)
+    }
   }
 
   const handleReset = () => {
@@ -85,16 +120,16 @@ export function AiChatPanel({ open, onClose, contextGeneratorId, contextEvaluati
     <div
       className={cn(
         "fixed bottom-24 right-6 z-40 w-[420px] rounded-xl border shadow-2xl transition-all duration-300 glass",
-        "flex flex-col overflow-hidden",
-        open ? "opacity-100 translate-y-0 h-[540px]" : "opacity-0 translate-y-4 h-0 pointer-events-none",
+        "flex flex-col overflow-hidden bg-background",
+        open ? "opacity-100 translate-y-0 h-[600px] max-h-[calc(100vh-140px)]" : "opacity-0 translate-y-4 h-0 pointer-events-none",
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30">
+      <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success animate-pulse" />
+          <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           </div>
           <div>
             <h3 className="font-semibold text-sm">AI Assistant</h3>
@@ -109,7 +144,7 @@ export function AiChatPanel({ open, onClose, contextGeneratorId, contextEvaluati
 
       {/* Context badges */}
       {(contextGeneratorId || contextEvaluationId) && (
-        <div className="flex gap-2 px-4 py-2 border-b bg-muted/20">
+        <div className="flex gap-2 px-4 py-2 border-b bg-muted/20 flex-shrink-0">
           <span className="text-xs text-muted-foreground">Context:</span>
           {contextGeneratorId && (
             <Badge variant="secondary" className="text-xs">
@@ -125,77 +160,85 @@ export function AiChatPanel({ open, onClose, contextGeneratorId, contextEvaluati
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
-          {messages.map((message, index) => (
-            <div key={index} className={cn("flex gap-3", message.role === "user" && "flex-row-reverse")}>
-              <div
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                  message.role === "assistant" ? "bg-primary text-primary-foreground" : "bg-muted",
-                )}
-              >
-                {message.role === "assistant" ? <Sparkles className="h-4 w-4" /> : <User className="h-4 w-4" />}
+      <div className="flex-1 overflow-y-auto">
+        <ScrollArea className="h-full">
+          <div className="p-4 space-y-4">
+            {messages.map((message, index) => (
+              <div key={index} className={cn("flex gap-3 items-start", message.role === "user" && "flex-row-reverse")}>
+                <div
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    message.role === "assistant" ? "bg-primary/10" : "bg-muted",
+                  )}
+                >
+                  {message.role === "assistant" ? <Sparkles className="h-4 w-4 text-primary" /> : <User className="h-4 w-4" />}
+                </div>
+                <div
+                  className={cn(
+                    "rounded-lg px-3 py-2.5 text-sm max-w-[85%] break-words",
+                    message.role === "assistant" ? "bg-muted" : "bg-primary text-primary-foreground",
+                  )}
+                >
+                  {message.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_p]:leading-relaxed [&_ul]:my-2 [&_li]:my-1 [&_code]:bg-background/50 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_strong]:text-foreground">
+                      <ReactMarkdown
+                        components={{
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="leading-relaxed">{message.content}</p>
+                  )}
+                </div>
               </div>
-              <div
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm max-w-[80%]",
-                  message.role === "assistant" ? "bg-muted" : "bg-primary text-primary-foreground",
-                )}
-              >
-                {message.role === "assistant" ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_code]:bg-background/50 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
-                    <ReactMarkdown
-                      components={{
-                        strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-                      }}
+            ))}
+
+            {showSuggestions && (
+              <div className="pt-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2.5">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  <span className="font-medium">Try asking:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedPrompts.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSend(item.prompt)}
+                      disabled={isLoading}
+                      className="text-xs px-3 py-1.5 rounded-full border bg-background hover:bg-muted hover:border-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {message.content}
-                    </ReactMarkdown>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="flex gap-3 items-start">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                </div>
+                <div className="rounded-lg px-3 py-2 bg-muted flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
-                ) : (
-                  message.content
-                )}
+                </div>
               </div>
-            </div>
-          ))}
-
-          {showSuggestions && (
-            <div className="pt-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                <Lightbulb className="h-3 w-3" />
-                <span>Suggested questions</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {suggestedPrompts.map((item, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSend(item.prompt)}
-                    className="text-xs px-2.5 py-1.5 rounded-full border bg-background hover:bg-muted transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div className="rounded-lg px-3 py-2 bg-muted flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Thinking...</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            )}
+            
+            <div ref={scrollRef} />
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Input */}
-      <div className="border-t p-3 bg-background/50">
+      <div className="border-t p-3 bg-background flex-shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -210,6 +253,12 @@ export function AiChatPanel({ open, onClose, contextGeneratorId, contextEvaluati
             placeholder="Ask about privacy, metrics, or generators..."
             className="flex-1"
             disabled={isLoading}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                handleSend()
+              }
+            }}
           />
           <Button type="submit" size="icon" disabled={!input.trim() || isLoading}>
             <Send className="h-4 w-4" />
@@ -217,7 +266,7 @@ export function AiChatPanel({ open, onClose, contextGeneratorId, contextEvaluati
           </Button>
         </form>
         <p className="text-[10px] text-muted-foreground text-center mt-2">
-          AI responses are suggestions. Always verify critical decisions.
+          AI suggestions • Verify critical decisions
         </p>
       </div>
     </div>

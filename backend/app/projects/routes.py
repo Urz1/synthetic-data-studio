@@ -11,6 +11,8 @@ import uuid
 # Third-party
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session
+from sqlmodel import select
+
 
 # Local - Core
 from app.core.dependencies import get_db, get_current_user
@@ -25,7 +27,10 @@ from .repositories import (
     delete_project
 )
 from .models import Project
-
+from app.datasets.models import Dataset
+from app.generators.models import Generator
+from app.evaluations.models import Evaluation
+    
 # ============================================================================
 # SETUP
 # ============================================================================
@@ -36,7 +41,8 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 # ENDPOINTS
 # ============================================================================
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get("", response_model=List[ProjectResponse])  # Matches /projects (no trailing slash)
+@router.get("/", response_model=List[ProjectResponse])  # Matches /projects/ (with trailing slash)
 def list_projects(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Max records to return"),
@@ -64,6 +70,69 @@ def get_project(
     return project
 
 
+@router.get("/{project_id}/resources")
+def get_project_resources(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get project with all related resources in a single call.
+    OPTIMIZATION: Replaces 4 separate API calls with 1.
+    """
+    
+    # Get project and verify ownership
+    project_uuid = uuid.UUID(project_id)
+    project = get_project_by_id(db, project_uuid)
+    if not project or project.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get datasets for this project
+    datasets_stmt = select(Dataset).where(
+        Dataset.project_id == project_uuid,
+        Dataset.uploader_id == current_user.id
+    )
+    datasets = db.exec(datasets_stmt).all()
+    
+    # Get generators for this project's datasets
+    dataset_ids = [d.id for d in datasets]
+    if dataset_ids:
+        generators_stmt = select(Generator).where(
+            Generator.dataset_id.in_(dataset_ids),
+            Generator.created_by == current_user.id
+        )
+        generators = db.exec(generators_stmt).all()
+        
+        # Get evaluations for these generators
+        generator_ids = [g.id for g in generators]
+        if generator_ids:
+            evaluations_stmt = select(Evaluation).join(
+                Generator, Evaluation.generator_id == Generator.id
+            ).where(
+                Evaluation.generator_id.in_(generator_ids),
+                Generator.created_by == current_user.id
+            )
+            evaluations = db.exec(evaluations_stmt).all()
+        else:
+            evaluations = []
+    else:
+        generators = []
+        evaluations = []
+    
+    return {
+        "project": project,
+        "datasets": datasets,
+        "generators": generators,
+        "evaluations": evaluations,
+        "stats": {
+            "dataset_count": len(datasets),
+            "generator_count": len(generators),
+            "evaluation_count": len(evaluations)
+        }
+    }
+
+
+@router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_new_project(
     project: ProjectCreate,

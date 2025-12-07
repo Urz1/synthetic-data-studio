@@ -156,6 +156,8 @@ export interface SchemaGeneratorConfig {
       options?: string[];
     }
   >;
+  project_id?: string;
+  dataset_name?: string;
 }
 
 export interface PrivacyConfig {
@@ -190,9 +192,9 @@ export interface SyntheticDataset {
   id: string;
   project_id: string;
   name: string;
-  original_filename: string;
-  size_bytes: number;
-  row_count: number;
+  original_filename?: string;
+  size_bytes?: number;
+  row_count?: number;
   schema_data: {
     columns: string[];
     dtypes: Record<string, string>;
@@ -216,27 +218,47 @@ export interface Evaluation {
 }
 
 export interface EvaluationReport {
-  statistical_similarity: {
+  report_id: string;
+  generator_id: string;
+  generator_type: string;
+  generated_at: string;
+  dataset_info: {
+    real_rows: number;
+    synthetic_rows: number;
+    num_columns: number;
+    columns: string[];
+  };
+  evaluations: {
+    statistical_similarity?: {
+      summary: {
+        pass_rate: number;
+        overall_quality: string;
+      };
+      details: any; // Using any for complex nested structure
+    };
+    ml_utility?: {
+      summary: {
+        utility_ratio: number;
+      };
+      details: any;
+    };
+    privacy?: {
+      summary: {
+        overall_privacy_level: string;
+      };
+      details: any;
+    };
+  };
+  overall_assessment: {
     overall_score: number;
-    column_scores: Record<
-      string,
-      { ks_statistic?: number; chi2_statistic?: number; p_value: number }
-    >;
-    correlation_difference: number;
+    overall_quality: string;
+    dimension_scores: {
+      statistical: number;
+      ml_utility: number;
+      privacy: number;
+    };
+    recommendations: string[];
   };
-  ml_utility: {
-    train_on_synthetic_test_on_real: { accuracy: number; f1: number };
-    train_on_real_test_on_real: { accuracy: number; f1: number };
-    utility_preservation: number;
-  };
-  privacy: {
-    membership_inference_auc: number;
-    attribute_inference_accuracy: number;
-    nearest_neighbor_distance: { min: number; mean: number; std: number };
-    privacy_risk: "low" | "medium" | "high";
-  };
-  overall_quality_score: number;
-  recommendations: string[];
 }
 
 export interface RiskAssessment {

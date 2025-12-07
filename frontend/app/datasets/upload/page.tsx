@@ -1,98 +1,244 @@
 "use client"
-
+import * as React from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
-import { DatasetUpload } from "@/components/datasets/dataset-upload"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Shield, Zap } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Progress } from "@/components/ui/progress"
+import { Upload, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react"
+import { api } from "@/lib/api"
+import type { Project } from "@/lib/types"
+import ProtectedRoute from "@/components/layout/protected-route"
 
-export default function UploadPage() {
+export default function DatasetUploadPage() {
   const router = useRouter()
-  const mockUser = { full_name: "John Doe", email: "john@example.com" }
+  const { user } = useAuth()
+  
+  // State
+  const [projects, setProjects] = React.useState<Project[]>([])
+  const [selectedProject, setSelectedProject] = React.useState<string>("")
+  const [file, setFile] = React.useState<File | null>(null)
+  const [uploading, setUploading] = React.useState(false)
+  const [progress, setProgress] = React.useState(0)
+  const [error, setError] = React.useState<string | null>(null)
+  const [success, setSuccess] = React.useState(false)
 
-  const handleUploadComplete = (datasetId: string) => {
-    // In production, navigate to the dataset detail page
-    router.push(`/datasets/${datasetId}`)
+  // Load projects
+  React.useEffect(() => {
+    loadProjects()
+  }, [])
+
+  async function loadProjects() {
+    try {
+      const data = await api.listProjects()
+      setProjects(data)
+      if (data.length > 0) {
+        setSelectedProject(data[0].id)
+      }
+    } catch (err) {
+      console.error("Failed to load projects:", err)
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFile = e.target.files?.[0]
+    if (!selectedFile) return
+
+    // Validate file type
+    if (!selectedFile.name.endsWith('.csv') && !selectedFile.name.endsWith('.json')) {
+      setError("Only CSV and JSON files are supported")
+      return
+    }
+
+    // Validate file size (100MB max)
+    const maxSize = 100 * 1024 * 1024
+    if (selectedFile.size > maxSize) {
+      setError("File size must be less than 100MB")
+      return
+    }
+
+    setFile(selectedFile)
+    setError(null)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!file) {
+      setError("Please select a file")
+      return
+    }
+
+    if (!selectedProject) {
+      setError("Please select a project")
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+    setProgress(0)
+
+    try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return 90
+          }
+          return prev + 10
+        })
+      }, 200)
+
+      // Upload dataset
+      const dataset = await api.uploadDataset(file, selectedProject)
+      
+      clearInterval(progressInterval)
+      setProgress(100)
+      setSuccess(true)
+
+      // Navigate to dataset details after short delay
+      setTimeout(() => {
+        router.push(`/datasets/${dataset.id}`)
+      }, 1500)
+
+    } catch (err) {
+      console.error("Upload failed:", err)
+      setError(err instanceof Error ? err.message : "Failed to upload dataset")
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
-    <AppShell user={mockUser}>
-      <PageHeader
-        title="Upload Dataset"
-        description="Upload a new dataset to begin generating privacy-preserving synthetic data"
-      />
+    <ProtectedRoute>
+      <AppShell user={user || { full_name: "", email: "" }}>
+        <PageHeader
+          title="Upload Dataset"
+          description="Upload a CSV or JSON file to create a new dataset"
+        />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <DatasetUpload projectId="default-project" onUploadComplete={handleUploadComplete} />
-        </div>
-
-        <div className="space-y-4">
+        <div className="max-w-2xl">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">What happens next?</CardTitle>
-              <CardDescription>After uploading your dataset</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-3">
-                <div className="rounded-lg bg-primary/10 p-2 h-fit">
-                  <FileText className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Profiling</p>
-                  <p className="text-xs text-muted-foreground">
-                    We analyze column types, distributions, and correlations
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="rounded-lg bg-warning/10 p-2 h-fit">
-                  <Shield className="h-4 w-4 text-warning-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">PII Detection</p>
-                  <p className="text-xs text-muted-foreground">Automatic scanning for sensitive personal information</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="rounded-lg bg-success/10 p-2 h-fit">
-                  <Zap className="h-4 w-4 text-success" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Ready to Generate</p>
-                  <p className="text-xs text-muted-foreground">Train a generator with optional differential privacy</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Supported Formats</CardTitle>
+              <CardTitle>Dataset Upload</CardTitle>
+              <CardDescription>
+                Supported formats: CSV, JSON (max 100MB)
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">CSV</span>
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.csv</code>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Project Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="project">Project</Label>
+                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                    <SelectTrigger id="project">
+                      <SelectValue placeholder="Select a project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">JSON</span>
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.json</code>
+
+                {/* File Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="file">File</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="file"
+                      type="file"
+                      accept=".csv,.json"
+                      onChange={handleFileChange}
+                      disabled={uploading}
+                      className="cursor-pointer"
+                    />
+                    {file && (
+                      <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  {file && (
+                    <p className="text-sm text-muted-foreground">
+                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
                 </div>
-                <div className="pt-2 border-t mt-3">
-                  <p className="text-xs text-muted-foreground">
-                    Maximum file size: 100 MB
-                    <br />
-                    Minimum requirements: 2 columns, 1 row
-                  </p>
-                </div>
-              </div>
+
+                {/* Progress */}
+                {uploading && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Uploading...</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <Progress value={progress} />
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {success && (
+                  <Alert className="border-green-500 bg-green-50">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      Dataset uploaded successfully! Redirecting...
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={!file || !selectedProject || uploading}
+                  className="w-full"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Dataset
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Help Text */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-base">Upload Guidelines</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>• CSV files should have headers in the first row</p>
+              <p>• JSON files should be an array of objects</p>
+              <p>• Maximum file size: 100MB</p>
+              <p>• Data will be automatically profiled after upload</p>
+              <p>• PII detection will run in the background</p>
             </CardContent>
           </Card>
         </div>
-      </div>
-    </AppShell>
+      </AppShell>
+    </ProtectedRoute>
   )
 }

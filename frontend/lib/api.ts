@@ -31,6 +31,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 class ApiClient {
   private token: string | null = null;
+  private pendingRequests: Map<string, Promise<any>> = new Map();
 
   setToken(token: string | null) {
     this.token = token;
@@ -55,6 +56,16 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const url = `${API_BASE}${endpoint}`;
+    const method = options.method || "GET";
+    const cacheKey = `${method}:${url}`;
+
+    // Request deduplication: if same request is in flight, return existing promise
+    if (method === "GET" && this.pendingRequests.has(cacheKey)) {
+      console.log("🔄 Deduplicating request:", url);
+      return this.pendingRequests.get(cacheKey)!;
+    }
+
     const token = this.getToken();
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string>),
@@ -68,43 +79,71 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    console.log("API Request:", url);
+
+    // Use default cache mode for GET requests (browser handles ETag/304)
+    const fetchOptions: RequestInit = {
       ...options,
       headers,
-    });
+    };
 
-    if (response.status === 401) {
-      this.setToken(null);
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
+    // For GET requests, let browser handle caching with default mode
+    if (!options.method || options.method === "GET") {
+      // Browser will automatically send If-None-Match and handle 304
+      fetchOptions.cache = "default";
+    }
+
+    // Create the fetch promise
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(url, fetchOptions);
+
+        if (response.status === 401) {
+          this.setToken(null);
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
+          throw new Error("Unauthorized");
+        }
+
+        if (!response.ok) {
+          const error = await response
+            .json()
+            .catch(() => ({ detail: "Unknown error" }));
+
+          // Handle different error formats from FastAPI
+          if (Array.isArray(error.detail)) {
+            // Validation errors
+            const messages = error.detail.map((err: any) => err.msg).join(", ");
+            throw new Error(messages);
+          } else if (typeof error.detail === "string") {
+            throw new Error(error.detail);
+          } else if (error.detail && typeof error.detail === "object") {
+            throw new Error(JSON.stringify(error.detail));
+          } else {
+            throw new Error("An error occurred");
+          }
+        }
+
+        if (response.status === 204) {
+          return {} as T;
+        }
+
+        return response.json();
+      } finally {
+        // Remove from pending requests when done
+        if (method === "GET") {
+          this.pendingRequests.delete(cacheKey);
+        }
       }
-      throw new Error("Unauthorized");
+    })();
+
+    // Store promise for deduplication
+    if (method === "GET") {
+      this.pendingRequests.set(cacheKey, fetchPromise);
     }
 
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ detail: "Unknown error" }));
-
-      // Handle different error formats from FastAPI
-      if (Array.isArray(error.detail)) {
-        // Validation errors
-        const messages = error.detail.map((err: any) => err.msg).join(", ");
-        throw new Error(messages);
-      } else if (typeof error.detail === "string") {
-        throw new Error(error.detail);
-      } else if (error.detail && typeof error.detail === "object") {
-        throw new Error(JSON.stringify(error.detail));
-      } else {
-        throw new Error("An error occurred");
-      }
-    }
-
-    if (response.status === 204) {
-      return {} as T;
-    }
-
-    return response.json();
+    return fetchPromise;
   }
 
   // Auth
@@ -213,6 +252,33 @@ class ApiClient {
     return data;
   }
 
+  // Dashboard
+  async getDashboardSummary(): Promise<{
+    stats: {
+      total_datasets: number;
+      total_generators: number;
+      active_generators: number;
+      total_evaluations: number;
+      completed_evaluations: number;
+      avg_privacy_score: number;
+    };
+    recent_generators: Generator[];
+    recent_activities: any[];
+  }> {
+    return this.request("/dashboard/summary");
+  }
+
+  async getDashboardStats(): Promise<{
+    total_datasets: number;
+    total_generators: number;
+    active_generators: number;
+    total_evaluations: number;
+    completed_evaluations: number;
+    avg_privacy_score: number;
+  }> {
+    return this.request("/dashboard/stats");
+  }
+
   // Projects
   async listProjects(skip = 0, limit = 50): Promise<Project[]> {
     return this.request(`/projects?skip=${skip}&limit=${limit}`);
@@ -220,6 +286,20 @@ class ApiClient {
 
   async getProject(id: string): Promise<Project> {
     return this.request(`/projects/${id}`);
+  }
+
+  async getProjectResources(id: string): Promise<{
+    project: Project;
+    datasets: Dataset[];
+    generators: Generator[];
+    evaluations: Evaluation[];
+    stats: {
+      dataset_count: number;
+      generator_count: number;
+      evaluation_count: number;
+    };
+  }> {
+    return this.request(`/projects/${id}/resources`);
   }
 
   async createProject(data: {
@@ -260,6 +340,16 @@ class ApiClient {
 
   async getDataset(id: string): Promise<Dataset> {
     return this.request(`/datasets/${id}`);
+  }
+
+  async getDatasetDetails(id: string): Promise<{
+    dataset: Dataset;
+    generators: Generator[];
+    stats: {
+      generator_count: number;
+    };
+  }> {
+    return this.request(`/datasets/${id}/details`);
   }
 
   async uploadDataset(file: File, projectId: string): Promise<Dataset> {
@@ -315,8 +405,39 @@ class ApiClient {
 
   async downloadDataset(
     id: string
-  ): Promise<{ download_url: string; expires_in: number }> {
-    return this.request(`/datasets/${id}/download`);
+  ): Promise<{ download_url: string; filename?: string; expires_in?: number }> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE}/datasets/${id}/download`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error("Download failed");
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return response.json();
+    } else {
+      // Handle file download (blob)
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Extract filename from Content-Disposition
+      const contentDisposition = response.headers.get("content-disposition");
+      let filename = "dataset.csv";
+      if (contentDisposition) {
+        const matches = /filename="?([^"]+)"?/.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1];
+        }
+      }
+
+      return { download_url: url, filename };
+    }
   }
 
   async deleteDataset(id: string): Promise<void> {
@@ -329,16 +450,27 @@ class ApiClient {
     skip = 0,
     limit = 50
   ): Promise<Generator[]> {
-    const params = new URLSearchParams({
-      skip: String(skip),
-      limit: String(limit),
-    });
+    const params = new URLSearchParams();
+    if (skip > 0) params.append("skip", String(skip));
+    if (limit !== 50) params.append("limit", String(limit));
     if (datasetId) params.append("dataset_id", datasetId);
-    return this.request(`/generators?${params}`);
+    const queryString = params.toString();
+    return this.request(`/generators${queryString ? `?${queryString}` : ""}`);
   }
 
   async getGenerator(id: string): Promise<Generator> {
     return this.request(`/generators/${id}`);
+  }
+
+  async getGeneratorDetails(id: string): Promise<{
+    generator: Generator;
+    dataset: Dataset | null;
+    evaluations: Evaluation[];
+    stats: {
+      evaluation_count: number;
+    };
+  }> {
+    return this.request(`/generators/${id}/details`);
   }
 
   async createGenerator(
@@ -354,6 +486,7 @@ class ApiClient {
       target_epsilon?: number;
       target_delta?: number;
       max_grad_norm?: number;
+      synthetic_dataset_name?: string;
     }
   ): Promise<{ message: string; generator_id: string; job_id: string }> {
     return this.request(`/generators/dataset/${datasetId}/generate`, {
@@ -379,9 +512,19 @@ class ApiClient {
 
   async startGeneration(
     generatorId: string,
-    numRows?: number
+    params?: {
+      numRows?: number;
+      datasetName?: string;
+      projectId?: string;
+    }
   ): Promise<{ message: string; job_id: string }> {
-    const body = numRows ? JSON.stringify({ num_rows: numRows }) : undefined;
+    const body = params
+      ? JSON.stringify({
+          num_rows: params.numRows,
+          dataset_name: params.datasetName,
+          project_id: params.projectId,
+        })
+      : undefined;
     return this.request(`/generators/${generatorId}/generate`, {
       method: "POST",
       body,
@@ -493,14 +636,55 @@ class ApiClient {
     return this.request("/synthetic-datasets");
   }
 
-  async getSyntheticDataset(id: string): Promise<SyntheticDataset> {
+  async getSyntheticDataset(id: string): Promise<Dataset> {
     return this.request(`/synthetic-datasets/${id}`);
+  }
+
+  async getSyntheticDatasetDetails(id: string): Promise<{
+    dataset: Dataset;
+    generator: Generator | null;
+  }> {
+    return this.request(`/synthetic-datasets/${id}/details`);
   }
 
   async downloadSyntheticDataset(
     id: string
-  ): Promise<{ download_url: string; expires_in: number }> {
-    return this.request(`/synthetic-datasets/${id}/download`);
+  ): Promise<{ download_url: string; filename?: string; expires_in?: number }> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(
+      `${API_BASE}/synthetic-datasets/${id}/download`,
+      {
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Download failed");
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return response.json();
+    } else {
+      // Handle file download (blob)
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Extract filename from Content-Disposition
+      const contentDisposition = response.headers.get("content-disposition");
+      let filename = "synthetic_dataset.csv";
+      if (contentDisposition) {
+        const matches = /filename="?([^"]+)"?/.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1];
+        }
+      }
+
+      return { download_url: url, filename };
+    }
   }
 
   async deleteSyntheticDataset(id: string): Promise<void> {
@@ -517,18 +701,37 @@ class ApiClient {
     return this.request(`/evaluations/${id}`);
   }
 
-  async runEvaluation(config: {
+  async getEvaluationDetails(id: string): Promise<{
+    evaluation: Evaluation;
+    generator: Generator;
+    dataset: Dataset | null;
+  }> {
+    return this.request(`/evaluations/${id}/details`);
+  }
+
+  async runEvaluation(data: {
     generator_id: string;
     dataset_id: string;
-    target_column?: string;
-    sensitive_columns?: string[];
-    include_statistical?: boolean;
-    include_ml_utility?: boolean;
-    include_privacy?: boolean;
+    config: {
+      metrics?: {
+        statistical: boolean;
+        ml_utility: boolean;
+        privacy: boolean;
+      };
+      ml_utility_config?: {
+        target_column: string;
+        models: string[];
+        test_size: number;
+      };
+      privacy_config?: {
+        sensitive_columns: string[];
+        attacks: string[];
+      };
+    };
   }): Promise<Evaluation> {
     return this.request("/evaluations/run", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(data),
     });
   }
 
@@ -579,6 +782,12 @@ class ApiClient {
     });
   }
 
+  async deleteEvaluation(id: string): Promise<void> {
+    return this.request(`/evaluations/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   // LLM Chat
   async chat(
     message: string,
@@ -590,8 +799,72 @@ class ApiClient {
   ): Promise<ChatResponse> {
     return this.request("/llm/chat", {
       method: "POST",
-      body: JSON.stringify({ message, ...context }),
+      body: JSON.stringify({
+        message,
+        evaluation_id: context?.evaluation_id,
+        generator_id: context?.generator_id,
+        history: context?.history,
+      }),
     });
+  }
+
+  async *chatStream(
+    message: string,
+    context?: {
+      evaluation_id?: string;
+      generator_id?: string;
+      history?: ChatMessage[];
+    }
+  ): AsyncGenerator<string, void, unknown> {
+    const response = await fetch(`${API_BASE}/llm/chat/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      },
+      body: JSON.stringify({
+        message,
+        evaluation_id: context?.evaluation_id,
+        generator_id: context?.generator_id,
+        history: context?.history,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.content) {
+                yield data.content;
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   async explainMetric(
@@ -599,13 +872,11 @@ class ApiClient {
     value?: number
   ): Promise<{
     metric_name: string;
+    metric_value?: string;
     explanation: string;
-    value_interpretation?: string;
-    good_values: string;
-    action_if_poor: string;
   }> {
     const params = new URLSearchParams({ metric_name: metricName });
-    if (value !== undefined) params.append("value", String(value));
+    if (value !== undefined) params.append("metric_value", String(value));
     return this.request(`/llm/explain-metric?${params}`);
   }
 
@@ -626,7 +897,8 @@ class ApiClient {
   }
 
   async exportPrivacyReport(
-    generatorId: string,
+    datasetId: string,
+    generatorId?: string,
     format: "pdf" | "docx" = "pdf",
     saveToS3 = true
   ): Promise<{
@@ -637,40 +909,92 @@ class ApiClient {
     expires_in: number;
   }> {
     return this.request(
-      `/llm/privacy-report/${generatorId}/export?format=${format}&save_to_s3=${saveToS3}`,
+      `/llm/privacy-report/export/${format}?save_to_s3=${saveToS3}`,
       {
         method: "POST",
+        body: JSON.stringify({
+          dataset_id: datasetId,
+          generator_id: generatorId,
+        }),
+      }
+    );
+  }
+
+  async exportModelCard(
+    generatorId: string,
+    datasetId: string,
+    format: "pdf" | "docx" = "pdf",
+    saveToS3 = true
+  ): Promise<{
+    message: string;
+    export_id: string;
+    download_url: string;
+    filename: string;
+    expires_in: number;
+  }> {
+    return this.request(
+      `/llm/model-card/export/${format}?save_to_s3=${saveToS3}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          generator_id: generatorId,
+          dataset_id: datasetId,
+        }),
       }
     );
   }
 
   async generateFeatures(
-    schema: Record<string, unknown>
+    schema: Record<string, unknown>,
+    context?: string
   ): Promise<{ features: string[] }> {
     return this.request("/llm/generate-features", {
       method: "POST",
-      body: JSON.stringify(schema),
+      body: JSON.stringify({ schema, context }),
     });
   }
 
-  async detectPiiLLM(datasetId: string): Promise<PiiDetectionEnhancedResult> {
+  async detectPiiLLM(data: Array<Record<string, any>>): Promise<{
+    overall_risk_level: string;
+    pii_detected: Array<any>;
+  }> {
     return this.request("/llm/detect-pii", {
       method: "POST",
-      body: JSON.stringify({ dataset_id: datasetId }),
+      body: JSON.stringify({ data }),
     });
   }
 
-  async generatePrivacyReportJSON(generatorId: string): Promise<PrivacyConfig> {
+  async getModelCardCached(generatorId: string): Promise<any> {
+    return this.request(`/llm/model-card/${generatorId}`);
+  }
+
+  async getPrivacyReportCached(generatorId: string): Promise<any> {
+    return this.request(`/llm/privacy-report/${generatorId}`);
+  }
+
+  async generatePrivacyReportJSON(
+    datasetId: string,
+    generatorId?: string
+  ): Promise<any> {
     return this.request("/llm/privacy-report", {
       method: "POST",
-      body: JSON.stringify({ generator_id: generatorId }),
+      body: JSON.stringify({
+        dataset_id: datasetId,
+        generator_id: generatorId,
+      }),
     });
   }
 
-  async generateModelCardJSON(generatorId: string): Promise<ModelCard> {
+  async generateModelCardJSON(
+    generatorId: string,
+    datasetId: string
+  ): Promise<any> {
     return this.request("/llm/model-card", {
       method: "POST",
-      body: JSON.stringify({ generator_id: generatorId }),
+      body: JSON.stringify({
+        generator_id: generatorId,
+        dataset_id: datasetId,
+      }),
     });
   }
 
@@ -697,6 +1021,28 @@ class ApiClient {
   }
 
   // Billing
+  async getBillingSummary(params?: {
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+  }): Promise<{
+    usage_records: UsageRecord[];
+    quotas: Quota[];
+    summary: {
+      total_records: number;
+      total_quantity: number;
+      period_start: string | null;
+      period_end: string | null;
+    };
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.start_date)
+      searchParams.append("start_date", params.start_date);
+    if (params?.end_date) searchParams.append("end_date", params.end_date);
+    if (params?.limit) searchParams.append("limit", params.limit.toString());
+    return this.request(`/billing/summary?${searchParams}`);
+  }
+
   async listUsage(): Promise<UsageRecord[]> {
     return this.request("/billing/usage");
   }
@@ -800,6 +1146,15 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  async getComplianceSummary(): Promise<{
+    total_reports: number;
+    status_counts: Record<string, number>;
+    framework_counts: Record<string, number>;
+    recent_reports: ComplianceReport[];
+  }> {
+    return this.request("/compliance/summary");
   }
 
   // Jobs

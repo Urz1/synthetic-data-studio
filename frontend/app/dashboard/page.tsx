@@ -1,6 +1,6 @@
 "use client"
 
-import type * as React from "react"
+import React, { useState, useEffect } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
@@ -13,101 +13,14 @@ import { ActivityFeed } from "@/components/ui/activity-feed"
 import { Badge } from "@/components/ui/badge"
 import { ShowMore } from "@/components/ui/show-more"
 import { ContextualTip } from "@/components/ui/contextual-tip"
-import { Plus, Database, Zap, FileBarChart, ArrowRight, Layers, Eye, Download, Play, BarChart3, Activity } from "lucide-react"
+import { Plus, Database, Zap, FileBarChart, ArrowRight, Layers, Eye, Download, Play, BarChart3, Activity, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
-import type { Generator } from "@/lib/types"
-
-// Mock data with more realistic values
-const mockStats = {
-  totalDatasets: 12,
-  datasetsGrowth: 8,
-  activeGenerators: 3,
-  completedEvaluations: 28,
-  evaluationsGrowth: 15,
-  avgPrivacyScore: 0.87,
-  privacyTrend: [0.72, 0.75, 0.78, 0.82, 0.85, 0.87],
-}
-
-const mockRecentGenerators: Generator[] = [
-  {
-    id: "gen-1",
-    dataset_id: "ds-1",
-    name: "Patient Records Generator",
-    type: "dp-ctgan",
-    status: "completed",
-    parameters_json: { epochs: 300, batch_size: 500 },
-    privacy_config: { use_differential_privacy: true, target_epsilon: 8.5, target_delta: 1e-5 },
-    privacy_spent: { epsilon: 8.2, delta: 9.5e-6 },
-    training_metadata: { duration_seconds: 1842, final_loss: 0.023 },
-    created_by: "user1",
-    created_at: "2024-12-14T10:30:00Z",
-    updated_at: "2024-12-14T12:45:00Z",
-  },
-  {
-    id: "gen-2",
-    dataset_id: "ds-2",
-    name: "Financial Transactions",
-    type: "ctgan",
-    status: "training",
-    parameters_json: { epochs: 500, batch_size: 256 },
-    created_by: "user1",
-    created_at: "2024-12-15T08:00:00Z",
-    updated_at: "2024-12-15T08:30:00Z",
-  },
-  {
-    id: "gen-3",
-    dataset_id: "ds-3",
-    name: "Customer Demographics",
-    type: "dp-tvae",
-    status: "pending",
-    parameters_json: { epochs: 200, batch_size: 128 },
-    privacy_config: { use_differential_privacy: true, target_epsilon: 5.0, target_delta: 1e-6 },
-    created_by: "user1",
-    created_at: "2024-12-15T09:00:00Z",
-    updated_at: "2024-12-15T09:00:00Z",
-  },
-]
-
-const mockActivities = [
-  {
-    id: "act-1",
-    type: "generator_completed" as const,
-    title: "Generator completed",
-    description: "Patient Records Generator finished training with ε=8.2",
-    timestamp: "2024-12-15T12:45:00Z",
-  },
-  {
-    id: "act-2",
-    type: "evaluation_completed" as const,
-    title: "Evaluation completed",
-    description: "Quality score: 92% | Privacy risk: Low",
-    timestamp: "2024-12-15T11:30:00Z",
-  },
-  {
-    id: "act-3",
-    type: "pii_detected" as const,
-    title: "PII detected in dataset",
-    description: "Found 4 columns with potential PII in customers.csv",
-    timestamp: "2024-12-15T10:15:00Z",
-  },
-  {
-    id: "act-4",
-    type: "dataset_uploaded" as const,
-    title: "Dataset uploaded",
-    description: "transactions_q4.csv (2.4 MB, 50,000 rows)",
-    timestamp: "2024-12-15T09:00:00Z",
-  },
-  {
-    id: "act-5",
-    type: "export_ready" as const,
-    title: "Privacy report ready",
-    description: "PDF report for Patient Records Generator",
-    timestamp: "2024-12-14T16:00:00Z",
-  },
-]
+import type { Generator, Dataset, Evaluation } from "@/lib/types"
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 const generatorColumns = [
   {
@@ -154,6 +67,87 @@ const generatorColumns = [
 export default function DashboardPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { toast } = useToast()
+  
+  const [stats, setStats] = useState({
+    total_datasets: 0,
+    total_generators: 0,
+    active_generators: 0,
+    total_evaluations: 0,
+    completed_evaluations: 0,
+    avg_privacy_score: 0,
+  })
+  const [recentGenerators, setRecentGenerators] = useState<Generator[]>([])
+  const [activities, setActivities] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string>("")
+
+  const isAdmin = user?.role === "admin"
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true)
+      setError("")
+      try {
+        // Try optimized endpoint first
+        try {
+          const summary = await api.getDashboardSummary()
+          setStats(summary.stats)
+          setRecentGenerators(summary.recent_generators)
+          setActivities(summary.recent_activities)
+        } catch (apiError: any) {
+          // Fallback to individual API calls if dashboard endpoint not available (404)
+          // This happens if backend hasn't been restarted after adding new routes
+          if (apiError?.message?.includes("404") || apiError?.message?.includes("Not Found")) {
+            console.warn("Dashboard summary endpoint not available, falling back to individual calls")
+            
+            const apiCalls = [
+              api.listDatasets().catch(() => []),
+              api.listGenerators().catch(() => []),
+              api.listEvaluations().catch(() => []),
+            ]
+            
+            if (isAdmin) {
+              apiCalls.push(api.listAuditLogs({ limit: 5 }).catch(() => ({ logs: [] })))
+            }
+            
+            const results = await Promise.all(apiCalls)
+            const [datasetsData, generatorsData, evaluationsData, auditLogsData] = results
+            
+            // Calculate stats from fetched data
+            const calculatedStats = {
+              total_datasets: (datasetsData as any[]).length,
+              total_generators: (generatorsData as any[]).length,
+              active_generators: (generatorsData as any[]).filter(g => g.status === "training" || g.status === "pending").length,
+              total_evaluations: (evaluationsData as any[]).length,
+              completed_evaluations: (evaluationsData as any[]).filter(e => e.status === "completed").length,
+              avg_privacy_score: (evaluationsData as any[]).length > 0
+                ? (evaluationsData as any[]).reduce((acc, e) => acc + (e.summary?.overall_score ?? 0), 0) / (evaluationsData as any[]).length
+                : 0,
+            }
+            
+            setStats(calculatedStats)
+            setRecentGenerators((generatorsData as any[]).slice(0, 5))
+            setActivities(isAdmin && auditLogsData ? ((auditLogsData as any).logs || []) : [])
+          } else {
+            throw apiError
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load dashboard data"
+        setError(message)
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, []) // Run once on mount - toast is not a stable dependency
 
   return (
     <ProtectedRoute>
@@ -181,37 +175,46 @@ export default function DashboardPage() {
         <strong>Pro tip:</strong> Your most important metrics are shown above. Click "Show Activity Feed" below to see your full audit trail and quick actions.
       </ContextualTip>
 
-      {/* Stats Grid - Always visible (20% that delivers 80% value) */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8 stagger-children">
-        <MetricCard
-          title="Total Datasets"
-          value={mockStats.totalDatasets}
-          trend={{ value: mockStats.datasetsGrowth, direction: "up", label: "from last month" }}
-          icon={<Database className="h-5 w-5" />}
-          quality="neutral"
-        />
-        <MetricCard
-          title="Active Generators"
-          value={mockStats.activeGenerators}
-          subtitle="Currently training"
-          icon={<Zap className="h-5 w-5" />}
-          quality="neutral"
-        />
-        <MetricCard
-          title="Evaluations"
-          value={mockStats.completedEvaluations}
-          trend={{ value: mockStats.evaluationsGrowth, direction: "up", label: "this month" }}
-          icon={<FileBarChart className="h-5 w-5" />}
-          quality="good"
-        />
-        <MetricCard
-          title="Avg Privacy Score"
-          value={`${(mockStats.avgPrivacyScore * 100).toFixed(0)}%`}
-          tooltip="Average privacy score across all evaluations"
-          sparkline={mockStats.privacyTrend}
-          quality="good"
-        />
-      </div>
+      {isLoading ? (
+        <div className="text-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 text-destructive">
+          <p>{error}</p>
+        </div>
+      ) : (
+        <>
+          {/* Stats Grid - Always visible (20% that delivers 80% value) */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8 stagger-children">
+            <MetricCard
+              title="Total Datasets"
+              value={stats.total_datasets}
+              icon={<Database className="h-5 w-5" />}
+              quality="neutral"
+            />
+            <MetricCard
+              title="Active Generators"
+              value={stats.active_generators}
+              subtitle="Currently training"
+              icon={<Zap className="h-5 w-5" />}
+              quality="neutral"
+            />
+            <MetricCard
+              title="Evaluations"
+              value={stats.completed_evaluations}
+              subtitle="Completed"
+              icon={<FileBarChart className="h-5 w-5" />}
+              quality="good"
+            />
+            <MetricCard
+              title="Avg Privacy Score"
+              value={stats.avg_privacy_score > 0 ? `${(stats.avg_privacy_score * 100).toFixed(0)}%` : "N/A"}
+              tooltip="Average privacy score across all evaluations"
+              quality="good"
+            />
+          </div>
 
       {/* Recent Generators - Always visible */}
       <Card className="mb-6">
@@ -229,7 +232,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="pt-0">
           <DataTable
-            data={mockRecentGenerators.slice(0, 3)}
+            data={recentGenerators.slice(0, 3)}
             columns={generatorColumns}
             keyExtractor={(row) => row.id}
             onRowClick={(row) => router.push(`/generators/${row.id}`)}
@@ -259,7 +262,16 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <ActivityFeed activities={mockActivities} maxItems={5} />
+              <ActivityFeed 
+                activities={activities.map(log => ({
+                  id: log.id,
+                  type: log.action?.replace("_", "_") as any || "dataset_uploaded",
+                  title: log.action?.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) || "Activity",
+                  description: log.details || `Action on ${log.resource_type} ${log.resource_id}`,
+                  timestamp: log.timestamp,
+                }))} 
+                maxItems={5} 
+              />
             </CardContent>
           </Card>
 
@@ -270,22 +282,26 @@ export default function DashboardPage() {
               <CardDescription>Quick actions for recent generators</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {mockRecentGenerators.slice(0, 3).map((gen) => (
-                <div key={gen.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                  <span className="text-sm font-medium truncate">{gen.name}</span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => router.push(`/generators/${gen.id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-11 w-11">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-11 w-11">
-                      <Play className="h-4 w-4" />
-                    </Button>
+              {recentGenerators.length > 0 ? (
+                recentGenerators.slice(0, 3).map((gen) => (
+                  <div key={gen.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <span className="text-sm font-medium truncate">{gen.name}</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => router.push(`/generators/${gen.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-11 w-11">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-11 w-11">
+                        <Play className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No generators yet</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -334,6 +350,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </ShowMore>
+        </>
+      )}
       </AppShell>
     </ProtectedRoute>
   )

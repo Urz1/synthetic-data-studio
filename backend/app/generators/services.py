@@ -37,6 +37,8 @@ from app.services.synthesis import CTGANService, TVAEService
 from app.services.synthesis.dp_ctgan_service import DPCTGANService
 from app.services.synthesis.dp_tvae_service import DPTVAEService
 from app.services.privacy.privacy_report_service import PrivacyReportService
+from app.projects.models import Project
+from app.projects.repositories import get_projects, create_project
 
 def _get_source_project_id(db: Session, generator):
     """Get project_id from source dataset."""
@@ -191,6 +193,19 @@ def _generate_from_dataset(generator: Generator, db: Session) -> Dataset:
 def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
     """Generate from manual schema definition using GaussianCopula."""
     schema = generator.schema_json
+    
+    # Normalize schema if it's a list (from frontend) to dict (for backend processing)
+    if isinstance(schema, list):
+        # Convert list of columns [{"name": "age", "type": "integer"}] to dict {"age": {"type": "integer"}}
+        normalized_schema = {}
+        for col in schema:
+            if "name" in col:
+                col_name = col.pop("name")
+                normalized_schema[col_name] = col
+        schema = normalized_schema
+        # Update generator schema to match normalized format
+        generator.schema_json = schema
+    
     num_rows = generator.parameters_json.get('num_rows', 1000)
     
     logger.info(f"Generating {num_rows} rows from schema using GaussianCopula")
@@ -219,10 +234,45 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
+    # Determine project_id
+    project_id = None
+    
+    # Check parameters first (passed from frontend)
+    param_project_id = generator.parameters_json.get('project_id')
+    if param_project_id:
+        project_id = uuid.UUID(param_project_id)
+    
+    # Fallback: Check source dataset
+    if not project_id and generator.dataset_id:
+        try:
+            project_id = _get_source_project_id(db, generator)
+        except ValueError:
+            pass
+            
+    # Fallback: Find existing project or create default
+    if not project_id:
+        # Find existing project for user or create one
+        projects = get_projects(db, owner_id=generator.created_by, limit=1)
+        if projects:
+            project_id = projects[0].id
+        else:
+            # Create default project
+            default_project = Project(
+                name="Default Project",
+                description="Auto-created project for generated datasets",
+                owner_id=generator.created_by
+            )
+            created_project = create_project(db, default_project)
+            project_id = created_project.id
+    
+    # Determine dataset name
+    custom_name = generator.parameters_json.get('dataset_name')
+    dataset_name = custom_name if custom_name else f"{generator.name}_copula_synthetic"
+
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),
-        name=f"{generator.name}_copula_synthetic",
+        project_id=project_id,
+        name=dataset_name,
         original_filename=unique_filename,
         s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
@@ -308,10 +358,22 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
+    # Determine project_id
+    project_id = None
+    param_project_id = params.get('project_id')
+    if param_project_id:
+        project_id = uuid.UUID(param_project_id)
+    else:
+        project_id = _get_source_project_id(db, generator)
+    
+    # Determine dataset name
+    custom_name = params.get('dataset_name')
+    dataset_name = custom_name if custom_name else f"{generator.name}_ctgan_synthetic"
+    
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),
-        name=f"{generator.name}_ctgan_synthetic",
+        project_id=project_id,
+        name=dataset_name,
         original_filename=unique_filename,
         s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
@@ -402,10 +464,22 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
+    # Determine project_id
+    project_id = None
+    param_project_id = params.get('project_id')
+    if param_project_id:
+        project_id = uuid.UUID(param_project_id)
+    else:
+        project_id = _get_source_project_id(db, generator)
+    
+    # Determine dataset name
+    custom_name = params.get('dataset_name')
+    dataset_name = custom_name if custom_name else f"{generator.name}_tvae_synthetic"
+    
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),
-        name=f"{generator.name}_tvae_synthetic",
+        project_id=project_id,
+        name=dataset_name,
         original_filename=unique_filename,
         s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
@@ -446,7 +520,12 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     target_delta = params.get('target_delta')
     max_grad_norm = params.get('max_grad_norm', 1.0)
     noise_multiplier = params.get('noise_multiplier')
-    force = params.get('force', False)  # User acknowledged risks
+    force = params.get('force', False)
+    
+    # Custom naming
+    synthetic_dataset_name = params.get('dataset_name') or params.get('synthetic_dataset_name')
+    if not synthetic_dataset_name:
+        synthetic_dataset_name = f"{generator.name}_dp_ctgan_synthetic"
     
     logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, force={force}")
     
@@ -514,15 +593,24 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
+    # Determine project_id
+    project_id = None
+    param_project_id = params.get('project_id')
+    if param_project_id:
+        project_id = uuid.UUID(param_project_id)
+    else:
+        project_id = _get_source_project_id(db, generator)
+    
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),
-        name=f"{generator.name}_dp_ctgan_synthetic",
+        project_id=project_id,
+        name=synthetic_dataset_name,
         original_filename=unique_filename,
         s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,
         row_count=len(synthetic_data),
         schema_data={
+            "columns": list(synthetic_data.columns),
             "generation_method": "dp-ctgan",
             "training_summary": training_summary,
             "privacy_report": privacy_report,
@@ -561,6 +649,11 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     max_grad_norm = params.get('max_grad_norm', 1.0)
     noise_multiplier = params.get('noise_multiplier')
     force = params.get('force', False)  # User acknowledged risks
+    
+    # Custom naming
+    synthetic_dataset_name = params.get('dataset_name') or params.get('synthetic_dataset_name')
+    if not synthetic_dataset_name:
+        synthetic_dataset_name = f"{generator.name}_dp_tvae_synthetic"
     
     logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, force={force}")
     
@@ -629,10 +722,18 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     # Calculate checksum
     checksum = hashlib.sha256(file_path.read_bytes()).hexdigest()
     
+    # Determine project_id
+    project_id = None
+    param_project_id = params.get('project_id')
+    if param_project_id:
+        project_id = uuid.UUID(param_project_id)
+    else:
+        project_id = _get_source_project_id(db, generator)
+    
     # Create output dataset
     output_dataset = Dataset(
-        project_id=_get_source_project_id(db, generator),
-        name=f"{generator.name}_dp_tvae_synthetic",
+        project_id=project_id,
+        name=synthetic_dataset_name,
         original_filename=unique_filename,
         s3_key=s3_key,  # S3 key if uploaded
         size_bytes=file_path.stat().st_size,

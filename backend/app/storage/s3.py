@@ -428,7 +428,28 @@ class S3StorageService:
             logger.error(f"Failed to download file from S3: {e}")
             raise S3DownloadError(f"Download failed: {e}")
     
-    # ==================== Delete Operations ====================
+    def get_file_stream(self, key: str, chunk_size: int = 1024 * 1024):
+        """
+        Get a generator that yields file content chunks from S3.
+        
+        Args:
+            key: S3 object key
+            chunk_size: Size of chunks to yield (default 1MB)
+            
+        Yields:
+            Bytes chunks of the file
+        """
+        try:
+            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=key)
+            stream = response['Body']
+            for chunk in stream.iter_chunks(chunk_size):
+                yield chunk
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code == "404":
+                raise S3DownloadError(f"File not found: {key}")
+            logger.error(f"Failed to stream file from S3: {e}")
+            raise S3DownloadError(f"Download failed: {e}")
     
     def delete_file(self, key: str) -> bool:
         """

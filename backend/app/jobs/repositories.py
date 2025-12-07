@@ -19,9 +19,14 @@ from .models import Job
 # REPOSITORIES
 # ============================================================================
 
-def get_jobs(db: Session, skip: int = 0, limit: int = 100) -> List[Job]:
-    """Get all jobs with pagination."""
-    return db.exec(select(Job).offset(skip).limit(limit)).all()
+def get_jobs(db: Session, user_id: Optional[uuid.UUID] = None, skip: int = 0, limit: int = 100) -> List[Job]:
+    """Get jobs with optional user filter and pagination."""
+    stmt = select(Job).where(Job.deleted_at.is_(None))
+    
+    if user_id:
+        stmt = stmt.where(Job.initiated_by == user_id)
+    
+    return db.exec(stmt.offset(skip).limit(limit)).all()
 
 
 def get_job_by_id(db: Session, job_id: str) -> Optional[Job]:

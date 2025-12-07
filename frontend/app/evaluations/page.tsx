@@ -13,6 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import type { Evaluation } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function EvaluationsPage() {
   const [search, setSearch] = React.useState("")
@@ -20,7 +31,10 @@ export default function EvaluationsPage() {
   const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [evaluationToDelete, setEvaluationToDelete] = React.useState<string | null>(null)
   const { user } = useAuth()
+  const { toast } = useToast()
 
   React.useEffect(() => {
     loadEvaluations()
@@ -43,6 +57,27 @@ export default function EvaluationsPage() {
       setError(err instanceof Error ? err.message : "Failed to load evaluations")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await api.deleteEvaluation(id)
+      toast({
+        title: "Deleted",
+        description: "Evaluation has been deleted successfully.",
+      })
+      // Refresh the list
+      await loadEvaluations()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete evaluation",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleteDialogOpen(false)
+      setEvaluationToDelete(null)
     }
   }
 
@@ -114,6 +149,24 @@ export default function EvaluationsPage() {
             <EvaluationCard
               key={evaluation.id}
               evaluation={evaluation}
+              onDelete={() => {
+                setEvaluationToDelete(evaluation.id)
+                setDeleteDialogOpen(true)
+              }}
+              onExport={() => {
+                if (evaluation.report) {
+                  const dataStr = JSON.stringify(evaluation.report, null, 2)
+                  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+                  const url = URL.createObjectURL(dataBlob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = `evaluation-${evaluation.id}.json`
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                  URL.revokeObjectURL(url)
+                }
+              }}
             />
           ))}
         </div>
@@ -135,6 +188,26 @@ export default function EvaluationsPage() {
       )}
       </>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Evaluation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this evaluation? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => evaluationToDelete && handleDelete(evaluationToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   )
 }

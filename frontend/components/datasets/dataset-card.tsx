@@ -13,17 +13,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 import type { Dataset } from "@/lib/types"
 
 interface DatasetCardProps {
   dataset: Dataset
   onDelete?: () => void
+  onDownload?: () => void
   className?: string
 }
 
-export function DatasetCard({ dataset, onDelete, className }: DatasetCardProps) {
+export function DatasetCard({ dataset, onDelete, onDownload, className }: DatasetCardProps) {
+  const { toast } = useToast()
   const hasPii = dataset.pii_flags && Object.keys(dataset.pii_flags).length > 0
   const piiCount = hasPii ? Object.keys(dataset.pii_flags!).length : 0
+
+  const handleDownload = async () => {
+    try {
+      const result = await api.downloadDataset(dataset.id)
+      if (result.download_url) {
+        window.open(result.download_url, "_blank")
+        toast({
+          title: "Download Started",
+          description: "Your file is being downloaded",
+        })
+      }
+      if (onDownload) onDownload()
+    } catch (err) {
+      toast({
+        title: "Download Failed",
+        description: err instanceof Error ? err.message : "Failed to download dataset",
+        variant: "destructive",
+      })
+    }
+  }
 
   const formatSize = (bytes?: number) => {
     if (!bytes) return "-"
@@ -42,14 +66,16 @@ export function DatasetCard({ dataset, onDelete, className }: DatasetCardProps) 
 
   return (
     <Card className={cn("group transition-shadow hover:shadow-md", className)}>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-primary/10 p-2">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="rounded-lg bg-primary/10 p-2 shrink-0">
             <Database className="h-5 w-5 text-primary" />
           </div>
-          <div>
-            <CardTitle className="text-base">{dataset.name}</CardTitle>
-            <p className="text-xs text-muted-foreground">{formatDate(dataset.uploaded_at)}</p>
+          <div className="min-w-0">
+            <CardTitle className="text-base truncate block" title={dataset.name}>
+              {dataset.name}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground truncate">{formatDate(dataset.uploaded_at)}</p>
           </div>
         </div>
         <DropdownMenu>
@@ -57,7 +83,7 @@ export function DatasetCard({ dataset, onDelete, className }: DatasetCardProps) 
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -69,12 +95,12 @@ export function DatasetCard({ dataset, onDelete, className }: DatasetCardProps) 
                 View details
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" />
               Download
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-risk" onClick={onDelete}>
+            <DropdownMenuItem className="text-destructive" onClick={onDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -89,7 +115,7 @@ export function DatasetCard({ dataset, onDelete, className }: DatasetCardProps) 
           </div>
           <div>
             <p className="text-muted-foreground mb-1">Columns</p>
-            <p className="font-mono font-medium">{dataset.schema_data.columns.length}</p>
+            <p className="font-mono font-medium">{dataset.schema_data?.columns?.length || 0}</p>
           </div>
           <div>
             <p className="text-muted-foreground mb-1">Size</p>

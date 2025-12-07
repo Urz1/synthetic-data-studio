@@ -29,13 +29,18 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 # ENDPOINTS
 # ============================================================================
 
+@router.get("", response_model=List[JobResponse])
 @router.get("/", response_model=List[JobResponse])
 def list_jobs(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """List all jobs."""
-    return get_jobs(db)
+    """List jobs for current user (all if admin)."""
+    # If admin, return all jobs
+    if hasattr(current_user, "role") and current_user.role == "admin":
+        return get_jobs(db)
+    # Otherwise, filter by initiated_by
+    return get_jobs(db, user_id=current_user.id)
 
 
 @router.get("/{job_id}", response_model=JobResponse)

@@ -26,6 +26,8 @@ celery_app.conf.update(
     task_track_started=True,
     task_time_limit=3600 * 4,  # 4 hours max per task
     worker_prefetch_multiplier=1,  # One task at a time per worker process (for heavy ML tasks)
+    # task_always_eager=True, # DEV MODE: Run tasks synchronously
+    # task_eager_propagates=True, # DEV MODE: Propagate exceptions
 )
 
 # Auto-discover tasks in these modules

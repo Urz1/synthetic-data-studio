@@ -10,28 +10,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Zap, BarChart3, Brain, Shield } from "lucide-react"
+import { ArrowLeft, Zap, BarChart3, Brain, Shield, AlertTriangle, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-// Mock data
-const mockGenerators = [
-  { id: "g1", name: "Patient Records Generator", datasetId: "d1" },
-  { id: "g2", name: "Financial Transactions", datasetId: "d2" },
-  { id: "g3", name: "Customer Demographics", datasetId: "d3" },
-]
-
-const mockDatasets = [
-  { id: "d1", name: "patients.csv", columns: ["age", "gender", "diagnosis", "ssn", "email"] },
-  { id: "d2", name: "transactions.csv", columns: ["amount", "date", "merchant", "category"] },
-  { id: "d3", name: "customers.json", columns: ["email", "phone", "address"] },
-]
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { api } from "@/lib/api"
+import type { Generator, Dataset } from "@/lib/types"
 
 export default function NewEvaluationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const preselectedGenerator = searchParams.get("generator")
+  const preselectedGeneratorId = searchParams.get("generator")
 
-  const [selectedGeneratorId, setSelectedGeneratorId] = React.useState(preselectedGenerator || "")
+  // Data State
+  const [generators, setGenerators] = React.useState<Generator[]>([])
+  const [selectedGenerator, setSelectedGenerator] = React.useState<Generator | null>(null)
+  const [dataset, setDataset] = React.useState<Dataset | null>(null)
+  
+  // UI State
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  // Config State
   const [config, setConfig] = React.useState({
     include_statistical: true,
     include_ml_utility: true,
@@ -39,21 +39,91 @@ export default function NewEvaluationPage() {
     target_column: "",
     sensitive_columns: [] as string[],
   })
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
-  const mockUser = { full_name: "John Doe", email: "john@example.com" }
-  const selectedGenerator = mockGenerators.find((g) => g.id === selectedGeneratorId)
-  const selectedDataset = selectedGenerator ? mockDatasets.find((d) => d.id === selectedGenerator.datasetId) : null
+  // Load Generators
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true)
+        const data = await api.listGenerators()
+        // Filter for completed generators only
+        const completedOnly = data.filter(g => g.status === 'completed')
+        setGenerators(completedOnly)
+
+        // Handle preselection
+        if (preselectedGeneratorId) {
+          const preselected = completedOnly.find(g => g.id === preselectedGeneratorId)
+          if (preselected) {
+            handleGeneratorChange(preselected.id)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load generators:", err)
+        setError("Failed to load generators. Please try again.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [preselectedGeneratorId])
+
+  // Handle Generator Selection
+  const handleGeneratorChange = async (generatorId: string) => {
+    const generator = generators.find(g => g.id === generatorId)
+    setSelectedGenerator(generator || null)
+    
+    // Reset config that depends on dataset
+    setConfig(prev => ({ ...prev, target_column: "", sensitive_columns: [] }))
+    
+    if (generator?.dataset_id) {
+      try {
+        // Fetch source dataset details to get columns
+        const datasetData = await api.getDataset(generator.dataset_id)
+        setDataset(datasetData)
+      } catch (err) {
+        console.error("Failed to load dataset details:", err)
+      }
+    } else {
+        setDataset(null)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedGeneratorId) return
+    if (!selectedGenerator || !dataset) return
 
     setIsSubmitting(true)
-    // Simulate API call
-    setTimeout(() => {
+    setError(null)
+
+    try {
+      await api.runEvaluation({
+        generator_id: selectedGenerator.id,
+        dataset_id: dataset.id, // Compare against source dataset
+        config: {
+            metrics: {
+                statistical: config.include_statistical,
+                ml_utility: config.include_ml_utility,
+                privacy: config.include_privacy
+            },
+            ml_utility_config: config.include_ml_utility && config.target_column ? {
+                target_column: config.target_column,
+                models: ["lr", "rf"], // Default models
+                test_size: 0.2
+            } : undefined,
+            privacy_config: config.include_privacy && config.sensitive_columns.length > 0 ? {
+                sensitive_columns: config.sensitive_columns,
+                attacks: ["membership_inference"]
+            } : undefined
+        }
+      })
+      
+      // Async redirection - Standard Pattern
       router.push("/evaluations")
-    }, 1500)
+    } catch (err) {
+      console.error("Failed to run evaluation:", err)
+      setError(err instanceof Error ? err.message : "Failed to run evaluation")
+      setIsSubmitting(false)
+    }
   }
 
   const toggleSensitiveColumn = (column: string) => {
@@ -65,8 +135,19 @@ export default function NewEvaluationPage() {
     }))
   }
 
+  // Loading View
+  if (isLoading) {
+      return (
+          <AppShell user={{ full_name: "", email: "" }}>
+              <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+          </AppShell>
+      )
+  }
+
   return (
-    <AppShell user={mockUser}>
+    <AppShell user={{ full_name: "Admin User", email: "admin@example.com" }}>
       <div className="mb-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/evaluations">
@@ -78,6 +159,21 @@ export default function NewEvaluationPage() {
 
       <PageHeader title="Run Evaluation" description="Assess the quality and privacy of your synthetic data" />
 
+      {error && (
+          <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4"/>
+              <AlertDescription>{error}</AlertDescription>
+          </Alert>
+      )}
+
+      {generators.length === 0 ? (
+          <Alert className="mb-6">
+              <AlertTriangle className="h-4 w-4"/>
+              <AlertDescription>
+                  No completed generators found. Please <Link href="/generators/new" className="underline">create and train a generator</Link> first.
+              </AlertDescription>
+          </Alert>
+      ) : (
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
@@ -91,14 +187,20 @@ export default function NewEvaluationPage() {
                 <CardDescription>Choose a completed generator to evaluate</CardDescription>
               </CardHeader>
               <CardContent>
-                <Select value={selectedGeneratorId} onValueChange={setSelectedGeneratorId}>
+                <Select 
+                    value={selectedGenerator?.id || ""} 
+                    onValueChange={handleGeneratorChange}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a generator..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockGenerators.map((generator) => (
+                    {generators.map((generator) => (
                       <SelectItem key={generator.id} value={generator.id}>
-                        {generator.name}
+                        <div className="flex items-center gap-2">
+                            <span>{generator.name}</span>
+                            <Badge variant="outline" className="text-xs">{generator.type}</Badge>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -107,7 +209,7 @@ export default function NewEvaluationPage() {
             </Card>
 
             {/* Evaluation Options */}
-            {selectedGeneratorId && (
+            {selectedGenerator && (
               <Card>
                 <CardHeader>
                   <CardTitle>Evaluation Options</CardTitle>
@@ -177,11 +279,14 @@ export default function NewEvaluationPage() {
             )}
 
             {/* Column Configuration */}
-            {selectedDataset && config.include_privacy && (
+            {dataset && (config.include_ml_utility || config.include_privacy) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Column Configuration</CardTitle>
-                  <CardDescription>Select sensitive columns for privacy analysis</CardDescription>
+                  <CardDescription>
+                      {config.include_ml_utility && <span>Select target column for ML utility.</span>}
+                      {config.include_privacy && <span> Select sensitive columns for privacy analysis.</span>}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {config.include_ml_utility && (
@@ -195,31 +300,40 @@ export default function NewEvaluationPage() {
                           <SelectValue placeholder="Select target column..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {selectedDataset.columns.map((col) => (
-                            <SelectItem key={col} value={col}>
-                              {col}
-                            </SelectItem>
-                          ))}
+                          {dataset.schema_data?.columns ? 
+                              dataset.schema_data.columns.map((col: any) => (
+                                <SelectItem key={typeof col === 'string' ? col : col.name} value={typeof col === 'string' ? col : col.name}>
+                                  {typeof col === 'string' ? col : col.name}
+                                </SelectItem>
+                              ))
+                          : (
+                              <SelectItem value="none" disabled>No columns found</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label>Sensitive Columns (for privacy checks)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedDataset.columns.map((col) => (
-                        <Badge
-                          key={col}
-                          variant={config.sensitive_columns.includes(col) ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => toggleSensitiveColumn(col)}
-                        >
-                          {col}
-                        </Badge>
-                      ))}
+                  {config.include_privacy && dataset.schema_data?.columns && (
+                    <div className="space-y-2">
+                      <Label>Sensitive Columns (for privacy checks)</Label>
+                      <div className="flex flex-wrap gap-2">
+                       {dataset.schema_data.columns.map((col: any) => {
+                            const colName = typeof col === 'string' ? col : col.name;
+                            return (
+                                <Badge
+                                key={colName}
+                                variant={config.sensitive_columns.includes(colName) ? "default" : "outline"}
+                                className="cursor-pointer"
+                                onClick={() => toggleSensitiveColumn(colName)}
+                                >
+                                {colName}
+                                </Badge>
+                            )
+                       })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -229,8 +343,12 @@ export default function NewEvaluationPage() {
               <Button type="button" variant="outline" asChild>
                 <Link href="/evaluations">Cancel</Link>
               </Button>
-              <Button type="submit" disabled={!selectedGeneratorId || isSubmitting}>
-                {isSubmitting ? "Starting..." : "Run Evaluation"}
+              <Button type="submit" disabled={!selectedGenerator || isSubmitting}>
+                {isSubmitting ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Starting...
+                    </>
+                ) : "Run Evaluation"}
               </Button>
             </div>
           </div>
@@ -282,6 +400,7 @@ export default function NewEvaluationPage() {
           </div>
         </div>
       </form>
+      )}
     </AppShell>
   )
 }

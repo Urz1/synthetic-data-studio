@@ -31,7 +31,9 @@ export interface GeneratorConfig {
   use_differential_privacy: boolean
   target_epsilon: number
   target_delta: number
+  target_delta: number
   max_grad_norm: number
+  synthetic_dataset_name?: string
 }
 
 const MODEL_OPTIONS: { value: ModelType; label: string; description: string; dpSupport: boolean }[] = [
@@ -64,13 +66,15 @@ export function GeneratorConfigForm({
     target_epsilon: 10.0,
     target_delta: 1 / datasetRowCount,
     max_grad_norm: 1.0,
+    synthetic_dataset_name: "",
   })
 
   const [validation, setValidation] = React.useState<{
     valid: boolean
+    errors: Record<string, string>
     warnings: string[]
     utilityEstimate?: string
-  }>({ valid: true, warnings: [] })
+  }>({ valid: true, errors: {}, warnings: [] })
 
   const selectedModel = MODEL_OPTIONS.find((m) => m.value === config.model_type)
   const isDpModel = selectedModel?.dpSupport || false
@@ -82,39 +86,65 @@ export function GeneratorConfigForm({
     }
   }, [config.use_differential_privacy, isDpModel])
 
-  // Validate DP configuration
+  // Comprehensive Validation Logic
   React.useEffect(() => {
-    if (config.use_differential_privacy) {
-      const warnings: string[] = []
-      let valid = true
+    const errors: Record<string, string> = {}
+    const warnings: string[] = []
+    let valid = true
 
-      if (config.target_epsilon < 1) {
-        warnings.push("Very low epsilon may significantly reduce data utility")
+    // Batch Size Validation
+    if (config.batch_size < 10) {
+      errors.batch_size = "Batch size must be at least 10"
+      valid = false
+    } else if ((config.model_type === "ctgan" || config.model_type === "dp-ctgan") && config.batch_size % 10 !== 0) {
+      errors.batch_size = "Batch size must be a multiple of 10 for CTGAN (e.g., 500, 510)"
+      valid = false
+    }
+
+    // Epochs Validation
+    if (config.epochs < 1) {
+      errors.epochs = "Epochs must be at least 1"
+      valid = false
+    }
+
+    // Privacy Validation
+    let utilityEstimate = undefined
+    if (config.use_differential_privacy) {
+      if (!config.target_epsilon) { // Check for 0, null, undefined
+         errors.target_epsilon = "Privacy budget (epsilon) is required"
+         valid = false
+      } else if (config.target_epsilon <= 0) {
+         errors.target_epsilon = "Epsilon must be greater than 0"
+         valid = false
+      } else {
+        if (config.target_epsilon < 1) {
+          warnings.push("Very low epsilon may significantly reduce data utility")
+          utilityEstimate = "low"
+        } else if (config.target_epsilon > 50) {
+           warnings.push("High epsilon provides weaker privacy guarantees")
+           utilityEstimate = "very high"
+        } else {
+           utilityEstimate = config.target_epsilon <= 10 ? "high" : "medium"
+        }
       }
-      if (config.target_epsilon > 50) {
-        warnings.push("High epsilon provides weaker privacy guarantees")
-      }
+
       if (config.target_delta > 1 / datasetRowCount) {
         warnings.push("Delta should be less than 1/n for strong privacy")
-        valid = false
       }
-
-      const utilityEstimate = config.target_epsilon <= 1 ? "low" : config.target_epsilon <= 10 ? "high" : "very high"
-
-      setValidation({ valid, warnings, utilityEstimate })
-    } else {
-      setValidation({ valid: true, warnings: [] })
     }
-  }, [config.use_differential_privacy, config.target_epsilon, config.target_delta, datasetRowCount])
+
+    setValidation({ valid, errors, warnings, utilityEstimate })
+  }, [config, datasetRowCount])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validation.valid) return
     if (!config.name.trim()) return
     onSubmit(config)
   }
 
   return (
-    <form onSubmit={handleSubmit} className={className}>
+    <form onSubmit={handleSubmit} className={className} noValidate>
       <div className="space-y-6">
         {/* Basic Configuration */}
         <Card>
@@ -192,7 +222,11 @@ export function GeneratorConfigForm({
                   max={2000}
                   value={config.epochs}
                   onChange={(e) => setConfig({ ...config, epochs: Number.parseInt(e.target.value) || 0 })}
+                  className={cn(validation.errors.epochs && "border-destructive")}
                 />
+                {validation.errors.epochs && (
+                  <p className="text-xs text-destructive">{validation.errors.epochs}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -204,147 +238,151 @@ export function GeneratorConfigForm({
                   max={2048}
                   value={config.batch_size}
                   onChange={(e) => setConfig({ ...config, batch_size: Number.parseInt(e.target.value) || 0 })}
+                  className={cn(validation.errors.batch_size && "border-destructive")}
                 />
+                {validation.errors.batch_size && (
+                  <p className="text-xs text-destructive">{validation.errors.batch_size}</p>
+                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Differential Privacy Configuration */}
-        <Card className={cn(config.use_differential_privacy && "border-success/30")}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield
-                  className={cn("h-5 w-5", config.use_differential_privacy ? "text-success" : "text-muted-foreground")}
-                />
-                <div>
-                  <CardTitle>Differential Privacy</CardTitle>
-                  <CardDescription>Add mathematical privacy guarantees</CardDescription>
-                </div>
-              </div>
-              <Switch
-                checked={config.use_differential_privacy}
-                onCheckedChange={(checked) => setConfig({ ...config, use_differential_privacy: checked })}
-              />
-            </div>
-          </CardHeader>
-
-          {config.use_differential_privacy && (
-            <CardContent className="space-y-6">
-              {/* Epsilon Slider */}
-              <div className="space-y-3">
+            {/* Differential Privacy Configuration */}
+            <Card className={cn(config.use_differential_privacy && "border-success/30", validation.errors.target_epsilon && "border-destructive")}>
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-1">
-                    Privacy Budget (ε)
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          Lower epsilon = stronger privacy, but lower data utility. Recommended: 1-10 for most use
-                          cases.
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
-                  <EpsilonBadge epsilon={config.target_epsilon} size="sm" />
-                </div>
-                <Slider
-                  value={[config.target_epsilon]}
-                  onValueChange={([value]) => setConfig({ ...config, target_epsilon: value })}
-                  min={0.1}
-                  max={100}
-                  step={0.1}
-                  className="py-2"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Stronger Privacy</span>
-                  <span>Better Utility</span>
-                </div>
-              </div>
-
-              {/* Delta Input */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  Delta (δ)
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        Probability of privacy breach. Should be less than 1/n where n is your dataset size.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={config.target_delta.toExponential(1)}
-                    onChange={(e) => {
-                      const value = Number.parseFloat(e.target.value)
-                      if (!isNaN(value)) setConfig({ ...config, target_delta: value })
-                    }}
-                    className="font-mono"
-                  />
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    Recommended: {"<"} {(1 / datasetRowCount).toExponential(1)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Gradient Clipping */}
-              <div className="space-y-2">
-                <Label>Gradient Clipping Norm</Label>
-                <Slider
-                  value={[config.max_grad_norm]}
-                  onValueChange={([value]) => setConfig({ ...config, max_grad_norm: value })}
-                  min={0.1}
-                  max={5}
-                  step={0.1}
-                  className="py-2"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Value: {config.max_grad_norm.toFixed(1)}</span>
-                  <span>Recommended: 1.0</span>
-                </div>
-              </div>
-
-              {/* Validation Feedback */}
-              {(validation.warnings.length > 0 || validation.utilityEstimate) && (
-                <div className="space-y-2 pt-2 border-t">
-                  {validation.warnings.map((warning, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm text-warning-foreground">
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                      <span>{warning}</span>
+                  <div className="flex items-center gap-2">
+                    <Shield
+                      className={cn("h-5 w-5", config.use_differential_privacy ? "text-success" : "text-muted-foreground")}
+                    />
+                    <div>
+                      <CardTitle>Differential Privacy</CardTitle>
+                      <CardDescription>Add mathematical privacy guarantees</CardDescription>
                     </div>
-                  ))}
-                  {validation.utilityEstimate && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                      <span className="text-muted-foreground">
-                        Expected utility: <span className="font-medium capitalize">{validation.utilityEstimate}</span>
+                  </div>
+                  <Switch
+                    checked={config.use_differential_privacy}
+                    onCheckedChange={(checked) => setConfig({ ...config, use_differential_privacy: checked })}
+                  />
+                </div>
+              </CardHeader>
+
+              {config.use_differential_privacy && (
+                <CardContent className="space-y-6">
+                  {/* Epsilon Slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-1">
+                        Privacy Budget (ε)
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Lower epsilon = stronger privacy, but lower data utility. Recommended: 1-10 for most use
+                              cases.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </Label>
+                      <EpsilonBadge epsilon={config.target_epsilon} size="sm" />
+                    </div>
+                    <Slider
+                      value={[config.target_epsilon]}
+                      onValueChange={([value]) => setConfig({ ...config, target_epsilon: value })}
+                      min={0.1}
+                      max={100}
+                      step={0.1}
+                      className="py-2"
+                    />
+                    {validation.errors.target_epsilon && (
+                         <p className="text-xs text-destructive">{validation.errors.target_epsilon}</p>
+                    )}
+
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Stronger Privacy</span>
+                      <span>Better Utility</span>
+                    </div>
+                  </div>
+
+                  {/* Delta Input */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Delta (δ)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            Probability of privacy breach. Should be less than 1/n where n is your dataset size.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="text"
+                        value={config.target_delta.toExponential(1)}
+                        onChange={(e) => {
+                          const value = Number.parseFloat(e.target.value)
+                          if (!isNaN(value)) setConfig({ ...config, target_delta: value })
+                        }}
+                        className="font-mono"
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        Recommended: {"<"} {(1 / datasetRowCount).toExponential(1)}
                       </span>
                     </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          )}
-        </Card>
+                  </div>
 
-        {/* Submit */}
-        <div className="flex items-center justify-end gap-4">
-          <Button type="button" variant="outline">
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!config.name.trim() || !validation.valid || isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Generator"}
-          </Button>
-        </div>
+                  {/* Gradient Clipping */}
+                  <div className="space-y-2">
+                    <Label>Gradient Clipping Norm</Label>
+                    <Slider
+                      value={[config.max_grad_norm]}
+                      onValueChange={([value]) => setConfig({ ...config, max_grad_norm: value })}
+                      min={0.1}
+                      max={5}
+                      step={0.1}
+                      className="py-2"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Value: {config.max_grad_norm.toFixed(1)}</span>
+                      <span>Recommended: 1.0</span>
+                    </div>
+                  </div>
+
+                  {/* Validation Feedback */}
+                  {(validation.warnings.length > 0 || validation.utilityEstimate) && (
+                    <div className="space-y-2 pt-2 border-t">
+                      {validation.warnings.map((warning, i) => (
+                        <div key={i} className="flex items-start gap-2 text-sm text-warning-foreground">
+                          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span>{warning}</span>
+                        </div>
+                      ))}
+                      {validation.utilityEstimate && (
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-success" />
+                          <span>
+                            Projected Data Utility: <span className="font-medium">{validation.utilityEstimate}</span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+
+            <div className="flex justify-end">
+                <Button type="submit" disabled={!validation.valid || isSubmitting}>
+                  {isSubmitting ? "Creating..." : "Create Generator"}
+                </Button>
+            </div>
       </div>
     </form>
   )

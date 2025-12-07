@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.audit_middleware import AuditMiddleware
 from app.core.rate_limiter import RateLimitMiddleware
 from app.core.security import SecurityHeadersMiddleware, RequestIDMiddleware
+from app.core.cache_middleware import CacheControlMiddleware, TrailingSlashMiddleware, CookieOptimizationMiddleware
 
 # Import observability
 try:
@@ -81,7 +82,9 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    # Disable automatic trailing slash redirects (307)
+    redirect_slashes=False
 )
 
 # Configure CORS (environment-aware)
@@ -91,10 +94,17 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    expose_headers=["ETag", "Cache-Control"],
+    max_age=3600,  # Cache preflight responses for 1 hour
 )
 
 # Add GZip compression for responses > 1KB
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Add caching middleware (must be early in chain)
+app.add_middleware(CacheControlMiddleware)
+app.add_middleware(TrailingSlashMiddleware)
+app.add_middleware(CookieOptimizationMiddleware)
 
 # Add request ID middleware for tracing
 app.add_middleware(RequestIDMiddleware)
@@ -122,6 +132,9 @@ if settings.debug:
 else:
     logger.info(f"🔒 CORS: Allowing origins: {settings.allowed_origins}")
 
+logger.info("✅ HTTP caching middleware enabled (ETag/304)")
+logger.info("✅ Trailing slash middleware enabled (no 307s)")
+logger.info("✅ Cookie optimization middleware enabled")
 logger.info("✅ Security headers middleware enabled")
 logger.info("✅ Request ID tracing enabled")
 logger.info("✅ GZip compression enabled")

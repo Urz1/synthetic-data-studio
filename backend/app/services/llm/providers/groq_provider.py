@@ -3,6 +3,7 @@
 import os
 import time
 import logging
+from typing import AsyncGenerator
 from groq import AsyncGroq
 from app.services.llm.base import BaseLLMProvider, LLMRequest, LLMResponse
 
@@ -76,6 +77,41 @@ class GroqProvider(BaseLLMProvider):
         except Exception as e:
             logger.error(f"Groq generation failed: {e}")
             raise
+    
+    async def generate_stream(self, request: LLMRequest) -> AsyncGenerator[str, None]:
+        """Generate streaming response using Groq
+        
+        Args:
+            request: LLM request with prompts and configuration
+            
+        Yields:
+            Content chunks as they're generated
+        """
+        messages = [
+            {"role": "system", "content": request.system_prompt},
+            {"role": "user", "content": request.user_prompt}
+        ]
+        
+        # Configure generation
+        kwargs = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens or 2048,
+            "stream": True
+        }
+        
+        try:
+            # Generate streaming response
+            stream = await self.client.chat.completions.create(**kwargs)
+            
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        
+        except Exception as e:
+            logger.error(f"Groq streaming failed: {e}")
+            yield "[Error: Unable to generate response]"
     
     def count_tokens(self, text: str) -> int:
         """Approximate token count

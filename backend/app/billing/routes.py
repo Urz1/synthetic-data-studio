@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user, get_admin_user
 
 from .schemas import (
     UsageRecordCreate,
@@ -36,6 +36,76 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 
 
 # ============================================================================
+# SUMMARY ENDPOINT (OPTIMIZED)
+# ============================================================================
+
+@router.get("/summary")
+def get_billing_summary(
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_admin_user)
+):
+    """
+    Get combined billing overview (usage records + quotas + summary report).
+    
+    **Optimization**: Combines 3 separate API calls into one request.
+    Admin only.
+    """
+    from .models import UsageRecord, Quota
+    from sqlmodel import select
+    
+    # Get recent usage records
+    query = select(UsageRecord).where(UsageRecord.user_id == current_user.id)
+    if start_date:
+        query = query.where(UsageRecord.timestamp >= start_date)
+    if end_date:
+        query = query.where(UsageRecord.timestamp <= end_date)
+    
+    usage_records = db.exec(query.order_by(UsageRecord.timestamp.desc()).limit(limit)).all()
+    
+    # Get quotas
+    quotas = db.exec(select(Quota)).all()
+    
+    # Calculate summary stats
+    total_records = len(usage_records)
+    total_quantity = sum(r.quantity for r in usage_records)
+    
+    return {
+        "usage_records": [
+            {
+                "id": str(r.id),
+                "project_id": str(r.project_id) if r.project_id else None,
+                "user_id": str(r.user_id),
+                "type": r.type,
+                "quantity": r.quantity,
+                "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+            }
+            for r in usage_records
+        ],
+        "quotas": [
+            {
+                "id": str(q.id),
+                "project_id": str(q.project_id) if q.project_id else None,
+                "quota_type": q.quota_type,
+                "limit": q.limit_val,
+                "used": q.used,
+                "remaining": max(0, q.limit_val - q.used),
+                "reset_at": q.reset_at.isoformat() if q.reset_at else None,
+            }
+            for q in quotas
+        ],
+        "summary": {
+            "total_records": total_records,
+            "total_quantity": total_quantity,
+            "period_start": start_date.isoformat() if start_date else None,
+            "period_end": end_date.isoformat() if end_date else None,
+        }
+    }
+
+
+# ============================================================================
 # USAGE ENDPOINTS
 # ============================================================================
 
@@ -48,10 +118,10 @@ def list_usage_records(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_admin_user)
 ):
     """
-    List usage records with optional filters.
+    List usage records with optional filters. Admin only.
     
     Tracks all billable operations: generations, evaluations, storage, API calls.
     """

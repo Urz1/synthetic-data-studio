@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useParams } from "next/navigation"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataTable } from "@/components/ui/data-table"
 import { MetricCard } from "@/components/ui/metric-card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   ArrowLeft, 
   Database, 
@@ -20,103 +22,16 @@ import {
   User,
   Eye,
   Download,
-  Play
+  Play,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
-import type { Dataset, Generator, Evaluation } from "@/lib/types"
+import { api } from "@/lib/api"
+import type { Project, Dataset, Generator, Evaluation } from "@/lib/types"
 
-// Mock project data
-const mockProject = {
-  id: "proj-1",
-  name: "Healthcare Analytics",
-  description: "Patient records and clinical trial data synthesis with HIPAA compliance",
-  created_at: "2024-11-15T10:00:00Z",
-  updated_at: "2024-12-03T14:30:00Z",
-  created_by: "user1",
-  tags: ["healthcare", "hipaa", "clinical"],
-}
-
-const mockDatasets: Dataset[] = [
-  {
-    id: "ds-1",
-    project_id: "proj-1",
-    name: "patient_records.csv",
-    description: "De-identified patient clinical records",
-    file_path: "/uploads/patient_records.csv",
-    size_bytes: 15400000,
-    num_rows: 50000,
-    row_count: 50000,
-    schema_data: {
-      columns: ["patient_id", "age", "diagnosis", "treatment"],
-      dtypes: { "patient_id": "string", "age": "integer", "diagnosis": "string", "treatment": "string" },
-    },
-    status: "profiled",
-    checksum: "abc123def456",
-    version: 1,
-    uploader_id: "user1",
-    uploaded_at: "2024-11-15T10:30:00Z",
-  },
-  {
-    id: "ds-2",
-    project_id: "proj-1",
-    name: "clinical_trials.csv",
-    description: "Phase III clinical trial outcomes",
-    file_path: "/uploads/clinical_trials.csv",
-    size_bytes: 8200000,
-    num_rows: 12000,
-    row_count: 12000,
-    schema_data: {
-      columns: ["trial_id", "drug_name", "outcome", "participant_count"],
-      dtypes: { "trial_id": "string", "drug_name": "string", "outcome": "string", "participant_count": "integer" },
-    },
-    status: "profiled",
-    checksum: "xyz789ghi012",
-    version: 1,
-    uploader_id: "user1",
-    uploaded_at: "2024-11-20T14:00:00Z",
-  },
-]
-
-const mockGenerators: Generator[] = [
-  {
-    id: "gen-1",
-    dataset_id: "ds-1",
-    name: "Patient Records Generator",
-    type: "dp-ctgan",
-    status: "completed",
-    parameters_json: { epochs: 300, batch_size: 500 },
-    privacy_config: { use_differential_privacy: true, target_epsilon: 8.5, target_delta: 1e-5 },
-    privacy_spent: { epsilon: 8.2, delta: 9.5e-6 },
-    training_metadata: { duration_seconds: 1842, final_loss: 0.023 },
-    created_by: "user1",
-    created_at: "2024-12-01T10:00:00Z",
-    updated_at: "2024-12-01T12:00:00Z",
-  },
-  {
-    id: "gen-2",
-    dataset_id: "ds-2",
-    name: "Clinical Trial Generator",
-    type: "dp-tvae",
-    status: "training",
-    parameters_json: { epochs: 200, batch_size: 256 },
-    privacy_config: { use_differential_privacy: true, target_epsilon: 5.0, target_delta: 1e-6 },
-    created_by: "user1",
-    created_at: "2024-12-02T08:00:00Z",
-    updated_at: "2024-12-02T09:00:00Z",
-  },
-]
-
-const mockEvaluations: Evaluation[] = [
-  {
-    id: "eval-1",
-    generator_id: "gen-1",
-    dataset_id: "ds-1",
-    created_at: "2024-12-01T14:00:00Z",
-  },
-]
 
 export default function ProjectDetailPage() {
   const router = useRouter()
@@ -124,12 +39,76 @@ export default function ProjectDetailPage() {
   const { user } = useAuth()
   const id = params?.id as string
 
+  // State
+  const [project, setProject] = React.useState<Project | null>(null)
+  const [datasets, setDatasets] = React.useState<Dataset[]>([])
+  const [generators, setGenerators] = React.useState<Generator[]>([])
+  const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  // Load data
+  React.useEffect(() => {
+    if (!id) return
+    loadProjectData()
+  }, [id])
+
+  async function loadProjectData() {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // OPTIMIZED: Single API call instead of 4 separate calls (75% reduction)
+      const data = await api.getProjectResources(id)
+      
+      setProject(data.project)
+      setDatasets(data.datasets)
+      setGenerators(data.generators)
+      setEvaluations(data.evaluations)
+    } catch (err) {
+      console.error("Failed to load project:", err)
+      setError(err instanceof Error ? err.message : "Failed to load project")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <ProtectedRoute>
+        <AppShell user={user || { full_name: "", email: "" }}>
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  // Error state
+  if (error || !project) {
+    return (
+      <ProtectedRoute>
+        <AppShell user={user || { full_name: "", email: "" }}>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error || "Project not found"}</AlertDescription>
+          </Alert>
+          <Button onClick={() => router.push("/projects")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Projects
+          </Button>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
   return (
     <ProtectedRoute>
       <AppShell user={user || { full_name: "", email: "" }}>
         <PageHeader
-          title={mockProject.name}
-          description={mockProject.description}
+          title={project.name}
+          description={project.description || "No description"}
           actions={
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
@@ -145,23 +124,22 @@ export default function ProjectDetailPage() {
           }
         />
 
-        {/* Project Metadata */}
         <div className="grid gap-4 md:grid-cols-4 mb-6">
           <MetricCard
             title="Total Datasets"
-            value={mockDatasets.length}
+            value={datasets.length}
             icon={<Database className="h-5 w-5" />}
             quality="neutral"
           />
           <MetricCard
             title="Generators"
-            value={mockGenerators.length}
+            value={generators.length}
             icon={<Zap className="h-5 w-5" />}
             quality="neutral"
           />
           <MetricCard
             title="Evaluations"
-            value={mockEvaluations.length}
+            value={evaluations.length}
             icon={<FileBarChart className="h-5 w-5" />}
             quality="neutral"
           />
@@ -172,11 +150,11 @@ export default function ProjectDetailPage() {
             <CardContent>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{new Date(mockProject.created_at).toLocaleDateString()}</span>
+                <span>{new Date(project.created_at).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                 <User className="h-3 w-3" />
-                <span>{mockProject.created_by}</span>
+                <span>{project.owner_id}</span>
               </div>
             </CardContent>
           </Card>
@@ -185,9 +163,9 @@ export default function ProjectDetailPage() {
         {/* Tabs */}
         <Tabs defaultValue="datasets" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="datasets">Datasets ({mockDatasets.length})</TabsTrigger>
-            <TabsTrigger value="generators">Generators ({mockGenerators.length})</TabsTrigger>
-            <TabsTrigger value="evaluations">Evaluations ({mockEvaluations.length})</TabsTrigger>
+            <TabsTrigger value="datasets">Datasets ({datasets.length})</TabsTrigger>
+            <TabsTrigger value="generators">Generators ({generators.length})</TabsTrigger>
+            <TabsTrigger value="evaluations">Evaluations ({evaluations.length})</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -210,7 +188,7 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent>
                 <DataTable
-                  data={mockDatasets}
+                  data={datasets}
                   columns={[
                     {
                       key: "name",
@@ -269,7 +247,7 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent>
                 <DataTable
-                  data={mockGenerators}
+                  data={generators}
                   columns={[
                     {
                       key: "name",
@@ -335,7 +313,7 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent>
                 <DataTable
-                  data={mockEvaluations}
+                  data={evaluations}
                   columns={[
                     {
                       key: "id",
@@ -380,18 +358,16 @@ export default function ProjectDetailPage() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium">Project Name</label>
-                  <p className="text-sm text-muted-foreground mt-1">{mockProject.name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{project.name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Description</label>
-                  <p className="text-sm text-muted-foreground mt-1">{mockProject.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{project.description || "No description"}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Tags</label>
                   <div className="flex gap-2 mt-1">
-                    {mockProject.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">{tag}</Badge>
-                    ))}
+                    <Badge variant="secondary">No tags</Badge>
                   </div>
                 </div>
               </CardContent>

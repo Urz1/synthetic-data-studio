@@ -21,10 +21,11 @@ interface EvaluationCardProps {
   evaluation: Evaluation
   generatorName?: string
   onDelete?: () => void
+  onExport?: () => void
   className?: string
 }
 
-export function EvaluationCard({ evaluation, generatorName, onDelete, className }: EvaluationCardProps) {
+export function EvaluationCard({ evaluation, generatorName, onDelete, onExport, className }: EvaluationCardProps) {
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("en-US", {
       month: "short",
@@ -43,7 +44,7 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, className 
             <FileBarChart className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-base">{generatorName || `Evaluation ${evaluation.id.slice(0, 8)}`}</CardTitle>
+            <CardTitle className="text-base">{generatorName || `Evaluation ${evaluation.id?.slice(0, 8) || 'N/A'}`}</CardTitle>
             <p className="text-xs text-muted-foreground">{formatDate(evaluation.created_at)}</p>
           </div>
         </div>
@@ -65,7 +66,7 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, className 
               </Link>
             </DropdownMenuItem>
             {hasReport && (
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onExport}>
                 <Download className="mr-2 h-4 w-4" />
                 Export report
               </DropdownMenuItem>
@@ -82,23 +83,31 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, className 
         {hasReport ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <EvaluationScoreRing score={evaluation.report!.overall_quality_score} label="Quality" size="sm" />
+              <EvaluationScoreRing score={evaluation.report!.overall_assessment?.overall_score || 0} label="Quality" size="sm" />
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Statistical:</span>
                   <span className="font-mono">
-                    {(evaluation.report!.statistical_similarity.overall_score * 100).toFixed(0)}%
+                    {((evaluation.report!.evaluations.statistical_similarity?.summary.pass_rate || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">ML Utility:</span>
                   <span className="font-mono">
-                    {(evaluation.report!.ml_utility.utility_preservation * 100).toFixed(0)}%
+                    {((evaluation.report!.evaluations.ml_utility?.summary.utility_ratio || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
             </div>
-            <RiskIndicator level={evaluation.report!.privacy.privacy_risk} size="sm" showScore={false} />
+            {/* Map privacy level (Good/Fair/Poor) to risk level (low/medium/high) */}
+            <RiskIndicator 
+              level={
+                evaluation.report!.evaluations.privacy?.summary.overall_privacy_level === "Good" ? "low" :
+                evaluation.report!.evaluations.privacy?.summary.overall_privacy_level === "Fair" ? "medium" : "high"
+              } 
+              size="sm" 
+              showScore={false} 
+            />
           </div>
         ) : (
           <div className="flex items-center justify-center py-4">

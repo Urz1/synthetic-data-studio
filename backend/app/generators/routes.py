@@ -21,6 +21,7 @@ from sqlmodel import select
 from app.core.config import settings
 from app.core.dependencies import get_db, get_current_user
 from app.core.validators import validate_uuid
+from app.database.database import SessionLocal
 
 # Local - Storage
 from app.storage.s3 import (
@@ -51,6 +52,7 @@ from .schemas import (
     GeneratorResponse,
     GeneratorCreateRequest,
     GeneratorDeleteResponse,
+    GenerationStartRequest,
     GenerationStartResponse
 )
 from .services import generate_synthetic_data, _generate_from_schema
@@ -87,16 +89,41 @@ def is_s3_available() -> bool:
 # ENDPOINTS
 # ============================================================================
 
+def _list_generators_impl(
+    dataset_id: Optional[str],
+    skip: int,
+    limit: int,
+    db: Session,
+    current_user
+) -> list[GeneratorResponse]:
+    """Implementation for listing generators."""
+    # SECURITY: Filter to only return generators created by current user
+    statement = select(Generator).where(Generator.created_by == current_user.id)
+    
+    # Optional filter by dataset
+    if dataset_id:
+        validate_uuid(dataset_id, "dataset_id")
+        statement = statement.where(Generator.dataset_id == uuid.UUID(dataset_id))
+    
+    # Apply pagination
+    statement = statement.offset(skip).limit(limit)
+    
+    generators = db.exec(statement).all()
+    return generators
+
+
+@router.get("", response_model=list[GeneratorResponse])
+@router.get("", response_model=list[GeneratorResponse])
 @router.get("/", response_model=list[GeneratorResponse])
 def list_generators(
+    dataset_id: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> list[GeneratorResponse]:
     """List all generators for the current user."""
-    # SECURITY: Filter to only return generators created by current user
-    statement = select(Generator).where(Generator.created_by == current_user.id)
-    generators = db.exec(statement).all()
-    return generators
+    return _list_generators_impl(dataset_id, skip, limit, db, current_user)
 
 
 @router.get("/{generator_id}", response_model=GeneratorResponse)
@@ -253,6 +280,43 @@ def download_generator_model_file(
     )
 
 
+@router.get("/{generator_id}/details")
+@router.get("/{generator_id}/details/")
+def get_generator_details(
+    generator_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get generator with dataset and evaluations in a single call.
+    OPTIMIZATION: Reduces multiple API calls to 1.
+    """
+    # Get generator and verify ownership
+    generator = get_generator_by_id(db, generator_id)
+    if not generator:
+        raise HTTPException(status_code=404, detail="Generator not found")
+    
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get source dataset
+    dataset = None
+    if generator.dataset_id:
+        dataset = get_dataset_by_id(db, str(generator.dataset_id))
+    
+    # Get evaluations for this generator
+    evaluations = list_evaluations_by_generator(db, generator_id)
+    
+    return {
+        "generator": generator,
+        "dataset": dataset,
+        "evaluations": evaluations,
+        "stats": {
+            "evaluation_count": len(evaluations)
+        }
+    }
+
+
 @router.post("/", response_model=GeneratorResponse)
 def create_new_generator(
     request: GeneratorCreateRequest,
@@ -275,27 +339,65 @@ def generate_from_schema(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Generate synthetic data directly from schema without creating a generator record."""
-    temp_generator = Generator(
+    """
+    Generate synthetic data directly from schema.
+    
+    Creates a 'schema' type Generator record to track the lineage/source 
+    of this synthetic dataset, ensuring it appears in listing endpoints.
+    """
+    # Create persistent generator record
+    dataset_name = schema_input.dataset_name or "schema_generated"
+    
+    generator = Generator(
         dataset_id=None,
         schema_json=schema_input.columns,
         type="schema",
-        parameters_json={"num_rows": num_rows},
-        name="schema_generated",
-        created_by=current_user.id
+        parameters_json={
+            "num_rows": num_rows,
+            "project_id": str(schema_input.project_id) if schema_input.project_id else None,
+            "dataset_name": dataset_name
+        },
+        name=f"Schema: {dataset_name}",
+        created_by=current_user.id,
+        status="running" # Set initial status
     )
-    return _generate_from_schema(temp_generator, db)
+    
+    db.add(generator)
+    db.commit()
+    db.refresh(generator)
+    
+    try:
+        # Generate data
+        output_dataset = _generate_from_schema(generator, db)
+        
+        # Update generator with linkage and status
+        generator.output_dataset_id = output_dataset.id
+        generator.status = "completed"
+        db.add(generator)
+        db.commit()
+        
+        # EXPLICITLY RETURN DICT to avoid serialization issues
+        return {
+            "id": str(output_dataset.id),
+            "name": output_dataset.name,
+            "status": output_dataset.status,
+            "row_count": output_dataset.row_count,
+            "output_dataset_id": str(output_dataset.id), # Explicitly satisfy frontend expectation
+            "type": "schema"
+        }
+        
+    except Exception as e:
+        # Mark generator as failed if something goes wrong
+        generator.status = "failed"
+        db.add(generator)
+        db.commit()
+        raise e
 
 
 @router.post("/dataset/{dataset_id}/generate")
 def generate_from_dataset(
     dataset_id: str,
-    generator_type: str = "ctgan",
-    num_rows: Optional[int] = None,
-    epochs: int = 50,
-    batch_size: int = 500,
-    target_epsilon: float = 10.0,
-    force: bool = False,
+    config: MLGenerationConfig,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -304,40 +406,26 @@ def generate_from_dataset(
     
     Args:
         dataset_id: ID of the dataset to use for training
-        generator_type: Type of generator (ctgan, tvae, dp-ctgan, dp-tvae, etc.)
-        num_rows: Number of synthetic rows to generate. If None, matches original dataset size.
-        epochs: Number of training epochs
-        batch_size: Batch size for training
-        target_epsilon: Target privacy budget for DP models (lower = more private)
-        force: If True, proceed despite soft validation errors (user acknowledged risks)
-    
-    Note:
-        For DP models (dp-ctgan, dp-tvae), use GET /generators/dp/parameter-limits/{dataset_id}
-        to get valid parameter ranges before submitting.
-        
-        num_rows validation:
-        - Minimum: 100 rows
-        - Maximum: 1,000,000 rows
-        - If None: matches original dataset row count
+        config: Configuration parameters (model type, epochs, privacy, etc.)
     """
+    # Extract parameters from config
+    generator_type = config.model_type
+    num_rows = config.num_rows
+    epochs = config.epochs
+    batch_size = config.batch_size
+    target_epsilon = config.target_epsilon if config.use_differential_privacy else None
+    
     # Verify dataset exists
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    # Determine num_rows
-    if num_rows is None:
-        try:
-            df = pd.read_csv(dataset.file_path)
-            num_rows = len(df)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Could not read dataset: {str(e)}")
-    
     # Validate num_rows
-    if num_rows < 100:
-        raise HTTPException(status_code=400, detail="num_rows must be at least 100")
-    if num_rows > 1_000_000:
-        raise HTTPException(status_code=400, detail="num_rows cannot exceed 1,000,000")
+    if num_rows is not None:
+        if num_rows < 100:
+            raise HTTPException(status_code=400, detail="num_rows must be at least 100")
+        if num_rows > 1_000_000:
+            raise HTTPException(status_code=400, detail="num_rows cannot exceed 1,000,000")
 
     # Create a generator record
     generator = Generator(
@@ -348,9 +436,10 @@ def generate_from_dataset(
             "epochs": epochs,
             "batch_size": batch_size,
             "target_epsilon": target_epsilon,
-            "force": force
+            "use_differential_privacy": config.use_differential_privacy,
+            "max_grad_norm": config.max_grad_norm
         },
-        name=f"{dataset.name}_{generator_type}_gen",
+        name=f"{dataset.name}_{generator_type}_{uuid.uuid4().hex[:4]}",
         created_by=current_user.id
     )
 
@@ -391,7 +480,8 @@ def generate_from_dataset(
 @router.post("/{generator_id}/generate")
 def start_generation(
     generator_id: str,
-    background_tasks: BackgroundTasks,
+    request: Optional[GenerationStartRequest] = None,
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> GenerationStartResponse:
@@ -399,6 +489,20 @@ def start_generation(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+
+    # Update generator parameters with request data if provided
+    if request:
+        params = generator.parameters_json or {}
+        if request.num_rows:
+            params['num_rows'] = request.num_rows
+        if request.dataset_name:
+            params['dataset_name'] = request.dataset_name
+        if request.project_id:
+            params['project_id'] = request.project_id
+        generator.parameters_json = params
+        db.add(generator)
+        db.commit()
+        db.refresh(generator)
 
     # Create Job record to track this task
     job = Job(
@@ -414,8 +518,8 @@ def start_generation(
     update_generator_status(db, generator_id, "running")
     update_job_status(db, str(job.id), "running")
 
-    # Add background task
-    background_tasks.add_task(_generate_in_background, generator_id, str(job.id), db)
+    # Add background task (don't pass db session, create new one in background)
+    background_tasks.add_task(_generate_in_background, generator_id, str(job.id))
 
     return GenerationStartResponse(
         message="Generation started",
@@ -811,8 +915,11 @@ async def generate_compliance_report(
 # HELPER FUNCTIONS
 # ============================================================================
 
-def _generate_in_background(generator_id: str, job_id: str, db: Session) -> None:
+def _generate_in_background(generator_id: str, job_id: str) -> None:
     """Background task to generate synthetic data."""
+    # Create a new database session for the background task
+    db = SessionLocal()
+    
     try:
         generator = get_generator_by_id(db, generator_id)
         if not generator:
@@ -840,3 +947,6 @@ def _generate_in_background(generator_id: str, job_id: str, db: Session) -> None
         update_generator_status(db, generator_id, "failed")
         update_job_status(db, job_id, "failed", error_message=str(e))
         logger.error(f"Generation failed for {generator_id}: {str(e)}")
+    finally:
+        # Always close the database session
+        db.close()

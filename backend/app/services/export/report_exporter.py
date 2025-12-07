@@ -58,6 +58,141 @@ class ReportExporter:
                 "target-blank-links"
             ]
         )
+    
+    def privacy_report_json_to_markdown(self, report_data: Dict[str, Any], generator_metadata: Dict[str, Any] = None) -> str:
+        """
+        Convert structured privacy report JSON to comprehensive Markdown.
+        
+        Args:
+            report_data: Privacy report JSON with sections like privacy_budget, risk_assessment, metrics, etc.
+            generator_metadata: Generator metadata (name, type, etc.)
+            
+        Returns:
+            Formatted markdown string with all report sections
+        """
+        lines = []
+        
+        # Title and metadata
+        lines.append("# Privacy Compliance Report")
+        lines.append("")
+        
+        if generator_metadata:
+            lines.append("## Generator Information")
+            lines.append("")
+            if generator_metadata.get("name"):
+                lines.append(f"**Generator Name:** {generator_metadata['name']}")
+            if generator_metadata.get("type"):
+                lines.append(f"**Generator Type:** {generator_metadata['type']}")
+            if generator_metadata.get("id"):
+                lines.append(f"**Generator ID:** {generator_metadata['id']}")
+            lines.append("")
+        
+        # Privacy Budget Section
+        if report_data.get("privacy_budget"):
+            budget = report_data["privacy_budget"]
+            lines.append("## Privacy Budget")
+            lines.append("")
+            
+            if budget.get("target_epsilon"):
+                lines.append(f"**Target Epsilon (ε):** {budget['target_epsilon']}")
+            if budget.get("target_delta"):
+                lines.append(f"**Target Delta (δ):** {budget['target_delta']}")
+            if budget.get("used_epsilon"):
+                lines.append(f"**Used Epsilon:** {budget['used_epsilon']}")
+            if budget.get("remaining_budget"):
+                lines.append(f"**Remaining Budget:** {budget['remaining_budget']}")
+            if budget.get("privacy_level"):
+                lines.append(f"**Privacy Level:** {budget['privacy_level']}")
+            
+            lines.append("")
+            
+            if budget.get("explanation"):
+                lines.append("### Explanation")
+                lines.append(budget["explanation"])
+                lines.append("")
+        
+        # Privacy Metrics Section
+        if report_data.get("privacy_metrics") and isinstance(report_data["privacy_metrics"], list):
+            lines.append("## Privacy Metrics")
+            lines.append("")
+            
+            for metric in report_data["privacy_metrics"]:
+                if metric.get("name"):
+                    lines.append(f"### {metric['name']}")
+                if metric.get("value"):
+                    lines.append(f"**Value:** {metric['value']}")
+                if metric.get("description"):
+                    lines.append(f"**Description:** {metric['description']}")
+                if metric.get("interpretation"):
+                    lines.append(f"**Interpretation:** {metric['interpretation']}")
+                lines.append("")
+        
+        # Risk Assessment Section
+        if report_data.get("risk_assessment"):
+            risk = report_data["risk_assessment"]
+            lines.append("## Risk Assessment")
+            lines.append("")
+            
+            if risk.get("overall_risk"):
+                lines.append(f"**Overall Risk Level:** {risk['overall_risk']}")
+                lines.append("")
+            
+            if risk.get("risks") and isinstance(risk["risks"], list):
+                lines.append("### Identified Risks")
+                lines.append("")
+                for r in risk["risks"]:
+                    if r.get("risk"):
+                        lines.append(f"#### {r['risk']}")
+                    if r.get("severity"):
+                        lines.append(f"**Severity:** {r['severity']}")
+                    if r.get("description"):
+                        lines.append(f"**Description:** {r['description']}")
+                    if r.get("mitigation"):
+                        lines.append(f"**Mitigation:** {r['mitigation']}")
+                    lines.append("")
+        
+        # Recommendations Section
+        if report_data.get("recommendations") and isinstance(report_data["recommendations"], list):
+            lines.append("## Recommendations")
+            lines.append("")
+            
+            for idx, rec in enumerate(report_data["recommendations"], 1):
+                if isinstance(rec, dict):
+                    if rec.get("title"):
+                        lines.append(f"### {idx}. {rec['title']}")
+                    if rec.get("description"):
+                        lines.append(rec["description"])
+                    if rec.get("priority"):
+                        lines.append(f"**Priority:** {rec['priority']}")
+                    if rec.get("implementation"):
+                        lines.append(f"**Implementation:** {rec['implementation']}")
+                else:
+                    lines.append(f"{idx}. {rec}")
+                lines.append("")
+        
+        # Compliance Status Section
+        if report_data.get("compliance_status"):
+            compliance = report_data["compliance_status"]
+            lines.append("## Compliance Status")
+            lines.append("")
+            
+            if compliance.get("gdpr"):
+                lines.append(f"**GDPR Compliance:** {compliance['gdpr']}")
+            if compliance.get("hipaa"):
+                lines.append(f"**HIPAA Compliance:** {compliance['hipaa']}")
+            if compliance.get("ccpa"):
+                lines.append(f"**CCPA Compliance:** {compliance['ccpa']}")
+            
+            lines.append("")
+        
+        # Additional Report Content (fallback for generic markdown)
+        if report_data.get("report") and isinstance(report_data["report"], str):
+            lines.append("## Detailed Analysis")
+            lines.append("")
+            lines.append(report_data["report"])
+            lines.append("")
+        
+        return "\n".join(lines)
 
     def export_to_pdf(
         self,

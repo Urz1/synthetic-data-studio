@@ -64,4 +64,4 @@ ml_models/data/processed/ # Processed data (if not committed)
 ml_models/data/synthetic/ # Generated synthetic data
 ml_models/data/raw/ # Raw data (if too large or sensitive to commit)
 mlruns/ # MLflow artifacts
-.dvc/cache/ # DVC cache if using
+.dvc/cache/ # DVC cache if using 

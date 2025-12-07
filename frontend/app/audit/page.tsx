@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,84 +14,42 @@ import { Shield, Activity, AlertTriangle, Search, Filter } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import type { AuditLog, AuditStats } from "@/lib/types"
+import { api } from "@/lib/api"
 
-// Mock audit logs data
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: "audit-1",
-    user_id: "user1",
-    action: "generator.create",
-    resource_type: "generator",
-    resource_id: "gen-123",
-    details: { model_type: "dp-ctgan", dataset_id: "ds-456" },
-    ip_address: "192.168.1.100",
-    user_agent: "Mozilla/5.0...",
-    timestamp: "2024-12-03T14:30:00Z",
-  },
-  {
-    id: "audit-2",
-    user_id: "user1",
-    action: "dataset.upload",
-    resource_type: "dataset",
-    resource_id: "ds-789",
-    details: { filename: "customers.csv", size_bytes: 1024000 },
-    ip_address: "192.168.1.100",
-    user_agent: "Mozilla/5.0...",
-    timestamp: "2024-12-03T10:15:00Z",
-  },
-  {
-    id: "audit-3",
-    user_id: "user2",
-    action: "auth.login",
-    resource_type: "user",
-    resource_id: "user2",
-    details: { method: "email" },
-    ip_address: "192.168.1.105",
-    user_agent: "Mozilla/5.0...",
-    timestamp: "2024-12-03T09:00:00Z",
-  },
-  {
-    id: "audit-4",
-    user_id: "user1",
-    action: "generator.delete",
-    resource_type: "generator",
-    resource_id: "gen-old",
-    details: { reason: "user_requested" },
-    ip_address: "192.168.1.100",
-    user_agent: "Mozilla/5.0...",
-    timestamp: "2024-12-02T16:45:00Z",
-  },
-]
-
-const mockAuditStats: AuditStats = {
-  total_events: 1247,
-  events_by_type: {
-    "generator.create": 45,
-    "dataset.upload": 89,
-    "auth.login": 234,
-    "evaluation.run": 67,
-    "generator.delete": 12,
-  },
-  events_by_user: {
-    user1: 678,
-    user2: 345,
-    user3: 224,
-  },
-  recent_failures: 3,
-}
-
-export default function AuditPage() {
+const AuditPage = () => {
   const { user } = useAuth()
+  const isAdmin = user?.role === "admin"
   const [search, setSearch] = useState("")
   const [actionFilter, setActionFilter] = useState<string>("all")
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [stats, setStats] = useState<AuditStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [error, setError] = useState<string>("")
 
-  const filteredLogs = mockAuditLogs.filter(log => {
+  // Fetch logs and stats on mount
+  React.useEffect(() => {
+    setIsLoading(true)
+    setIsStatsLoading(true)
+    setError("")
+    Promise.all([
+      api.listAuditLogs(0, 50).catch(e => { setError(e.message); return { logs: [], total: 0 } }),
+      api.getAuditStatsSummary().catch(e => { setError(e.message); return null })
+    ]).then(([logsRes, statsRes]) => {
+      setLogs(logsRes.logs)
+      setStats(statsRes)
+    }).finally(() => {
+      setIsLoading(false)
+      setIsStatsLoading(false)
+    })
+  }, [])
+
+  // Filter logs client-side (can be moved to API params for large datasets)
+  const filteredLogs = logs.filter(log => {
     const matchesSearch = search === "" || 
       log.action.toLowerCase().includes(search.toLowerCase()) ||
-      log.resource_id.toLowerCase().includes(search.toLowerCase())
-    
+      (log.resource_id && log.resource_id.toLowerCase().includes(search.toLowerCase()))
     const matchesAction = actionFilter === "all" || log.action.startsWith(actionFilter)
-
     return matchesSearch && matchesAction
   })
 
@@ -152,6 +110,11 @@ export default function AuditPage() {
     return "text-primary"
   }
 
+  // Redirect non-admin users (shouldn't reach here due to navigation filtering)
+  if (!isAdmin) {
+    return null
+  }
+
   return (
     <ProtectedRoute>
       <AppShell user={user || { full_name: "", email: "" }}>
@@ -168,34 +131,42 @@ export default function AuditPage() {
 
         {/* Stats Overview */}
         <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <MetricCard
-            title="Total Events"
-            value={mockAuditStats.total_events}
-            subtitle="All time"
-            icon={<Activity className="h-5 w-5" />}
-            quality="neutral"
-          />
-          <MetricCard
-            title="Recent Failures"
-            value={mockAuditStats.recent_failures}
-            subtitle="Last 24 hours"
-            icon={<AlertTriangle className="h-5 w-5" />}
-            quality={mockAuditStats.recent_failures > 5 ? "poor" : "good"}
-          />
-          <MetricCard
-            title="Login Events"
-            value={mockAuditStats.events_by_type["auth.login"]}
-            subtitle="This month"
-            icon={<Shield className="h-5 w-5" />}
-            quality="neutral"
-          />
-          <MetricCard
-            title="Generator Actions"
-            value={mockAuditStats.events_by_type["generator.create"]}
-            subtitle="Created this month"
-            icon={<Activity className="h-5 w-5" />}
-            quality="good"
-          />
+          {isStatsLoading ? (
+            <div className="col-span-4 text-center py-8 text-muted-foreground">Loading stats...</div>
+          ) : stats ? (
+            <>
+              <MetricCard
+                title="Total Events"
+                value={stats.total_events}
+                subtitle="All time"
+                icon={<Activity className="h-5 w-5" />}
+                quality="neutral"
+              />
+              <MetricCard
+                title="Recent Failures"
+                value={stats.recent_failures}
+                subtitle="Last 24 hours"
+                icon={<AlertTriangle className="h-5 w-5" />}
+                quality={stats.recent_failures > 5 ? "poor" : "good"}
+              />
+              <MetricCard
+                title="Login Events"
+                value={stats.events_by_type?.["auth.login"] ?? 0}
+                subtitle="This month"
+                icon={<Shield className="h-5 w-5" />}
+                quality="neutral"
+              />
+              <MetricCard
+                title="Generator Actions"
+                value={stats.events_by_type?.["generator.create"] ?? 0}
+                subtitle="Created this month"
+                icon={<Activity className="h-5 w-5" />}
+                quality="good"
+              />
+            </>
+          ) : (
+            <div className="col-span-4 text-center py-8 text-destructive">Failed to load stats</div>
+          )}
         </div>
 
         {/* Filters and Search */}
@@ -240,13 +211,19 @@ export default function AuditPage() {
             <CardDescription>Chronological record of all system events</CardDescription>
           </CardHeader>
           <CardContent>
-            <DataTable
-              data={filteredLogs}
-              columns={auditColumns}
-              keyExtractor={(row) => row.id}
-              compact
-              emptyMessage="No audit logs found"
-            />
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading logs...</div>
+            ) : error ? (
+              <div className="text-center py-8 text-destructive">{error}</div>
+            ) : (
+              <DataTable
+                data={filteredLogs}
+                columns={auditColumns}
+                keyExtractor={(row) => row.id}
+                compact
+                emptyMessage="No audit logs found"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -259,17 +236,19 @@ export default function AuditPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(mockAuditStats.events_by_type)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5)
-                  .map(([action, count]) => (
-                    <div key={action} className="flex items-center justify-between">
-                      <span className={`text-sm font-medium ${getActionColor(action)}`}>
-                        {action}
-                      </span>
-                      <Badge variant="secondary">{count}</Badge>
-                    </div>
-                  ))}
+                {stats?.events_by_type
+                  ? Object.entries(stats.events_by_type)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([action, count]) => (
+                        <div key={action} className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${getActionColor(action)}`}>
+                            {action}
+                          </span>
+                          <Badge variant="secondary">{count}</Badge>
+                        </div>
+                      ))
+                  : <div className="text-muted-foreground">No data</div>}
               </div>
             </CardContent>
           </Card>
@@ -281,14 +260,16 @@ export default function AuditPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(mockAuditStats.events_by_user)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([userId, count]) => (
-                    <div key={userId} className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{userId}</span>
-                      <Badge variant="secondary">{count} events</Badge>
-                    </div>
-                  ))}
+                {stats?.events_by_user
+                  ? Object.entries(stats.events_by_user)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([userId, count]) => (
+                        <div key={userId} className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{userId}</span>
+                          <Badge variant="secondary">{count} events</Badge>
+                        </div>
+                      ))
+                  : <div className="text-muted-foreground">No data</div>}
               </div>
             </CardContent>
           </Card>
@@ -297,3 +278,5 @@ export default function AuditPage() {
     </ProtectedRoute>
   )
 }
+
+export default AuditPage

@@ -17,6 +17,7 @@ try:
     # List module routers to include
     modules_to_load = [
         "app.auth.routes",
+        "app.dashboard.routes",  # Aggregated dashboard statistics
         "app.datasets.routes",
         "app.projects.routes",
         "app.generators.routes",

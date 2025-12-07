@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 # Local - Core
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user, get_admin_user
 
 # Local - Module
 from .schemas import AuditLogResponse, AuditLogFilter
@@ -37,6 +37,7 @@ router = APIRouter(prefix="/audit-logs", tags=["audit-logs"])
 # ENDPOINTS
 # ============================================================================
 
+@router.get("", response_model=List[AuditLogResponse])
 @router.get("/", response_model=List[AuditLogResponse])
 def list_audit_logs(
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
@@ -48,12 +49,12 @@ def list_audit_logs(
     limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_admin_user)
 ):
     """
     List audit logs with optional filters.
     
-    Requires authentication. Returns audit logs visible to the current user.
+    Requires admin authentication. Returns audit logs visible to admins only.
     """
     # Convert string UUIDs to UUID objects
     user_uuid = uuid.UUID(user_id) if user_id else None
@@ -78,9 +79,9 @@ def list_audit_logs(
 def get_audit_log(
     audit_log_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_admin_user)
 ):
-    """Get a specific audit log by ID."""
+    """Get a specific audit log by ID. Admin only."""
     try:
         log_uuid = uuid.UUID(audit_log_id)
     except ValueError:
@@ -99,18 +100,13 @@ def get_user_logs(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_admin_user)
 ):
-    """Get all audit logs for a specific user."""
+    """Get all audit logs for a specific user. Admin only."""
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid UUID format")
-    
-    # Users can only see their own logs unless they're admin
-    # TODO: Add admin role check
-    if str(current_user.id) != user_id:
-        raise HTTPException(status_code=403, detail="Can only view your own audit logs")
     
     logs = get_user_audit_logs(db, user_uuid, limit, offset)
     return logs
@@ -123,9 +119,9 @@ def get_resource_logs(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_admin_user)
 ):
-    """Get all audit logs for a specific resource."""
+    """Get all audit logs for a specific resource. Admin only."""
     try:
         res_uuid = uuid.UUID(resource_id)
     except ValueError:
@@ -140,10 +136,10 @@ def get_audit_stats(
     start_date: Optional[datetime.datetime] = Query(None),
     end_date: Optional[datetime.datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_admin_user)
 ):
     """
-    Get audit log statistics.
+    Get audit log statistics. Admin only.
     
     Returns summary of actions, top users, top resources, etc.
     """

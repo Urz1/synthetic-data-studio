@@ -9,14 +9,18 @@ import logging
 import shutil
 import uuid
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import List, Optional, Dict, Any
+import shutil
+import uuid
+import datetime
+import json
+from pathlib import Path
 
 # Third-party
 import pandas as pd
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from fastapi.responses import FileResponse
-from sqlmodel import Session
-from sqlmodel import select
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, BackgroundTasks, Form, status
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from sqlmodel import Session, select
 
 
 # Local - Core
@@ -44,6 +48,9 @@ from .services import (
     profile_uploaded_dataset,
     detect_dataset_pii
 )
+from app.projects.repositories import get_project_by_id
+from app.generators.models import Generator
+
 
 # ============================================================================
 # SETUP
@@ -78,6 +85,7 @@ def is_s3_available() -> bool:
 # ENDPOINTS
 # ============================================================================
 
+@router.get("", response_model=list[Dataset])
 @router.get("/", response_model=list[Dataset])
 def list_datasets(
     db: Session = Depends(get_db),
@@ -129,12 +137,15 @@ def download_dataset(
     if is_s3_available() and dataset.s3_key:
         try:
             storage = get_storage_service()
-            download_url = storage.generate_download_url(
-                key=dataset.s3_key,
-                filename=dataset.original_filename,
-                expires_in=3600  # 1 hour
+            # Stream directly from S3 to user
+            file_stream = storage.get_file_stream(dataset.s3_key)
+            return StreamingResponse(
+                file_stream,
+                media_type='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{dataset.original_filename}"'
+                }
             )
-            return {"download_url": download_url, "expires_in": 3600}
         except S3StorageError as e:
             logger.warning(f"S3 download failed, falling back to local: {e}")
     
@@ -153,10 +164,10 @@ def download_dataset(
     )
 
 
-@router.post("/upload", response_model=DatasetResponse)
+@router.post("/upload", response_model=DatasetResponse, status_code=status.HTTP_201_CREATED)
 async def upload_dataset(
     file: UploadFile = File(...),
-    project_id: Optional[str] = None,
+    project_id: str = Form(...),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ) -> DatasetResponse:
@@ -165,7 +176,7 @@ async def upload_dataset(
     
     Args:
         file: CSV or JSON file to upload (max 100MB)
-        project_id: Optional project ID (defaults to 'default-project')
+        project_id: Project ID to associate dataset with
         db: Database session
         current_user: Authenticated user
         
@@ -175,9 +186,10 @@ async def upload_dataset(
     # Maximum file size: 100MB
     MAX_FILE_SIZE = 100 * 1024 * 1024
     
-    # Use default project if not provided
-    if not project_id:
-        project_id = "00000000-0000-0000-0000-000000000001"
+    # Verify project exists
+    project = get_project_by_id(db, uuid.UUID(project_id))
+    if not project:
+         raise HTTPException(status_code=404, detail="Project not found")
     
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -243,6 +255,42 @@ async def upload_dataset(
             status_code=500,
             detail=f"Failed to process file: {str(e)}"
         )
+
+
+    return dataset
+
+
+@router.get("/{dataset_id}/details")
+def get_dataset_details(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get dataset with profiling and related generators in a single call.
+    OPTIMIZATION: Reduces multiple API calls to 1.
+    """    
+    # Get dataset and verify ownership
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    check_resource_ownership(dataset, current_user.id)
+    
+    # Get generators that use this dataset
+    generators_stmt = select(Generator).where(
+        Generator.dataset_id == dataset.id,
+        Generator.created_by == current_user.id
+    )
+    generators = db.exec(generators_stmt).all()
+    
+    return {
+        "dataset": dataset,
+        "generators": generators,
+        "stats": {
+            "generator_count": len(generators)
+        }
+    }
 
 
 @router.post("/{dataset_id}/profile")

@@ -31,10 +31,10 @@ const typeIcons = {
 
 export function DatasetProfileView({ dataset, className }: DatasetProfileViewProps) {
   const columns: ColumnInfo[] = React.useMemo(() => {
-    return dataset.schema_data.columns.map((colName) => ({
+    return (dataset.schema_data?.columns || []).map((colName) => ({
       name: colName,
-      dtype: dataset.schema_data.dtypes[colName] || "unknown",
-      profile: dataset.profiling_data?.columns[colName],
+      dtype: dataset.schema_data?.dtypes?.[colName] || "unknown",
+      profile: dataset.profiling_data?.columns?.[colName],
       piiFlag: dataset.pii_flags?.[colName],
     }))
   }, [dataset])
@@ -135,7 +135,7 @@ export function DatasetProfileView({ dataset, className }: DatasetProfileViewPro
               Dataset Profile
             </CardTitle>
             <CardDescription>
-              {dataset.row_count?.toLocaleString()} rows, {dataset.schema_data.columns.length} columns
+              {dataset.row_count?.toLocaleString()} rows, {dataset.schema_data?.columns?.length || 0} columns
             </CardDescription>
           </div>
           {piiColumns.length > 0 && (

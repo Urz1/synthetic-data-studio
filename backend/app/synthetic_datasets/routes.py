@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 
 # Third-party
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
-from sqlmodel import Session
+from fastapi.responses import FileResponse, StreamingResponse
+from sqlmodel import Session, select
 from pathlib import Path
 
 # Local - Core
 from app.core.dependencies import get_db, get_current_user
 from app.core.config import settings
+from app.core.security import check_resource_ownership
 
 # Local - Storage
 from app.storage.s3 import (
@@ -29,8 +30,10 @@ from app.storage.s3 import (
 )
 
 # Local - Datasets (reuse Dataset model)
+from app.generators.models import Generator
 from app.datasets.models import Dataset
 from app.datasets.schemas import DatasetResponse
+from app.datasets.repositories import get_dataset_by_id
 
 # Local - Module
 from .repositories import (
@@ -63,6 +66,7 @@ def is_s3_available() -> bool:
 # ENDPOINTS
 # ============================================================================
 
+@router.get("", response_model=List[DatasetResponse])
 @router.get("/", response_model=List[DatasetResponse])
 def list_synthetic(
     db: Session = Depends(get_db),
@@ -113,6 +117,37 @@ def get_synthetic_dataset(
     return dataset
 
 
+    return dataset
+
+
+@router.get("/{dataset_id}/details")
+def get_synthetic_dataset_details(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get synthetic dataset with generator info in a single call.
+    OPTIMIZATION: Reduces multiple API calls to 1.
+    """
+    # Get dataset
+    dataset = get_dataset_by_id(db, dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    check_resource_ownership(dataset, current_user.id)
+    
+    # Get generator that created this dataset
+    generator = None
+    generators_stmt = select(Generator).where(Generator.output_dataset_id == dataset.id)
+    generator = db.exec(generators_stmt).first()
+    
+    return {
+        "dataset": dataset,
+        "generator": generator
+    }
+
+
 @router.get("/{dataset_id}/download")
 def download_synthetic_dataset(
     dataset_id: str,
@@ -133,12 +168,15 @@ def download_synthetic_dataset(
     if is_s3_available() and dataset.s3_key:
         try:
             storage = get_storage_service()
-            download_url = storage.generate_download_url(
-                key=dataset.s3_key,
-                filename=f"{dataset.name}.csv",
-                expires_in=3600
+            # Stream directly from S3 to user
+            file_stream = storage.get_file_stream(dataset.s3_key)
+            return StreamingResponse(
+                file_stream,
+                media_type='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{dataset.name}.csv"'
+                }
             )
-            return {"download_url": download_url, "expires_in": 3600}
         except S3StorageError as e:
             logger.warning(f"S3 download failed, falling back to local: {e}")
     

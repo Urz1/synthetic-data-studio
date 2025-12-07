@@ -8,12 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
-import { Bell, Key, Lock, Mail, Shield, User } from "lucide-react"
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -35,9 +32,7 @@ export default function SettingsPage() {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
 
           {/* Profile Settings */}
@@ -84,13 +79,13 @@ export default function SettingsPage() {
             </div>
           </TabsContent>
 
-          {/* Account Settings */}
-          <TabsContent value="account">
+          {/* Security Settings */}
+          <TabsContent value="security">
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Password</CardTitle>
-                  <CardDescription>Change your password</CardDescription>
+                  <CardTitle>Change Password</CardTitle>
+                  <CardDescription>Update your password to keep your account secure</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -99,7 +94,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" />
+                    <Input id="newPassword" type="password" placeholder="At least 8 characters" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
@@ -107,87 +102,28 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSave}>Update Password</Button>
+                  <Button onClick={handleSave} disabled={isLoading}>
+                    {isLoading ? "Updating..." : "Update Password"}
+                  </Button>
                 </CardFooter>
               </Card>
 
               <Card className="border-destructive/20">
                 <CardHeader>
-                  <CardTitle className="text-destructive">Delete Account</CardTitle>
-                  <CardDescription>Permanently delete your account and all data</CardDescription>
+                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                  <CardDescription>Irreversible actions for your account</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Once you delete your account, there is no going back. Please be certain.
-                  </p>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-destructive/5 rounded-lg border border-destructive/20">
+                    <h4 className="font-semibold text-sm mb-1">Delete Account</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Permanently delete your account and all associated data. This action cannot be undone.
+                    </p>
+                    <Button variant="destructive" size="sm">Delete My Account</Button>
+                  </div>
                 </CardContent>
-                <CardFooter>
-                  <Button variant="destructive">Delete Account</Button>
-                </CardFooter>
               </Card>
             </div>
-          </TabsContent>
-
-          {/* API Keys */}
-          <TabsContent value="api-keys">
-            <Card>
-              <CardHeader>
-                <CardTitle>API Keys</CardTitle>
-                <CardDescription>Manage your API keys for external access</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <p className="font-medium flex items-center gap-2">
-                      <Key className="h-4 w-4 text-muted-foreground" />
-                      Default Key
-                    </p>
-                    <p className="text-xs text-muted-foreground font-mono">sk_live_...8923</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Active</Badge>
-                    <Button variant="ghost" size="sm">Revoke</Button>
-                  </div>
-                </div>
-                <Button className="w-full sm:w-auto">
-                  <Key className="mr-2 h-4 w-4" />
-                  Generate New Key
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Notifications */}
-          <TabsContent value="notifications">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-                <CardDescription>Choose what you want to be notified about</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Receive emails about your account activity</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Training Complete</Label>
-                    <p className="text-sm text-muted-foreground">Get notified when a generator finishes training</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Security Alerts</Label>
-                    <p className="text-sm text-muted-foreground">Get notified about suspicious activity</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </AppShell>

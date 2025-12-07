@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,60 +12,55 @@ import { Activity, CheckCircle, XCircle, Clock, Loader2, RotateCw } from "lucide
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import type { Job } from "@/lib/types"
-
-// Mock jobs data
-const mockJobs: Job[] = [
-  {
-    id: "job-1",
-    project_id: "proj-1",
-    type: "training",
-    status: "completed",
-    generator_id: "gen-123",
-    progress: 100,
-    created_at: "2024-12-03T14:00:00Z",
-    updated_at: "2024-12-03T14:35:00Z",
-    started_at: "2024-12-03T14:00:00Z",
-    completed_at: "2024-12-03T14:35:00Z",
-  },
-  {
-    id: "job-2",
-    project_id: "proj-1",
-    type: "generation",
-    status: "running",
-    generator_id: "gen-456",
-    progress: 67,
-    created_at: "2024-12-03T15:00:00Z",
-    updated_at: "2024-12-03T15:20:00Z",
-    started_at: "2024-12-03T15:00:00Z",
-  },
-  {
-    id: "job-3",
-    project_id: "proj-2",
-    type: "evaluation",
-    status: "pending",
-    generator_id: "gen-789",
-    progress: 0,
-    created_at: "2024-12-03T15:25:00Z",
-    updated_at: "2024-12-03T15:25:00Z",
-  },
-  {
-    id: "job-4",
-    project_id: "proj-1",
-    type: "training",
-    status: "failed",
-    generator_id: "gen-old",
-    progress: 45,
-    error_message: "Out of memory: Unable to allocate tensor with shape [1000000, 512]",
-    created_at: "2024-12-02T10:00:00Z",
-    updated_at: "2024-12-02T10:22:00Z",
-    started_at: "2024-12-02T10:00:00Z",
-    completed_at: "2024-12-02T10:22:00Z",
-  },
-]
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 export default function JobsPage() {
   const { user } = useAuth()
-  const [jobs, setJobs] = useState(mockJobs)
+  const { toast } = useToast()
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string>("")
+
+  const fetchJobs = async () => {
+    try {
+      let jobsData = await api.listJobs()
+      // If not admin, filter jobs to only those initiated by current user
+      if (user?.role !== "admin" && user?.id) {
+        jobsData = jobsData.filter(j => j.created_by === user.id)
+      }
+      setJobs(jobsData)
+      setError("")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load jobs"
+      setError(message)
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchJobs()
+    
+    // Auto-refresh every 5 seconds for running jobs
+    const interval = setInterval(() => {
+      if (jobs.some(j => j.status === "running" || j.status === "pending")) {
+        fetchJobs()
+      }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleRefresh = () => {
+    setIsLoading(true)
+    fetchJobs()
+  }
 
   const getStatusIcon = (status: Job["status"]) => {
     switch (status) {
@@ -183,15 +178,26 @@ export default function JobsPage() {
           title="Jobs"
           description="Monitor background tasks and long-running operations"
           actions={
-            <Button size="sm">
-              <RotateCw className="mr-2 h-4 w-4" />
+            <Button size="sm" onClick={handleRefresh} disabled={isLoading}>
+              <RotateCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           }
         />
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        {isLoading && jobs.length === 0 ? (
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">Loading jobs...</p>
+          </div>
+        ) : error && jobs.length === 0 ? (
+          <div className="text-center py-12 text-destructive">
+            <p>{error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid gap-4 md:grid-cols-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
@@ -277,6 +283,8 @@ export default function JobsPage() {
               ))}
             </CardContent>
           </Card>
+        )}
+          </>
         )}
       </AppShell>
     </ProtectedRoute>

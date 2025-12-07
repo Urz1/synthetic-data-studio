@@ -7,7 +7,7 @@ ask questions, and get recommendations.
 # Standard library
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 
 # Local - Module
 from app.services.llm.providers.router import LLMRouter
@@ -62,6 +62,45 @@ class ChatService:
         except Exception as e:
             logger.error(f"Chat failed: {e}")
             return "I'm having trouble processing your question right now. Please try rephrasing or ask something else."
+    
+    async def chat_stream(
+        self,
+        message: str,
+        context: Dict[str, Any],
+        history: Optional[List[Dict[str, str]]] = None
+    ) -> AsyncGenerator[str, None]:
+        """Handle chat interaction with streaming response
+        
+        Args:
+            message: User's question or message
+            context: Context data (generator info, evaluation results, etc.)
+            history: Conversation history (list of {user, assistant} dicts)
+            
+        Yields:
+            Chunks of the assistant's response
+        """
+        logger.info(f"Processing chat stream: {message[:50]}...")
+        
+        # Build context-aware system prompt
+        system_prompt = self._build_system_prompt(context)
+        
+        # Build conversation with history
+        conversation = self._build_conversation(message, history)
+        
+        request = LLMRequest(
+            system_prompt=system_prompt,
+            user_prompt=conversation,
+            temperature=0.3,
+            max_tokens=500
+        )
+        
+        try:
+            async for chunk in self.router.generate_stream(request, use_case="chat"):
+                yield json.dumps({"content": chunk})
+        
+        except Exception as e:
+            logger.error(f"Chat stream failed: {e}")
+            yield json.dumps({"content": "I'm having trouble processing your question right now.", "error": True})
     
     def _build_system_prompt(self, context: Dict[str, Any]) -> str:
         """Build context-aware system prompt

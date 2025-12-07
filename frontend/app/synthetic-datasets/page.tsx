@@ -10,17 +10,37 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Download, Search, Loader2, Database, Calendar, FileText, Boxes } from "lucide-react"
+import { Download, Search, Loader2, Database, Calendar, FileText, Boxes, MoreVertical, Trash2 } from "lucide-react"
 import { api } from "@/lib/api"
-import type { Dataset } from "@/lib/types"
+import type { SyntheticDataset } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
+import { useToast } from "@/hooks/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function SyntheticDatasetsPage() {
   const [search, setSearch] = React.useState("")
-  const [datasets, setDatasets] = React.useState<Dataset[]>([])
+  const [datasets, setDatasets] = React.useState<SyntheticDataset[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [datasetToDelete, setDatasetToDelete] = React.useState<string | null>(null)
   const { user } = useAuth()
+  const { toast } = useToast()
 
   React.useEffect(() => {
     loadSyntheticDatasets()
@@ -36,6 +56,46 @@ export default function SyntheticDatasetsPage() {
       setError(err instanceof Error ? err.message : "Failed to load synthetic datasets")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await api.deleteSyntheticDataset(id)
+      toast({
+        title: "Deleted",
+        description: "Synthetic dataset has been deleted successfully.",
+      })
+      // Refresh the list
+      await loadSyntheticDatasets()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete synthetic dataset",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleteDialogOpen(false)
+      setDatasetToDelete(null)
+    }
+  }
+
+  async function handleDownload(id: string) {
+    try {
+      const result = await api.downloadSyntheticDataset(id)
+      if (result.download_url) {
+        window.open(result.download_url, "_blank")
+        toast({
+          title: "Download started",
+          description: "Your download should begin shortly.",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to download synthetic dataset",
+        variant: "destructive",
+      })
     }
   }
 
@@ -109,10 +169,39 @@ export default function SyntheticDatasetsPage() {
                               {dataset.name}
                             </CardTitle>
                             <CardDescription className="text-xs mt-1">
-                              {dataset.row_count?.toLocaleString() || 0} rows
+                              {(dataset.row_count || 0).toLocaleString()} rows
                             </CardDescription>
                           </div>
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/synthetic-datasets/${dataset.id}`}>
+                                <FileText className="mr-2 h-4 w-4" />
+                                View details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(dataset.id)}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                setDatasetToDelete(dataset.id)
+                                setDeleteDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -122,38 +211,7 @@ export default function SyntheticDatasetsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(dataset.created_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          asChild
-                        >
-                          <Link href={`/synthetic-datasets/${dataset.id}`}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            View
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-1"
-                          onClick={async () => {
-                            try {
-                              const result = await api.downloadSyntheticDataset(dataset.id)
-                              if (result.download_url) {
-                                window.open(result.download_url, "_blank")
-                              }
-                            } catch (err) {
-                              console.error("Download failed:", err)
-                            }
-                          }}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          Download
-                        </Button>
+                        <span>{formatDate(dataset.uploaded_at)}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -181,6 +239,26 @@ export default function SyntheticDatasetsPage() {
             )}
           </>
         )}
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Synthetic Dataset</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this synthetic dataset? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => datasetToDelete && handleDelete(datasetToDelete)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AppShell>
     </ProtectedRoute>
   )

@@ -1,6 +1,7 @@
 """LLM Router - Routes requests to optimal provider"""
 
 import logging
+from typing import AsyncGenerator
 from app.services.llm.base import BaseLLMProvider, LLMRequest, LLMResponse
 from app.services.llm.providers.gemini_provider import GeminiProvider
 from app.services.llm.providers.groq_provider import GroqProvider
@@ -88,6 +89,48 @@ class LLMRouter:
         elif self.gemini:
             logger.info(f"Routing {use_case} to Gemini (fallback)")
             return await self.gemini.generate(request)
+        
+        # No providers available
+        raise RuntimeError("No LLM providers available. Check API keys.")
+    
+    async def generate_stream(
+        self, 
+        request: LLMRequest,
+        use_case: str = "general"
+    ):
+        """Route request to best provider with streaming
+        
+        Args:
+            request: LLM request
+            use_case: Use case for routing decision
+                
+        Yields:
+            Content chunks from selected provider
+        """
+        # Chat and quick queries → Groq fast (ultra-fast)
+        if use_case in ["chat", "quick", "pii_detection"]:
+            if self.groq_fast:
+                logger.info(f"Routing {use_case} to Groq (fast) with streaming")
+                async for chunk in self.groq_fast.generate_stream(request):
+                    yield chunk
+                return
+            elif self.groq:
+                logger.info(f"Routing {use_case} to Groq (standard, fallback) with streaming")
+                async for chunk in self.groq.generate_stream(request):
+                    yield chunk
+                return
+        
+        # All other cases → Groq standard
+        if self.groq:
+            logger.info(f"Routing {use_case} to Groq (standard) with streaming")
+            async for chunk in self.groq.generate_stream(request):
+                yield chunk
+            return
+        elif self.groq_fast:
+            logger.info(f"Routing {use_case} to Groq (fast, fallback) with streaming")
+            async for chunk in self.groq_fast.generate_stream(request):
+                yield chunk
+            return
         
         # No providers available
         raise RuntimeError("No LLM providers available. Check API keys.")

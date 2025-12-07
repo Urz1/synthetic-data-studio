@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Code, Sparkles, Plus, Trash2, Download, Zap } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import type { Project } from "@/lib/types"
 
 interface SchemaColumn {
   name: string
@@ -22,15 +26,97 @@ interface SchemaColumn {
   constraints?: Record<string, unknown>
 }
 
+// Template schemas
+const templates = {
+  customer: {
+    name: "Customer Database",
+    columns: [
+      { name: "customer_id", type: "uuid" },
+      { name: "first_name", type: "string" },
+      { name: "last_name", type: "string" },
+      { name: "email", type: "email" },
+      { name: "phone", type: "phone" },
+      { name: "created_at", type: "datetime" },
+    ],
+  },
+  ecommerce: {
+    name: "E-commerce Orders",
+    columns: [
+      { name: "order_id", type: "uuid" },
+      { name: "customer_id", type: "uuid" },
+      { name: "product_name", type: "string" },
+      { name: "quantity", type: "integer" },
+      { name: "price", type: "float" },
+      { name: "order_date", type: "datetime" },
+    ],
+  },
+  healthcare: {
+    name: "Healthcare Records",
+    columns: [
+      { name: "patient_id", type: "uuid" },
+      { name: "name", type: "string" },
+      { name: "age", type: "integer" },
+      { name: "diagnosis", type: "string" },
+      { name: "admission_date", type: "date" },
+    ],
+  },
+  financial: {
+    name: "Financial Transactions",
+    columns: [
+      { name: "transaction_id", type: "uuid" },
+      { name: "account_number", type: "string" },
+      { name: "amount", type: "float" },
+      { name: "currency", type: "string" },
+      { name: "timestamp", type: "datetime" },
+    ],
+  },
+}
+
 export default function SchemaGeneratorPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
   const [columns, setColumns] = useState<SchemaColumn[]>([
-    { name: "id", type: "integer", format: "auto_increment" },
+    { name: "id", type: "uuid" },
   ])
   const [numRows, setNumRows] = useState(1000)
   const [schemaJson, setSchemaJson] = useState("")
+  const [activeTab, setActiveTab] = useState<"builder" | "json">("builder")
   const [generatedData, setGeneratedData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState<string>("")
+  
+  // Project & Naming state
+  const [projects, setProjects] = useState<Project[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("")
+  const [datasetName, setDatasetName] = useState<string>("")
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false)
+
+  // Load projects on mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setIsLoadingProjects(true)
+        const data = await api.listProjects()
+        setProjects(data)
+        if (data.length > 0) {
+          setSelectedProjectId(data[0].id)
+        }
+      } catch (err) {
+        console.error("Failed to load projects", err)
+        toast({
+          title: "Failed to load projects",
+          description: "Could not fetch available projects",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoadingProjects(false)
+      }
+    }
+    loadProjects()
+  }, [toast])
+
 
   const addColumn = () => {
     setColumns([...columns, { name: "", type: "string" }])
@@ -46,19 +132,172 @@ export default function SchemaGeneratorPage() {
     setColumns(updated)
   }
 
+  const loadTemplate = (templateKey: keyof typeof templates) => {
+    const template = templates[templateKey]
+    setColumns(template.columns)
+    toast({
+      title: "Template Loaded",
+      description: `Loaded ${template.name} template`,
+    })
+  }
+
+  const parseJsonSchema = () => {
+    try {
+      const parsed = JSON.parse(schemaJson)
+      if (!parsed.columns || typeof parsed.columns !== 'object') {
+        throw new Error("Schema must have a 'columns' object")
+      }
+      
+      // Convert JSON schema to columns array
+      const newColumns: SchemaColumn[] = Object.entries(parsed.columns).map(([name, config]: [string, any]) => ({
+        name,
+        type: config.type || 'string',
+        format: config.format,
+        constraints: config.constraints,
+      }))
+      
+      setColumns(newColumns)
+      setActiveTab("builder")
+      toast({
+        title: "Schema Loaded",
+        description: `Loaded ${newColumns.length} columns from JSON`,
+      })
+    } catch (err) {
+      toast({
+        title: "Invalid JSON",
+        description: err instanceof Error ? err.message : "Failed to parse JSON schema",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleGenerate = async () => {
     setLoading(true)
-    // Mock generation - in real implementation, call api.generateSchemaBased()
-    setTimeout(() => {
+    setError("")
+    
+    try {
+      if (!selectedProjectId) {
+          throw new Error("Please select a project")
+      }
+      if (!datasetName.trim()) {
+          throw new Error("Please provide a name for the dataset")
+      }
+
+      if (numRows < 1 || numRows > 100000) {
+        throw new Error("Number of rows must be between 1 and 100,000")
+      }
+
+      // Use JSON schema if on JSON tab, otherwise use builder
+      let schemaConfig: any
+      
+      if (activeTab === "json" && schemaJson.trim()) {
+        const parsed = JSON.parse(schemaJson)
+        if (!parsed.columns) {
+          throw new Error("JSON schema must have a 'columns' object")
+        }
+        schemaConfig = { 
+            columns: parsed.columns,
+            project_id: selectedProjectId,
+            dataset_name: datasetName
+        }
+      } else {
+        // Validate columns from builder
+        const validColumns = columns.filter(col => col.name.trim() !== "")
+        if (validColumns.length === 0) {
+          throw new Error("Please add at least one column with a name")
+        }
+
+        // Prepare schema config
+        schemaConfig = {
+          columns: Object.fromEntries(
+            validColumns.map(col => [
+              col.name,
+              {
+                type: col.type,
+                ...(col.format && { faker: col.format }),
+                ...(col.constraints && col.constraints),
+              },
+            ])
+          ),
+          project_id: selectedProjectId,
+          dataset_name: datasetName
+        }
+      }
+
+      // Call API to generate
+      const result = await api.generateSchemaBased(schemaConfig, numRows)
+      console.log("Schema API Raw Result:", result)
+      
+      // Robustly extract ID from various potential response formats
+      // The backend returns a Dataset object, so 'id' is the primary field
+      const rawId = result.id || result.output_dataset_id || (result as any).dataset_id
+      const finalId = typeof rawId === 'object' ? rawId.toString() : rawId
+
+      if (!finalId) {
+        throw new Error("Generated dataset is missing an ID")
+      }
+
       setGeneratedData({
-        id: "gen-schema-123",
+        id: finalId,
         type: "schema",
         status: "completed",
-        output_dataset_id: "ds-generated-456",
+        output_dataset_id: finalId,
         rows: numRows,
       })
+
+      toast({
+        title: "Success",
+        description: `Generated ${numRows.toLocaleString()} rows of synthetic data`,
+      })
+    } catch (err) {
+      console.error("Generation error:", err)
+      const message = err instanceof Error ? err.message : "Failed to generate data"
+      setError(message)
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
       setLoading(false)
-    }, 2000)
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!generatedData?.output_dataset_id) {
+      toast({
+        title: "Error",
+        description: "No dataset ID available for download. Please regenerate.",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    setDownloading(true)
+    try {
+      const result = await api.downloadSyntheticDataset(generatedData.output_dataset_id)
+      if (result.download_url) {
+        const link = document.createElement('a');
+        link.href = result.download_url;
+        link.download = result.filename || "generated_dataset.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Download Started",
+          description: "Your file is being downloaded",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Download Failed",
+        description: err instanceof Error ? err.message : "Failed to download dataset",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const columnTypeOptions = [
@@ -98,7 +337,7 @@ export default function SchemaGeneratorPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Tabs defaultValue="builder">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "builder" | "json")}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="builder">Visual Builder</TabsTrigger>
                   <TabsTrigger value="json">JSON Schema</TabsTrigger>
@@ -153,28 +392,85 @@ export default function SchemaGeneratorPage() {
                 </TabsContent>
 
                 <TabsContent value="json" className="space-y-4">
-                  <Textarea
-                    placeholder='{\n  "columns": [\n    {"name": "id", "type": "integer"},\n    {"name": "email", "type": "email"}\n  ]\n}'
-                    rows={12}
-                    value={schemaJson}
-                    onChange={(e) => setSchemaJson(e.target.value)}
-                    className="font-mono text-sm"
-                  />
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder='{\n  "columns": {\n    "id": { "type": "uuid" },\n    "name": { "type": "string" },\n    "email": { "type": "email" },\n    "age": { "type": "integer" },\n    "created_at": { "type": "datetime" }\n  }\n}'
+                      rows={12}
+                      value={schemaJson}
+                      onChange={(e) => setSchemaJson(e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={parseJsonSchema}
+                      className="w-full"
+                    >
+                      <Code className="mr-2 h-4 w-4" />
+                      Load JSON to Builder
+                    </Button>
+                  </div>
                 </TabsContent>
               </Tabs>
 
-              <div className="space-y-2">
-                <Label>Number of Rows</Label>
+              <div className="space-y-4 pt-4 border-t">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="project-select">Target Project</Label>
+                        <Select value={selectedProjectId} onValueChange={setSelectedProjectId} disabled={isLoadingProjects}>
+                            <SelectTrigger id="project-select">
+                                <SelectValue placeholder="Select project" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {projects.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="dataset-name">Dataset Name</Label>
+                        <Input 
+                            id="dataset-name" 
+                            placeholder="e.g. synthetic_customers_v1" 
+                            value={datasetName}
+                            onChange={(e) => setDatasetName(e.target.value)}
+                        />
+                    </div>
+                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="num-rows" className="text-sm font-medium">
+                    Number of Rows to Generate
+                  </Label>
                 <Input
+                  id="num-rows"
                   type="number"
                   min={1}
                   max={100000}
+                  step={100}
                   value={numRows}
-                  onChange={(e) => setNumRows(parseInt(e.target.value) || 1000)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '') {
+                      setNumRows(0)
+                    } else {
+                      const num = parseInt(value)
+                      if (!isNaN(num)) {
+                        setNumRows(Math.max(1, Math.min(100000, num)))
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    if (numRows < 1) setNumRows(1)
+                    if (numRows > 100000) setNumRows(100000)
+                  }}
+                  className="text-lg font-semibold"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Generate up to 100,000 rows instantly
+                  Min: 1 | Max: 100,000 rows | Current: <span className="font-semibold">{numRows.toLocaleString()}</span>
                 </p>
+              </div>
               </div>
 
               <Button onClick={handleGenerate} className="w-full" disabled={loading}>
@@ -190,6 +486,10 @@ export default function SchemaGeneratorPage() {
                   </>
                 )}
               </Button>
+
+              {error && (
+                <p className="text-sm text-destructive mt-2">{error}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -237,12 +537,24 @@ export default function SchemaGeneratorPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button className="flex-1">
+                    <Button 
+                      className="flex-1"
+                      onClick={handleDownload}
+                      disabled={downloading}
+                    >
                       <Download className="mr-2 h-4 w-4" />
-                      Download CSV
+                      {downloading ? "Downloading..." : "Download CSV"}
                     </Button>
-                    <Button variant="outline" className="flex-1">
-                      View Dataset
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => {
+                        if (generatedData?.output_dataset_id) {
+                          router.push(`/synthetic-datasets/${generatedData.output_dataset_id}`)
+                        }
+                      }}
+                    >
+                      View Details
                     </Button>
                   </div>
                 </CardContent>
@@ -253,21 +565,42 @@ export default function SchemaGeneratorPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Quick Start Templates</CardTitle>
+                <CardDescription>Click to load a pre-configured schema</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => loadTemplate("customer")}
+                >
                   <Code className="mr-2 h-4 w-4" />
                   Customer Database
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => loadTemplate("ecommerce")}
+                >
                   <Code className="mr-2 h-4 w-4" />
                   E-commerce Orders
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => loadTemplate("healthcare")}
+                >
                   <Code className="mr-2 h-4 w-4" />
                   Healthcare Records
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => loadTemplate("financial")}
+                >
                   <Code className="mr-2 h-4 w-4" />
                   Financial Transactions
                 </Button>

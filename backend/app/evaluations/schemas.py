@@ -33,11 +33,12 @@ class EvaluationResponse(BaseModel):
     """Response model for evaluation."""
     model_config = ConfigDict(from_attributes=True)
     
-    evaluation_id: str
+    id: str
     generator_id: str
     dataset_id: str
     status: str
     report: Dict[str, Any]
+    created_at: Optional[datetime] = None
 
 
 class EvaluationListResponse(BaseModel):

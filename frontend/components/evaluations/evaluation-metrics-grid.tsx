@@ -23,12 +23,12 @@ export function EvaluationMetricsGrid({ report, className }: EvaluationMetricsGr
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-around">
-            <EvaluationScoreRing score={report.overall_quality_score} label="Overall" size="lg" />
+            <EvaluationScoreRing score={report.overall_assessment?.overall_score || 0} label="Overall" size="lg" />
             <div className="grid grid-cols-3 gap-6">
-              <EvaluationScoreRing score={report.statistical_similarity.overall_score} label="Statistical" size="md" />
-              <EvaluationScoreRing score={report.ml_utility.utility_preservation} label="ML Utility" size="md" />
+              <EvaluationScoreRing score={report.overall_assessment?.dimension_scores?.statistical || 0} label="Statistical" size="md" />
+              <EvaluationScoreRing score={report.overall_assessment?.dimension_scores?.ml_utility || 0} label="ML Utility" size="md" />
               <EvaluationScoreRing
-                score={1 - report.privacy.membership_inference_auc + 0.5}
+                score={report.overall_assessment?.dimension_scores?.privacy || 0}
                 label="Privacy"
                 size="md"
               />
@@ -59,19 +59,19 @@ export function EvaluationMetricsGrid({ report, className }: EvaluationMetricsGr
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Overall Score</span>
+              <span className="text-sm text-muted-foreground">Pass Rate</span>
               <span className="font-mono font-medium">
-                {(report.statistical_similarity.overall_score * 100).toFixed(1)}%
+                {(report.evaluations.statistical_similarity?.summary.pass_rate || 0).toFixed(1)}%
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Correlation Diff</span>
+              <span className="text-sm text-muted-foreground">Correlation Diff (MAE)</span>
               <span className="font-mono font-medium">
-                {report.statistical_similarity.correlation_difference.toFixed(3)}
+                {report.evaluations.statistical_similarity?.details?.overall_tests?.correlation?.mean_absolute_error?.toFixed(3) || "N/A"}
               </span>
             </div>
             <div className="pt-2 border-t text-xs text-muted-foreground">
-              {Object.keys(report.statistical_similarity.column_scores).length} columns analyzed
+              {Object.keys(report.evaluations.statistical_similarity?.details?.column_tests || {}).length} columns analyzed
             </div>
           </CardContent>
         </Card>
@@ -98,19 +98,23 @@ export function EvaluationMetricsGrid({ report, className }: EvaluationMetricsGr
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Utility Preservation</span>
               <span className="font-mono font-medium">
-                {(report.ml_utility.utility_preservation * 100).toFixed(1)}%
+                {((report.evaluations.ml_utility?.summary.utility_ratio || 0) * 100).toFixed(1)}%
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
               <div>
                 <p className="text-xs text-muted-foreground">Synth→Real</p>
                 <p className="font-mono text-sm">
-                  F1: {report.ml_utility.train_on_synthetic_test_on_real.f1.toFixed(2)}
+                  Score: {report.evaluations.ml_utility?.details?.models?.synthetic?.f1_score?.toFixed(2) || 
+                         report.evaluations.ml_utility?.details?.models?.synthetic?.r2_score?.toFixed(2) || "N/A"}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Real→Real</p>
-                <p className="font-mono text-sm">F1: {report.ml_utility.train_on_real_test_on_real.f1.toFixed(2)}</p>
+                <p className="font-mono text-sm">
+                   Score: {report.evaluations.ml_utility?.details?.models?.baseline?.f1_score?.toFixed(2) || 
+                          report.evaluations.ml_utility?.details?.models?.baseline?.r2_score?.toFixed(2) || "N/A"}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -137,16 +141,25 @@ export function EvaluationMetricsGrid({ report, className }: EvaluationMetricsGr
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Membership AUC</span>
-              <span className="font-mono font-medium">{report.privacy.membership_inference_auc.toFixed(2)}</span>
+              <span className="font-mono font-medium">
+                  {report.evaluations.privacy?.details?.tests?.membership_inference?.attack_auc?.toFixed(2) || "N/A"}
+              </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Attribute Acc</span>
+              <span className="text-sm text-muted-foreground">DCR Risk</span>
               <span className="font-mono font-medium">
-                {(report.privacy.attribute_inference_accuracy * 100).toFixed(1)}%
+                {report.evaluations.privacy?.summary.dcr_risk || "Unknown"}
               </span>
             </div>
             <div className="pt-2 border-t">
-              <RiskIndicator level={report.privacy.privacy_risk} size="sm" showScore={false} />
+              <RiskIndicator 
+                level={
+                    report.evaluations.privacy?.summary.overall_privacy_level === "Good" ? "low" :
+                    report.evaluations.privacy?.summary.overall_privacy_level === "Fair" ? "medium" : "high"
+                } 
+                size="sm" 
+                showScore={false} 
+              />
             </div>
           </CardContent>
         </Card>

@@ -76,6 +76,7 @@ def _export_to_response(export: Export, include_url: bool = False) -> ExportResp
 # Endpoints
 # ============================================================================
 
+@router.get("", response_model=ExportListResponse)
 @router.get("/", response_model=ExportListResponse)
 def list_exports(
     export_type: Optional[str] = Query(None, description="Filter by export type"),

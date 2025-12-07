@@ -35,7 +35,8 @@ from .quality_report import QualityReportGenerator
 from .repositories import (
     get_evaluation,
     create_evaluation,
-    list_evaluations_by_generator
+    list_evaluations_by_generator,
+    delete_evaluation
 )
 from .schemas import EvaluationRequest, EvaluationResponse, ComparisonRequest
 
@@ -67,6 +68,7 @@ def sanitize_json_floats(obj):
     return obj
 
 
+@router.get("", response_model=List[EvaluationResponse])
 @router.get("/", response_model=List[EvaluationResponse])
 def list_evaluations(
     db: Session = Depends(get_db),
@@ -89,14 +91,49 @@ def list_evaluations(
     
     return [
         EvaluationResponse(
-            evaluation_id=str(e.id),
+            id=str(e.id),
             generator_id=str(e.generator_id),
             dataset_id=str(e.dataset_id),
             status="completed",
-            report=e.report
+            report=e.report,
+            created_at=e.created_at
         )
         for e in evaluations
     ]
+
+
+@router.get("/{evaluation_id}/details")
+def get_evaluation_details(
+    evaluation_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get evaluation with generator and dataset in a single call.
+    OPTIMIZATION: Reduces multiple API calls to 1.
+    """
+    # Get evaluation
+    stmt = select(Evaluation).where(Evaluation.id == evaluation_id)
+    evaluation = db.exec(stmt).first()
+    
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+    
+    # Verify user owns the generator
+    generator = get_generator_by_id(db, str(evaluation.generator_id))
+    if not generator or generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get dataset
+    dataset = None
+    if evaluation.dataset_id:
+        dataset = get_dataset_by_id(db, str(evaluation.dataset_id))
+    
+    return {
+        "evaluation": evaluation,
+        "generator": generator,
+        "dataset": dataset
+    }
 
 
 @router.post("/run", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
@@ -206,11 +243,12 @@ async def run_evaluation(
         logger.info(f"✓ Evaluation {evaluation.id} completed: {report['overall_assessment']['overall_quality']}")
         
         return EvaluationResponse(
-            evaluation_id=str(evaluation.id),
+            id=str(evaluation.id),
             generator_id=str(evaluation.generator_id),
             dataset_id=str(evaluation.dataset_id),
             status="completed",
-            report=report
+            report=report,
+            created_at=evaluation.created_at
         )
         
     except FileNotFoundError as e:
@@ -245,11 +283,12 @@ def get_evaluation_endpoint(
         )
     
     return EvaluationResponse(
-        evaluation_id=str(evaluation.id),
+        id=str(evaluation.id),
         generator_id=str(evaluation.generator_id),
         dataset_id=str(evaluation.dataset_id),
         status="completed",
-        report=evaluation.report
+        report=evaluation.report,
+        created_at=evaluation.created_at
     )
 
 
@@ -277,11 +316,12 @@ async def list_generator_evaluations(
     
     return [
         EvaluationResponse(
-            evaluation_id=str(e.id),
+            id=str(e.id),
             generator_id=str(e.generator_id),
             dataset_id=str(e.dataset_id),
             status="completed",
-            report=e.report
+            report=e.report,
+            created_at=e.created_at
         )
         for e in evaluations
     ]
@@ -621,4 +661,60 @@ async def get_risk_report(
     logger.info(f"✓ Risk report retrieved: {evaluation.risk_level}")
     
     return evaluation.risk_details
+
+
+@router.delete("/{evaluation_id}")
+def delete_evaluation_endpoint(
+    evaluation_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Delete an evaluation.
+    
+    Args:
+        evaluation_id: Evaluation ID to delete
+        db: Database session
+        current_user: Authenticated user
+    
+    Returns:
+        Success message
+    """
+    logger.info(f"Deleting evaluation {evaluation_id}")
+    
+    # Validate UUID
+    validate_uuid(evaluation_id, "evaluation_id")
+    
+    # Get evaluation first to check ownership
+    evaluation = get_evaluation(db, evaluation_id)
+    if not evaluation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Evaluation {evaluation_id} not found"
+        )
+    
+    # Verify user owns the generator
+    generator = get_generator_by_id(db, str(evaluation.generator_id))
+    if not generator or generator.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this evaluation"
+        )
+    
+    # Delete the evaluation
+    success = delete_evaluation(db, evaluation_id)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete evaluation"
+        )
+    
+    logger.info(f"✓ Evaluation {evaluation_id} deleted successfully")
+    
+    return {
+        "message": "Evaluation deleted successfully",
+        "evaluation_id": evaluation_id
+    }
+
 

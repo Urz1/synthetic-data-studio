@@ -75,7 +75,13 @@ def train_generator_task(self, generator_id: str, job_id: str):
         logger.info(f"Running generation pipeline for {generator.type}...")
         output_dataset = _generate_from_dataset(generator, db)
 
-        # 4. Update Job Status to COMPLETED
+        # 4. Update Generator Status to COMPLETED
+        generator.status = "completed"
+        if output_dataset:
+            generator.output_dataset_id = output_dataset.id
+        db.add(generator)
+        
+        # 5. Update Job Status to COMPLETED
         job.status = "completed"
         job.completed_at = datetime.utcnow()
         db.add(job)

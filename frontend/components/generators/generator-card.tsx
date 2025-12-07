@@ -40,11 +40,11 @@ export function GeneratorCard({ generator, onDelete, className }: GeneratorCardP
 
   return (
     <Card className={cn("group transition-shadow hover:shadow-md", className)}>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-3">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <div
             className={cn(
-              "rounded-lg p-2",
+              "rounded-lg p-2 shrink-0",
               generator.privacy_config?.use_differential_privacy ? "bg-success/10" : "bg-primary/10",
             )}
           >
@@ -55,9 +55,11 @@ export function GeneratorCard({ generator, onDelete, className }: GeneratorCardP
               )}
             />
           </div>
-          <div>
-            <CardTitle className="text-base">{generator.name}</CardTitle>
-            <p className="text-xs text-muted-foreground">{formatDate(generator.created_at)}</p>
+          <div className="min-w-0">
+            <CardTitle className="text-base truncate block" title={generator.name}>
+              {generator.name}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground truncate">{formatDate(generator.created_at)}</p>
           </div>
         </div>
         <DropdownMenu>

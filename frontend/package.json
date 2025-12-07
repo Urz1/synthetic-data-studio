@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "build:analyze": "next build && node scripts/check-bundle-size.js",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "validate:bundle": "node scripts/check-bundle-size.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

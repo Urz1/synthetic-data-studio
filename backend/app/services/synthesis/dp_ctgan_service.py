@@ -54,7 +54,7 @@ class DPCTGANService:
         
         Args:
             epochs: Number of training epochs (default: 300)
-            batch_size: Batch size for training (default: 500)
+            batch_size: Batch size for training (default: 500). Must be divisible by 10 (pac).
             generator_dim: Generator network dimensions (default: (256, 256))
             discriminator_dim: Discriminator network dimensions (default: (256, 256))
             generator_lr: Generator learning rate (default: 2e-4)
@@ -68,7 +68,17 @@ class DPCTGANService:
             force: If True, proceed despite soft validation errors (user acknowledged risks)
         """
         self.epochs = epochs
-        self.batch_size = batch_size
+        
+        # Sanitize batch_size - MUST be divisible by 10 (pac parameter default)
+        # CTGAN implementation requires batch_size % pac == 0
+        if batch_size % 10 != 0:
+            original_batch = batch_size
+            self.batch_size = (batch_size // 10) * 10
+            if self.batch_size == 0:
+                self.batch_size = 10
+            logger.warning(f"Adjusted batch_size from {original_batch} to {self.batch_size} (must be multiple of 10 for CTGAN)")
+        else:
+            self.batch_size = batch_size
         self.generator_dim = generator_dim
         self.discriminator_dim = discriminator_dim
         self.generator_lr = generator_lr

@@ -5,7 +5,7 @@ These Pydantic models define the API contract and are separate from
 database models (models.py) following clean architecture principles.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, List
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 import uuid
@@ -17,7 +17,9 @@ import uuid
 
 class SchemaInput(BaseModel):
     """Schema definition for manual data generation."""
-    columns: Dict[str, Dict[str, Any]]  # column_name -> {type, constraints}
+    columns: Union[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]  # Support both formats
+    project_id: Optional[uuid.UUID] = None
+    dataset_name: Optional[str] = None
 
 
 class MLGenerationConfig(BaseModel):
@@ -47,6 +49,9 @@ class MLGenerationConfig(BaseModel):
     target_delta: Optional[float] = None
     max_grad_norm: Optional[float] = 1.0
     noise_multiplier: Optional[float] = None
+    
+    # Custom naming
+    synthetic_dataset_name: Optional[str] = None
 
 
 class GeneratorCreateRequest(BaseModel):
@@ -91,6 +96,13 @@ class GeneratorDeleteResponse(BaseModel):
     """Response after deleting a generator."""
     message: str
     id: str
+
+
+class GenerationStartRequest(BaseModel):
+    """Request body for starting generation."""
+    num_rows: Optional[int] = None
+    dataset_name: Optional[str] = None
+    project_id: Optional[str] = None
 
 
 class GenerationStartResponse(BaseModel):

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shield, FileCheck, AlertCircle, Download, CheckCircle2, XCircle } from "lucide-react"
+import { Shield, FileCheck, AlertCircle, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import type { ComplianceReport } from "@/lib/types"
+import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock compliance reports
-const mockComplianceReports: ComplianceReport[] = [
+// Remove all mock data - will fetch from API
+const tempMockComplianceReports: ComplianceReport[] = [
   {
     id: "comp-1",
     generator_id: "gen-123",
@@ -102,11 +104,78 @@ const frameworkInfo = {
 
 export default function CompliancePage() {
   const { user } = useAuth()
+  const { toast } = useToast()
+  const isAdmin = user?.role === "admin"
+  
   const [selectedFramework, setSelectedFramework] = useState<"all" | "GDPR" | "HIPAA" | "CCPA" | "SOC2">("all")
+  const [complianceReports, setComplianceReports] = useState<ComplianceReport[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string>("")
+  const [stats, setStats] = useState({
+    total: 0,
+    compliant: 0,
+    warnings: 0,
+    nonCompliant: 0,
+  })
+
+  useEffect(() => {
+    if (!isAdmin) return
+
+    const fetchData = async () => {
+      setIsLoading(true)
+      setError("")
+      try {
+        // Try optimized summary endpoint first
+        try {
+          const summary = await api.getComplianceSummary()
+          setComplianceReports(summary.recent_reports)
+          setStats({
+            total: summary.total_reports,
+            compliant: summary.status_counts.compliant || 0,
+            warnings: summary.status_counts.warning || 0,
+            nonCompliant: summary.status_counts.non_compliant || 0,
+          })
+        } catch (apiError: any) {
+          // Fallback to full list if summary endpoint not available
+          if (apiError?.message?.includes("404") || apiError?.message?.includes("Not Found")) {
+            console.warn("Compliance summary endpoint not available, falling back to list")
+            const reports = await api.listComplianceReports()
+            setComplianceReports(reports)
+            // Calculate stats from reports
+            setStats({
+              total: reports.length,
+              compliant: reports.filter(r => r.status === "compliant").length,
+              warnings: reports.filter(r => r.status === "warning").length,
+              nonCompliant: reports.filter(r => r.status === "non_compliant").length,
+            })
+          } else {
+            throw apiError
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load compliance data"
+        setError(message)
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [isAdmin, toast])
+
+  // Redirect non-admin users
+  if (!isAdmin) {
+    return null
+  }
 
   const filteredReports = selectedFramework === "all" 
-    ? mockComplianceReports
-    : mockComplianceReports.filter(r => r.framework === selectedFramework)
+    ? complianceReports
+    : complianceReports.filter(r => r.framework === selectedFramework)
 
   const complianceColumns = [
     {
@@ -156,16 +225,7 @@ export default function CompliancePage() {
     },
   ]
 
-  const getComplianceStats = () => {
-    const total = mockComplianceReports.length
-    const compliant = mockComplianceReports.filter(r => r.status === "compliant").length
-    const warnings = mockComplianceReports.filter(r => r.status === "warning").length
-    const nonCompliant = mockComplianceReports.filter(r => r.status === "non_compliant").length
 
-    return { total, compliant, warnings, nonCompliant }
-  }
-
-  const stats = getComplianceStats()
 
   return (
     <ProtectedRoute>
@@ -174,15 +234,26 @@ export default function CompliancePage() {
           title="Compliance"
           description="Monitor compliance status across various frameworks"
           actions={
-            <Button>
+            <Button disabled={isLoading}>
               <FileCheck className="mr-2 h-4 w-4" />
               Generate Report
             </Button>
           }
         />
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        {isLoading ? (
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">Loading compliance reports...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 text-destructive">
+            <p>{error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid gap-4 md:grid-cols-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
@@ -304,7 +375,9 @@ export default function CompliancePage() {
               )}
             </TabsContent>
           ))}
-        </Tabs>
+          </Tabs>
+          </>
+        )}
       </AppShell>
     </ProtectedRoute>
   )
