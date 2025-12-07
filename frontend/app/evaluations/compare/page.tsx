@@ -36,6 +36,7 @@ export default function EvaluationComparePage() {
     } else {
       setComparisonResult(null)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds])
 
   const loadEvaluations = async () => {
@@ -145,8 +146,9 @@ export default function EvaluationComparePage() {
     return (
       <ProtectedRoute>
         <AppShell user={user || { full_name: "", email: "" }}>
-          <div className="flex items-center justify-center h-96">
+          <div className="flex items-center justify-center h-96" role="status" aria-live="polite" aria-busy="true">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="sr-only">Loading evaluations</span>
           </div>
         </AppShell>
       </ProtectedRoute>
@@ -203,6 +205,7 @@ export default function EvaluationComparePage() {
                           className="h-4 w-4 ml-1 hover:bg-transparent"
                           onClick={() => handleRemoveEvaluation(evalItem.id)}
                           disabled={selectedIds.length <= 1}
+                          aria-label={`Remove evaluation ${evalNum} from comparison`}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -212,7 +215,7 @@ export default function EvaluationComparePage() {
                   
                   {selectedIds.length < 5 && (
                     <Select onValueChange={handleAddEvaluation}>
-                      <SelectTrigger className="w-[200px] h-8">
+                      <SelectTrigger className="w-[200px] h-8" aria-label="Add evaluation to comparison">
                         <div className="flex items-center gap-2">
                           <Plus className="h-3 w-3" />
                           <span>Add Evaluation</span>
@@ -232,7 +235,7 @@ export default function EvaluationComparePage() {
                   )}
                   
                   {comparing && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Generating comparison...
                     </div>

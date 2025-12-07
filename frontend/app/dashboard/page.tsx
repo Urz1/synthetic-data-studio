@@ -147,6 +147,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Run once on mount - toast is not a stable dependency
 
   return (
@@ -172,7 +173,7 @@ export default function DashboardPage() {
 
       {/* Contextual Tip - Progressive Disclosure */}
       <ContextualTip id="dashboard-tip" variant="info" className="mb-6">
-        <strong>Pro tip:</strong> Your most important metrics are shown above. Click "Show Activity Feed" below to see your full audit trail and quick actions.
+        <strong>Pro tip:</strong> Your most important metrics are shown above. Click &quot;Show Activity Feed&quot; below to see your full audit trail and quick actions.
       </ContextualTip>
 
       {isLoading ? (

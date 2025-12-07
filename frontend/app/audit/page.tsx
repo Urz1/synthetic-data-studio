@@ -116,7 +116,7 @@ const AuditPage = () => {
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requireAdmin>
       <AppShell user={user || { full_name: "", email: "" }}>
         <PageHeader
           title="Audit Logs"

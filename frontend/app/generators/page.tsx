@@ -83,12 +83,13 @@ export default function GeneratorsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            aria-label="Search generators"
           />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-[130px]" aria-label="Filter by status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -100,7 +101,7 @@ export default function GeneratorsPage() {
             </SelectContent>
           </Select>
           <Select value={modelFilter} onValueChange={setModelFilter}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-[130px]" aria-label="Filter by model type">
               <SelectValue placeholder="Model" />
             </SelectTrigger>
             <SelectContent>

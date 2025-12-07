@@ -75,6 +75,18 @@ git push origin feature/your-feature-name-or-bugfix-description
 
 ## Code of Conduct
 
-This project adheres to a standard Code of Conduct. Please review it (link to `CODE_OF_CONDUCT.md` once created).
+This project adheres to a standard Code of Conduct. Please be respectful and professional in all interactions.
+
+## 👤 Project Maintainer
+
+**Sadam Husen**
+
+- **Email**: halisadam391@gmail.com
+- **GitHub**: [github.com/Urz1](https://github.com/Urz1)
+- **LinkedIn**: [linkedin.com/in/sadam-husen-16s](https://www.linkedin.com/in/sadam-husen-16s/)
+
+For questions about contributing, please reach out via email or open a discussion on GitHub.
+
+---
 
 Thank you for contributing to the Synthetic Data Studio!

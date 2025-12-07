@@ -176,18 +176,18 @@ export default function DatasetUploadPage() {
 
                 {/* Progress */}
                 {uploading && (
-                  <div className="space-y-2">
+                  <div className="space-y-2" role="status" aria-live="polite" aria-busy="true">
                     <div className="flex items-center justify-between text-sm">
                       <span>Uploading...</span>
-                      <span>{progress}%</span>
+                      <span aria-label={`Upload progress ${progress}%`}>{progress}%</span>
                     </div>
-                    <Progress value={progress} />
+                    <Progress value={progress} aria-label={`Upload progress ${progress}%`} />
                   </div>
                 )}
 
                 {/* Success Message */}
                 {success && (
-                  <Alert className="border-green-500 bg-green-50">
+                  <Alert className="border-green-500 bg-green-50" role="status" aria-live="polite">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-800">
                       Dataset uploaded successfully! Redirecting...
@@ -197,7 +197,7 @@ export default function DatasetUploadPage() {
 
                 {/* Error Message */}
                 {error && (
-                  <Alert variant="destructive">
+                  <Alert variant="destructive" role="alert" aria-live="assertive">
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}

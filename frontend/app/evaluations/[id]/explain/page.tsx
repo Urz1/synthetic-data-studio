@@ -42,6 +42,7 @@ export default function EvaluationExplainPage() {
     if (evaluationId) {
       loadExplanation()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evaluationId])
 
   async function loadExplanation() {

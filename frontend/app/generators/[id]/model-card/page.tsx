@@ -34,6 +34,7 @@ export default function ModelCardPage() {
   React.useEffect(() => {
     if (!generatorId) return
     loadGeneratorAndCard()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generatorId])
 
   async function loadGeneratorAndCard() {

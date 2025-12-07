@@ -93,94 +93,113 @@ export default function ProjectsPage() {
           className="pl-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Search projects"
         />
       </div>
 
+      <p className="sr-only" aria-live="polite">
+        Showing {filteredProjects.length} project{filteredProjects.length === 1 ? "" : "s"} matching search.
+      </p>
+
       {loading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-busy="true">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="sr-only">Loading projects</span>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="group hover:border-primary/50 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-primary/10 p-2">
-                      <FolderOpen className="h-5 w-5 text-primary" />
+        filteredProjects.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+            {filteredProjects.map((project) => (
+              <Card key={project.id} className="group hover:border-primary/50 transition-colors">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="rounded-lg bg-primary/10 p-2 flex-shrink-0">
+                        <FolderOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="text-base line-clamp-1" title={project.name}>
+                          <Link href={`/projects/${project.id}`} className="hover:underline">
+                            {project.name}
+                          </Link>
+                        </CardTitle>
+                        <CardDescription className="text-xs mt-0.5 line-clamp-2" title={project.description || "No description"}>
+                          {project.description || "No description"}
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-base">
-                        <Link href={`/projects/${project.id}`} className="hover:underline">
-                          {project.name}
-                        </Link>
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        {project.description || "No description"}
-                      </CardDescription>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 transition-opacity"
+                          aria-label={`Project actions for ${project.name}`}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/projects/${project.id}`}>View Details</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled>
+                          Edit (Coming Soon)
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => {
+                            setProjectToDelete(project)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Project
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>{new Date(project.created_at).toLocaleDateString()}</span>
                     </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/projects/${project.id}`}>Open</Link>
+                    </Button>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/projects/${project.id}`}>View Details</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem disabled>
-                        Edit (Coming Soon)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => {
-                          setProjectToDelete(project)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Project
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span>{new Date(project.created_at).toLocaleDateString()}</span>
-                  </div>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/projects/${project.id}`}>Open</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
 
-          {/* Create new project card */}
-          <Link href="/projects/new">
-            <Card className="h-full min-h-[200px] border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-center">
-              <div className="text-center">
-                <div className="rounded-full bg-muted p-3 mx-auto mb-3 w-fit">
-                  <Plus className="h-6 w-6 text-muted-foreground" />
+            {/* Create new project card */}
+            <Link href="/projects/new">
+              <Card className="h-full min-h-[200px] border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-center">
+                <div className="text-center">
+                  <div className="rounded-full bg-muted p-3 mx-auto mb-3 w-fit">
+                    <Plus className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="font-medium text-sm">Create New Project</p>
+                  <p className="text-xs text-muted-foreground mt-1">Start organizing your work</p>
                 </div>
-                <p className="font-medium text-sm">Create New Project</p>
-                <p className="text-xs text-muted-foreground mt-1">Start organizing your work</p>
-              </div>
-            </Card>
-          </Link>
-        </div>
+              </Card>
+            </Link>
+          </div>
+        ) : (
+          <div className="text-center py-12" role="status" aria-live="polite">
+            <p className="text-muted-foreground mb-4">{searchQuery ? "No projects match your search" : "No projects yet"}</p>
+            <Button asChild>
+              <Link href="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create your first project
+              </Link>
+            </Button>
+          </div>
+        )
       )}
 
       {/* Delete Confirmation Dialog */}

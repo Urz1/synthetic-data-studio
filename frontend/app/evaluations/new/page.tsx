@@ -65,6 +65,7 @@ export default function NewEvaluationPage() {
       }
     }
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedGeneratorId])
 
   // Handle Generator Selection

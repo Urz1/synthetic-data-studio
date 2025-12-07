@@ -11,6 +11,7 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.benchmarks/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
@@ -24,44 +25,99 @@ venv/
 *.db
 db.sqlite3
 
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.local.example
+.env.production
+.env.development
+.env.test
+
 # Editors
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
+*~
+*.swp
+*.swo
 
 # OS generated files
 .DS_Store
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
 # Docker
 *.dockerignore
-docker-compose.override.yml # If you use overrides
-!docker-compose.yml # Do not ignore the main compose file
+docker-compose.override.yml
 .docker
 build/
 dist/
 
-# Node.js
+# Node.js / Frontend
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.next/ # Next.js build output
-out/ # Next.js static export
-build/ # React build output
+pnpm-debug.log*
+.pnpm-store/
+.next/
+out/
+build/
+.turbo/
+.vercel/
 
 # ML Specific
-ml_models/artifacts/ # Directory for saved models, checkpoints, logs
-ml_models/data/processed/ # Processed data (if not committed)
-ml_models/data/synthetic/ # Generated synthetic data
-ml_models/data/raw/ # Raw data (if too large or sensitive to commit)
-mlruns/ # MLflow artifacts
-.dvc/cache/ # DVC cache if using 
+ml_models/artifacts/
+ml_models/data/processed/
+ml_models/data/synthetic/
+ml_models/data/raw/
+mlruns/
+.dvc/cache/
+
+# Uploads (keep directory structure, ignore files)
+backend/uploads/*.csv
+backend/uploads/*.json
+backend/uploads/*.xlsx
+backend/uploads/*.xls
+!backend/uploads/.gitkeep
+
+# Models (saved models can be large)
+backend/uploads/models/*.pkl
+backend/uploads/models/*.pt
+backend/uploads/models/*.h5
+!backend/uploads/models/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Security - NEVER commit these
+*secret*
+*private*
+*key*.json
+*.pem
+*.key
+credentials.json
+
+# Documentation temporary files
+docs/_build/
+docs/.doctrees/ 

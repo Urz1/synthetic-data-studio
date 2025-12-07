@@ -3,9 +3,14 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { Loader2 } from "lucide-react"
+import { Loader2, ShieldAlert } from "lucide-react"
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+interface ProtectedRouteProps {
+  children: React.ReactNode
+  requireAdmin?: boolean
+}
+
+export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
 
@@ -25,6 +30,25 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   if (!user) {
     return null
+  }
+
+  // Check admin requirement
+  if (requireAdmin && user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <ShieldAlert className="h-16 w-16 text-destructive" />
+        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <p className="text-muted-foreground text-center max-w-md">
+          You do not have permission to access this page. This area is restricted to administrators only.
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Go to Dashboard
+        </button>
+      </div>
+    )
   }
 
   return <>{children}</>

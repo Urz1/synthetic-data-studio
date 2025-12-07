@@ -55,6 +55,7 @@ export default function JobsPage() {
     }, 5000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleRefresh = () => {
@@ -65,13 +66,13 @@ export default function JobsPage() {
   const getStatusIcon = (status: Job["status"]) => {
     switch (status) {
       case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="h-4 w-4 text-success" />
       case "running":
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+        return <Loader2 className="h-4 w-4 text-primary animate-spin" />
       case "pending":
-        return <Clock className="h-4 w-4 text-yellow-500" />
+        return <Clock className="h-4 w-4 text-warning" />
       case "failed":
-        return <XCircle className="h-4 w-4 text-red-500" />
+        return <XCircle className="h-4 w-4 text-risk" />
       default:
         return <Activity className="h-4 w-4" />
     }
@@ -198,45 +199,45 @@ export default function JobsPage() {
           <>
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
+            <Card aria-label="Total jobs">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" aria-live="polite">{stats.total}</div>
+              </CardContent>
+            </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
                 Running
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-500">{stats.running}</div>
+              <div className="text-2xl font-bold text-primary">{stats.running}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-success" />
                 Completed
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-500">{stats.completed}</div>
+              <div className="text-2xl font-bold text-success">{stats.completed}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-red-500" />
+                <XCircle className="h-4 w-4 text-risk" />
                 Failed
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">{stats.failed}</div>
+              <div className="text-2xl font-bold text-risk">{stats.failed}</div>
             </CardContent>
           </Card>
         </div>

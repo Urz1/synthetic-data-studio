@@ -44,6 +44,7 @@ export default function DatasetDetailPage() {
   React.useEffect(() => {
     if (!id) return
     loadDatasetDetails()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function loadDatasetDetails() {
@@ -120,8 +121,9 @@ export default function DatasetDetailPage() {
     return (
       <ProtectedRoute>
         <AppShell user={user || { full_name: "", email: "" }}>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-busy="true">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="sr-only">Loading dataset details</span>
           </div>
         </AppShell>
       </ProtectedRoute>

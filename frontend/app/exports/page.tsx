@@ -177,7 +177,7 @@ export default function ExportsPage() {
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requireAdmin>
       <AppShell user={user || { full_name: "", email: "" }}>
         <PageHeader
           title="Exports"

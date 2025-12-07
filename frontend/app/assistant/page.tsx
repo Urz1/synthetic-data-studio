@@ -263,7 +263,7 @@ export default function AssistantPage() {
                         <div className="flex-1 space-y-2">
                           <div className="bg-muted rounded-lg p-4">
                             <p className="text-sm leading-relaxed">
-                              Hello! I'm your AI assistant for Synth Studio. I can help you understand privacy metrics, suggest improvements for your generators, or explain evaluation results. How can I assist you?
+                              {"Hello! I'm your AI assistant for Synth Studio. I can help you understand privacy metrics, suggest improvements for your generators, or explain evaluation results. How can I assist you?"}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -336,7 +336,7 @@ export default function AssistantPage() {
                           <Sparkles className="h-4 w-4 text-primary animate-pulse" />
                         </div>
                         <div className="flex-1">
-                          <div className="bg-muted rounded-lg p-3 inline-block">
+                          <div className="bg-muted rounded-lg p-3 inline-block" aria-live="polite" aria-label="Assistant is typing">
                             <div className="flex gap-1">
                               <div className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
                               <div className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -367,11 +367,13 @@ export default function AssistantPage() {
                       }}
                       disabled={isChatLoading}
                       className="flex-1"
+                      aria-label="Chat message"
                     />
                     <Button 
                       onClick={handleSendMessage} 
                       disabled={isChatLoading || !message.trim()}
                       size="icon"
+                      aria-label={isChatLoading ? "Sending" : "Send message"}
                     >
                       {isChatLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -396,15 +398,16 @@ export default function AssistantPage() {
                 <CardDescription>Understand your evaluation metrics in plain language</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-col sm:flex-row">
                   <Input
-                    placeholder="Enter metric name (e.g., 'Statistical Similarity')"
+                    placeholder={"Enter metric name (e.g., 'Statistical Similarity')"}
                     value={metricQuery}
                     onChange={(e) => setMetricQuery(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleExplainMetric()}
                     disabled={isMetricLoading}
+                    aria-label="Metric name"
                   />
-                  <Button onClick={handleExplainMetric} disabled={isMetricLoading || !metricQuery.trim()}>
+                  <Button onClick={handleExplainMetric} disabled={isMetricLoading || !metricQuery.trim()} className="sm:w-auto w-full" aria-label={isMetricLoading ? "Explaining metric" : "Explain metric"}>
                     {isMetricLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -463,7 +466,7 @@ export default function AssistantPage() {
                   <ol className="text-sm text-muted-foreground space-y-1 ml-6 list-decimal">
                     <li>Upload a dataset in the Datasets page</li>
                     <li>Open the dataset details page</li>
-                    <li>Click "Run PII Detection" or "Enhanced PII Detection"</li>
+                    <li>Click &quot;Run PII Detection&quot; or &quot;Enhanced PII Detection&quot;</li>
                     <li>View results with AI-powered recommendations</li>
                   </ol>
                 </div>
@@ -489,11 +492,13 @@ export default function AssistantPage() {
                   value={schemaInput}
                   onChange={(e) => setSchemaInput(e.target.value)}
                   disabled={isFeaturesLoading}
+                  aria-label="Schema description"
                 />
                 <Button 
                   className="w-full" 
                   onClick={handleGenerateFeatures}
                   disabled={isFeaturesLoading || !schemaInput.trim()}
+                  aria-label={isFeaturesLoading ? "Generating features" : "Generate schema suggestions"}
                 >
                   {isFeaturesLoading ? (
                     <>
@@ -514,7 +519,7 @@ export default function AssistantPage() {
                     <div className="space-y-2">
                       {generatedFeatures.map((feature, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm">
-                          <code className="bg-background px-2 py-1 rounded">{feature}</code>
+                          <code className="bg-background px-2 py-1 rounded truncate" title={feature}>{feature}</code>
                           <Badge variant="outline">AI Suggested</Badge>
                         </div>
                       ))}

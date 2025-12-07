@@ -115,12 +115,13 @@ export default function DatasetsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
+                aria-label="Search datasets"
               />
             </div>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px]" aria-label="Filter by dataset status">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>

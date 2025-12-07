@@ -95,6 +95,7 @@ export default function RiskAssessmentPage() {
     if (evaluationId) {
       loadRiskAssessment()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evaluationId])
 
   async function loadRiskAssessment() {
@@ -232,7 +233,7 @@ export default function RiskAssessmentPage() {
             <CardHeader>
               <CardTitle>No Risk Assessment Available</CardTitle>
               <CardDescription>
-                Click "Calculate Risk" to generate a comprehensive risk assessment for this evaluation.
+                Click &quot;Calculate Risk&quot; to generate a comprehensive risk assessment for this evaluation.
               </CardDescription>
             </CardHeader>
             <CardContent>

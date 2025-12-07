@@ -82,6 +82,7 @@ export default function GeneratorDetailPage() {
     }, 3000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, generator?.status])
 
   async function loadProjects() {
@@ -262,8 +263,9 @@ export default function GeneratorDetailPage() {
     return (
       <ProtectedRoute>
         <AppShell user={user || { full_name: "", email: "" }}>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-busy="true">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="sr-only">Loading generator details</span>
           </div>
         </AppShell>
       </ProtectedRoute>

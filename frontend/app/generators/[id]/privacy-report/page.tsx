@@ -35,6 +35,7 @@ export default function PrivacyReportPage() {
   React.useEffect(() => {
     if (!generatorId) return
     loadGeneratorAndReport()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generatorId])
 
   async function loadGeneratorAndReport() {

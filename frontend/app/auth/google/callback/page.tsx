@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 
@@ -8,39 +8,44 @@ function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { completeOAuthLogin } = useAuth()
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [error, setError] = useState<string>("")
+  const token = searchParams.get("token")
+  const errorParam = searchParams.get("error")
+
+  const derivedError = useMemo(() => {
+    if (errorParam) return errorParam === "access_denied" ? "You cancelled the login" : errorParam
+    if (!token) return "No authentication token received"
+    return ""
+  }, [errorParam, token])
+
+  const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading")
+  const [error, setError] = useState<string>(derivedError)
 
   useEffect(() => {
-    // Get token from URL params (backend redirects here with token)
-    const token = searchParams.get("token")
-    const errorParam = searchParams.get("error")
-
-    if (errorParam) {
-      setStatus("error")
-      setError(errorParam === "access_denied" ? "You cancelled the login" : errorParam)
-      return
-    }
-
-    if (!token) {
-      setStatus("error")
-      setError("No authentication token received")
-      return
-    }
+    if (derivedError || !token) return
 
     // Complete OAuth login
-    completeOAuthLogin(token)
-      .then(() => {
+    let cancelled = false
+
+    const run = async () => {
+      try {
+        await completeOAuthLogin(token)
+        if (cancelled) return
         setStatus("success")
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 500)
-      })
-      .catch((err) => {
+        // Use window.location for clean redirect after OAuth
+        window.location.href = "/dashboard"
+      } catch (err: any) {
+        if (cancelled) return
         setStatus("error")
-        setError(err.message || "Failed to complete login")
-      })
-  }, [searchParams, router, completeOAuthLogin])
+        setError(err?.message || "Failed to complete login")
+      }
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [derivedError, token, completeOAuthLogin, router])
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">

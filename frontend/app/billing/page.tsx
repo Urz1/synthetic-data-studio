@@ -91,7 +91,7 @@ export default function BillingPage() {
   ]
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requireAdmin>
       <AppShell user={user || { full_name: "", email: "" }}>
         <PageHeader
           title="Billing & Usage"

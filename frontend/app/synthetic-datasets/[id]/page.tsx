@@ -43,6 +43,7 @@ export default function SyntheticDatasetDetailPage() {
   React.useEffect(() => {
     if (!id) return
     loadSyntheticDatasetDetails()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const [downloading, setDownloading] = React.useState(false)

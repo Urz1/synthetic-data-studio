@@ -44,7 +44,12 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, onExport, 
             <FileBarChart className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-base">{generatorName || `Evaluation ${evaluation.id?.slice(0, 8) || 'N/A'}`}</CardTitle>
+            <CardTitle
+              className="text-base line-clamp-1"
+              title={generatorName || `Evaluation ${evaluation.id?.slice(0, 8) || 'N/A'}`}
+            >
+              {generatorName || `Evaluation ${evaluation.id?.slice(0, 8) || 'N/A'}`}
+            </CardTitle>
             <p className="text-xs text-muted-foreground">{formatDate(evaluation.created_at)}</p>
           </div>
         </div>
@@ -53,7 +58,8 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, onExport, 
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 transition-opacity"
+              aria-label="Open evaluation actions"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>

@@ -55,6 +55,7 @@ export default function EvaluationDetailPage() {
     }, 3000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, evaluation?.status])
 
   async function loadEvaluationDetails(silent = false) {
@@ -150,8 +151,9 @@ export default function EvaluationDetailPage() {
     return (
       <ProtectedRoute>
         <AppShell user={user || { full_name: "", email: "" }}>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-busy="true">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="sr-only">Loading evaluation details</span>
           </div>
         </AppShell>
       </ProtectedRoute>
@@ -200,6 +202,8 @@ export default function EvaluationDetailPage() {
                 size="sm" 
                 onClick={handleSuggestImprovements}
                 disabled={loadingImprovements}
+                aria-live="polite"
+                aria-busy={loadingImprovements}
               >
                 {loadingImprovements ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,49 +1,33 @@
-# Synthetic Data Studio (Ultimate v1.0) 🧪🔒
+# Synth Studio 🧪🔒
 
-**Generate hyper-realistic, privacy-safe synthetic data and compliance packs for regulated startups.**
-
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/Documentation-on%20GitHub-brightgreen)](docs/)
-[![Architecture](https://img.shields.io/badge/Architecture-Diagram-orange)](docs/architecture.md)
-[![MVP Roadmap](https://img.shields.io/badge/Roadmap-12%20Weeks-purple)](docs/roadmap.md)
-
-## ✨ Overview
-
-Synthetic Data Studio is designed to empower seed-stage regulated startups with a powerful tool: a hyper-realistic, privacy-safe synthetic twin of their sensitive datasets, accompanied by an audit-accelerator compliance packet. This enables rapid piloting with hospitals, banks, and regulators in days, not months.
-
-This project also serves as a robust ML/DL lab, allowing for the hands-on implementation and evaluation of cutting-edge generative models, differential privacy techniques, and rigorous privacy/utility testing.
-
-## 🚀 Key Features
-
-* **Privacy-Preserving Synthetic Data:** Generate high-fidelity synthetic data (tabular, time-series, structured text) from small samples using advanced ML/DL models (CTGAN, TVAE, TimeGAN, Diffusion Models) with integrated Differential Privacy (DP-SGD).
-* **Automated Compliance Pack:** Instantly generate a comprehensive compliance report including:
-  * HIPAA/GDPR/SOC-2 control mappings
-  * Detailed Differential Privacy (DP) reports
-  * Model Cards (JSON + PDF)
-  * Statistical similarity and ML utility evaluation reports
-# Synthetic Data Studio (Ultimate v1.0) 🧪🔒
-
-**Generate hyper-realistic, privacy-safe synthetic data and compliance packs for regulated startups.**
+**Privacy-first synthetic data generation platform for healthcare and fintech startups**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/Documentation-on%20GitHub-brightgreen)](docs/)
-[![Architecture](https://img.shields.io/badge/Architecture-Diagram-orange)](docs/architecture.md)
-[![MVP Roadmap](https://img.shields.io/badge/Roadmap-12%20Weeks-purple)](docs/roadmap.md)
+[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688)](backend/)
+[![Frontend](https://img.shields.io/badge/Frontend-Next.js%2016-000000)](frontend/)
+[![Python](https://img.shields.io/badge/Python-3.9+-3776AB)](backend/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6)](frontend/)
 
-## ✨ Overview
+## 🎯 Overview
 
-Synthetic Data Studio is designed to empower seed-stage regulated startups with a powerful tool: a hyper-realistic, privacy-safe synthetic twin of their sensitive datasets, accompanied by an audit-accelerator compliance packet. This enables rapid piloting with hospitals, banks, and regulators in days, not months.
+Synth Studio enables regulated startups to generate high-fidelity, privacy-safe synthetic data with differential privacy guarantees. Built for healthcare (HIPAA) and fintech (SOC-2/GDPR) compliance, it accelerates pilot approvals and security reviews without exposing sensitive PII/PHI.
 
-This project also serves as a robust ML/DL lab, allowing for the hands-on implementation and evaluation of cutting-edge generative models, differential privacy techniques, and rigorous privacy/utility testing.
+**Perfect for:**
+- Healthcare startups needing synthetic EHR/FHIR data
+- Fintech companies requiring transaction data for testing
+- Enterprises sharing data across departments safely
+- ML teams training models without privacy risks
 
-## 🚀 Key Features
+## ✨ Key Features
 
-- **Privacy-Preserving Synthetic Data:** Generate high-fidelity synthetic data (tabular, time-series, structured text) from small samples using advanced ML/DL models (CTGAN, TVAE, TimeGAN, Diffusion Models) with integrated Differential Privacy (DP-SGD).
-- **Automated Compliance Pack:** Instantly generate a comprehensive compliance report including:
-  - HIPAA/GDPR/SOC-2 control mappings
-  - Detailed Differential Privacy (DP) reports
-  - Model Cards (JSON + PDF)
-  - Statistical similarity and ML utility evaluation reports
+- **🔒 Differential Privacy**: Mathematical privacy guarantees with RDP accounting (ε < 1-10, δ = 1e-5)
+- **🤖 AI-Powered**: Interactive chat assistant for guidance and automation
+- **📊 Quality Assurance**: Comprehensive evaluation suite with statistical and ML utility tests
+- **🛡️ Compliance Ready**: HIPAA, GDPR, CCPA, SOC-2 compliance reporting
+- **🔬 Multiple Methods**: CTGAN, TVAE, GaussianCopula, and privacy-preserving variants
+- **⚡ Production-Grade**: <1s load times, optimized bundles, edge caching
+- **♿ Accessible**: WCAG 2.1 AA compliant with full keyboard navigation
+- **🌓 Modern UI**: React 19, Next.js 16, shadcn/ui with dark mode
   - Immutable audit logs and provenance records
 - **Intelligent Data Ingestion & Profiling:** Automated schema detection, PII/PHI identification, and comprehensive data profiling dashboards with distribution plots and correlation matrices.
 - **User-Friendly Interface & Robust API:** Interact with the studio via an intuitive web UI (React/Streamlit) or programmatically through a well-documented REST API (FastAPI).
@@ -53,107 +37,157 @@ This project also serves as a robust ML/DL lab, allowing for the hands-on implem
 ## 💡 Value Proposition
 
 - **For Startups:** Accelerate pilot approvals by providing CISOs with a credible evidence pack that reduces security review cycles and proves product safety without exposing PII/PHI.
-- **For Developers:** Engage in a challenging ML/DL engineering project, mastering generative modeling, differential privacy, model evaluation, and robust deployment practices.
-- **For Educators:** Utilize reusable lab notebooks and explainable visualizations to teach complex privacy-utility trade-offs effectively.
+## 🏗️ Architecture
 
-## 🛠️ High-Level Architecture
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   Next.js 16    │ ───> │  FastAPI Backend │ ───> │   PostgreSQL    │
+│   Frontend      │      │   + Celery       │      │   Database      │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
+                                  │
+                                  ▼
+                         ┌──────────────────┐
+                         │  Redis + S3      │
+                         │  Cache/Queue     │
+                         └──────────────────┘
+```
 
-The Synthetic Data Studio is built upon a modern, scalable architecture designed for machine learning workloads and secure data handling.
+**Tech Stack:**
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: FastAPI, SQLAlchemy, Celery, Python 3.9+
+- **ML/Privacy**: SDV, Opacus, CTGAN, TVAE, Differential Privacy
+- **Database**: PostgreSQL, Redis
+- **Storage**: AWS S3 (file uploads)
+- **Auth**: JWT + OAuth (Google, GitHub)
 
-To get the Synthetic Data Studio up and running locally for development and testing:
+## 🚀 Quick Start
 
-1. **Prerequisites:**
-   - Docker & Docker Compose
-   - Python 3.9+
-   - Node.js (for frontend development)
-   - Git
+### Prerequisites
 
-2. **Clone the repository:**
+- Docker & Docker Compose
+- Python 3.9+ and pip
+- Node.js 18+ and pnpm
+- Git
+
+### 1. Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/synthetic-data-studio.git
+git clone https://github.com/Urz1/synthetic-data-studio.git
 cd synthetic-data-studio
 ```
 
-3. **Environment Setup (backend & ML):**
+### 2. Backend Setup
 
 ```bash
-# Create a Python virtual environment (recommended)
-python -m venv .venv
-source .venv/bin/activate # On Windows: .venv\Scripts\activate
+cd backend
 
-# Install backend and ML dependencies
-pip install -r backend/requirements.txt
-pip install -r ml_models/requirements.txt
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Run migrations
+alembic upgrade head
+
+# Start backend
+uvicorn app.main:app --reload
 ```
 
-4. **Database & Services with Docker Compose:**
+Backend runs at http://localhost:8000
+API docs at http://localhost:8000/docs
 
-The `docker-compose.yml` file orchestrates the `backend` (FastAPI), `frontend` (React/Streamlit), `postgres` database, and `redis` (for task queue).
+### 3. Frontend Setup
 
 ```bash
-docker-compose up --build
+cd frontend
+
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.local.example .env.local
+# Edit .env.local with your settings
+
+# Start frontend
+pnpm dev
 ```
 
-This command will:
+Frontend runs at http://localhost:3000
 
-- Build Docker images for your backend and frontend services.
-- Start the PostgreSQL database.
-- Start Redis.
-- Start the backend API server.
-- Start the frontend web application.
+### 4. Access the Application
 
-5. **Access the Application:**
-
-- Frontend UI: `http://localhost:3000` (or as configured in `frontend/.env`)
-- Backend API Docs (Swagger UI): `http://localhost:8000/docs`
-
-## 🗺️ Roadmap (MVP - 12 Weeks)
-
-Our current focus is on delivering a robust Minimum Viable Product (MVP) within a 12-week sprint cycle. Key milestones include:
-
-- **Weeks 1-2:** Data Ingestion & Profiling (File upload, schema detection, PII/PHI heuristics)
-- **Weeks 3-4:** Tabular Generator (CTGAN baseline)
-- **Weeks 5-6:** Time-series & Conditional Sampling (TimeGAN/RNN)
-- **Weeks 7-8:** DP Integration & Evaluation Suite (Opacus/TF-Privacy, metrics, model card)
-- **Weeks 9-10:** Compliance Pack & Audit Logs (PDF templates, provenance)
-- **Weeks 11-12:** Polish, Deployment & Pilot Outreach (Live MVP, design partner onboarding)
-
-A more detailed roadmap is available in [`docs/roadmap.md`](docs/roadmap.md).
+- **Frontend**: http://localhost:3000
+- **API Docs**: http://localhost:8000/docs
+- **Admin Dashboard**: http://localhost:3000/dashboard (requires admin role)
 
 ## 📚 Documentation
 
-- **Product Requirements Document (PRD):** [`docs/PRD_Synthetic_Data_Studio_v1.0.pdf`](docs/PRD_Synthetic_Data_Studio_v1.0.pdf)
-- **Detailed Architecture:** [`docs/architecture.md`](docs/architecture.md)
-- **API Specification:** [`docs/api_spec.yaml`](docs/api_spec.yaml)
-- **Data Schemas:** [`docs/schemas/`](docs/schemas/)
-- **Compliance Pack Structure:** [`docs/compliance_pack_outline.md`](docs/compliance_pack_outline.md)
-- **Deployment Guide:** [`docs/deployment.md`](docs/deployment.md)
+### Core Documentation
 
-### ⚡ Performance & Optimization
+- **[Backend README](backend/README.md)** - Backend API, architecture, and deployment
+- **[Frontend README](frontend/README.md)** - Frontend setup, structure, and deployment
+- **[Deployment Guide](DEPLOYMENT.md)** - Complete production deployment guide
+- **[Pre-Deployment Checklist](PRE_DEPLOYMENT_CHECKLIST.md)** - 200+ item production checklist
+- **[Quick Reference](QUICK_REFERENCE.md)** - Common commands and operations
+- **[Project Summary](PROJECT_SUMMARY.md)** - Comprehensive project overview
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Contact Guide](CONTACT.md)** - Get in touch, report issues, collaborate
+- **[Changelog](CHANGELOG.md)** - Version history and updates
 
-- **Quick Reference:** [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md) - 2-minute validation guide
-- **Implementation Summary:** [`IMPLEMENTATION_SUMMARY.md`](IMPLEMENTATION_SUMMARY.md) - What was built
-- **Zero-Latency Guide:** [`ZERO_LATENCY_OPTIMIZATION.md`](ZERO_LATENCY_OPTIMIZATION.md) - How it works
-- **Performance Testing:** [`PERFORMANCE_TESTING.md`](PERFORMANCE_TESTING.md) - How to test
-- **Architecture Diagram:** [`ARCHITECTURE_DIAGRAM.md`](ARCHITECTURE_DIAGRAM.md) - Request flow visualization
-- **Caching Strategy:** [`CACHING_STRATEGY.md`](CACHING_STRATEGY.md) - HTTP caching patterns
-- **Endpoint Coverage:** [`ENDPOINT_CACHING_COVERAGE.md`](ENDPOINT_CACHING_COVERAGE.md) - All 70+ endpoints
+### Backend Docs
 
-**Performance Targets:**
-- SpeedIndex: <1.0s on 4G
-- DOMContentLoaded: <200ms
-- Cache Hit Rate: 70-90%
-- Lighthouse Score: >90
+- **[API Specification](backend/API_SPECIFICATION.md)** - Complete API reference
+- **[Developer Guide](backend/docs/developer-guide/)** - Architecture and development
+- **[User Guide](backend/docs/user-guide/)** - Platform usage and features
+- **[Tutorials](backend/docs/tutorials/)** - Step-by-step guides
+- **[API Examples](backend/docs/examples/)** - Code samples and Postman collection
 
-**Quick Validation:**
+### Additional Resources
+
+- **[Architecture Overview](docs/architecture.md)** - System design and components
+- **[API Spec (OpenAPI)](docs/api_spec.yaml)** - OpenAPI 3.0 specification
+- **[Compliance Pack](docs/compliance_pack_outline.md)** - Compliance reporting structure
+- **[Roadmap](docs/roadmap.md)** - Feature roadmap and milestones
+
+## 📊 Features
+
+### For Regular Users
+
+- **Dataset Management**: Upload, profile, and manage datasets
+- **Synthetic Data Generation**: CTGAN, TVAE, GaussianCopula with DP options
+- **Quality Evaluation**: Statistical similarity and ML utility tests
+- **Project Organization**: Group datasets and generators into projects
+- **Job Monitoring**: Track background generation jobs
+- **AI Assistant**: Interactive chat for guidance and automation
+- **Settings**: Profile management and preferences
+
+### For Administrators
+
+- **Audit Logs**: Complete activity tracking and security monitoring
+- **Compliance Reports**: HIPAA, GDPR, SOC-2 compliance documentation
+- **Billing Management**: Usage tracking and cost monitoring
+- **Export Management**: Download reports and synthetic datasets
+- **User Management**: Role-based access control
+
+## 🧪 Testing
+
 ```bash
-# Test all optimizations (Windows)
-scripts\test-performance.bat
+# Backend tests
+cd backend
+pytest tests/ -v
 
-# Validate bundle sizes
+# Frontend tests (if configured)
 cd frontend
-npm run validate:bundle
+pnpm test
+
+# Integration tests
+pytest tests/integration/ -v
 ```
 
 ## 🤝 Contributing
@@ -164,6 +198,11 @@ Contributions are welcome! Please refer to [`CONTRIBUTING.md`](CONTRIBUTING.md) 
 
 This project is licensed under the MIT License - see the [`LICENSE`](LICENSE) file for details.
 
-## 📞 Contact
+## 👤 Developer Contact
 
-For questions, feedback, or collaborations, please open an issue or reach out to [Sadam Husen / halisadam391@gmail.com / Urz1].
+**Sadam Husen**
+- 📧 **Email**: halisadam391@gmail.com
+- 💼 **LinkedIn**: [linkedin.com/in/sadam-husen-16s](https://www.linkedin.com/in/sadam-husen-16s/)
+- 🐙 **GitHub**: [github.com/Urz1](https://github.com/Urz1)
+
+For questions, feedback, or collaboration opportunities, please reach out via email or open an issue on GitHub.

@@ -109,8 +109,9 @@ export default function EvaluationsPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-busy="true">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="sr-only">Loading evaluations</span>
         </div>
       ) : (
         <>
@@ -123,12 +124,13 @@ export default function EvaluationsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            aria-label="Search evaluations by generator"
           />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-[130px]" aria-label="Filter evaluations by status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -142,9 +144,15 @@ export default function EvaluationsPage() {
         </div>
       </div>
 
+      <p className="sr-only" aria-live="polite">
+        Showing {filteredEvaluations.length} evaluation{filteredEvaluations.length === 1 ? "" : "s"}
+        {search ? ` matching "${search}"` : ""}
+        {statusFilter !== "all" ? ` with status ${statusFilter}` : ""}.
+      </p>
+
       {/* Evaluations Grid */}
       {filteredEvaluations.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite">
           {filteredEvaluations.map((evaluation) => (
             <EvaluationCard
               key={evaluation.id}
@@ -171,7 +179,7 @@ export default function EvaluationsPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
+        <div className="text-center py-12" role="status" aria-live="polite">
           <p className="text-muted-foreground mb-4">
             {search || statusFilter !== "all" ? "No evaluations match your filters" : "No evaluations run yet"}
           </p>
@@ -184,7 +192,6 @@ export default function EvaluationsPage() {
             </Button>
           )}
         </div>
-       
       )}
       </>
       )}
