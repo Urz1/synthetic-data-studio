@@ -144,6 +144,8 @@ class GoogleOAuth(OAuthProvider):
     
     def is_configured(self) -> bool:
         """Check if Google OAuth is properly configured."""
+        print(f"[DEBUG] Google OAuth Config - Client ID: {self.client_id[:20] if self.client_id else 'NOT SET'}...")
+        print(f"[DEBUG] Google OAuth Config - Client Secret: {'SET' if self.client_secret else 'NOT SET'}")
         return bool(self.client_id and self.client_secret)
     
     def get_authorization_url(self, state: str) -> str:
