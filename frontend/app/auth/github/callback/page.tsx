@@ -1,30 +1,33 @@
 "use client"
 
-import { useEffect, useMemo, useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
+import { useRouter } from "next/navigation"
+
+export const dynamic = 'force-dynamic'
 
 function CallbackContent() {
-  const router = useRouter();
-  const searchParams = new URLSearchParams(window.location.search);
-  const token = searchParams.get("token");
-  const errorParam = searchParams.get("error");
-
-  const derivedError = useMemo(() => {
-    if (errorParam) return errorParam === "access_denied" ? "You cancelled the authorization" : errorParam;
-    if (!token) return "No authentication token received";
-    return "";
-  }, [errorParam, token]);
-
-  const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading");
-  const [error, setError] = useState<string>(derivedError);
+  const router = useRouter()
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  const [error, setError] = useState<string>("")
 
   useEffect(() => {
+    // Access window only in useEffect (client-side)
+    const searchParams = new URLSearchParams(window.location.search)
+    const token = searchParams.get("token")
+    const errorParam = searchParams.get("error")
     console.log("[OAuth Callback] Token from URL:", token);
     console.log("[OAuth Callback] Error from URL:", errorParam);
-    console.log("[OAuth Callback] Derived error:", derivedError);
     
-    if (derivedError || !token) {
-      console.log("[OAuth Callback] Stopping - no token or has error");
+    if (errorParam) {
+      const errorMsg = errorParam === "access_denied" ? "You cancelled the authorization" : errorParam
+      setStatus("error")
+      setError(errorMsg)
+      return;
+    }
+    
+    if (!token) {
+      setStatus("error")
+      setError("No authentication token received")
       return;
     }
 
@@ -75,7 +78,7 @@ function CallbackContent() {
     return () => {
       cancelled = true;
     };
-  }, [derivedError, token, searchParams, router, errorParam]);
+  }, [router]);
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">
