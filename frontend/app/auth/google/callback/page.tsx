@@ -20,6 +20,7 @@ function CallbackContent() {
   const [error, setError] = useState<string>(derivedError)
 
   useEffect(() => {
+    console.log("[OAuth Callback] All searchParams:", Object.fromEntries(searchParams.entries()));
     console.log("[OAuth Callback] Token from URL:", token);
     console.log("[OAuth Callback] Error from URL:", errorParam);
     console.log("[OAuth Callback] Derived error:", derivedError);

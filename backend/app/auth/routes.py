@@ -226,29 +226,40 @@ async def google_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to authenticate with Google: {str(e)}"
         )
-    
+
+    if not user_info.get("email"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email not provided by Google. Please grant email permission."
+        )
+
     # Find or create user
     user, is_new = await _find_or_create_oauth_user(db, user_info)
-    
+    print(f"OAuth Google callback: user_info = {user_info}")
+    print(f"OAuth Google callback: user created = {is_new}, user.id = {user.id}, user.email = {user.email}")
+
     # Generate JWT token with user ID and role
     jwt_token = create_access_token(data={
         "sub": user.email,
         "uid": str(user.id),
         "role": user.role
     })
-    
+    print(f"OAuth Google callback: jwt_token generated, length = {len(jwt_token)}")
+
     # Redirect to frontend with token and user data in URL params
     from urllib.parse import urlencode
     params = urlencode({
         "token": jwt_token,
         "user_id": str(user.id),
-        "email": user.email,
+        "email": user.email or "",
         "name": user.name or "",
         "avatar_url": user.avatar_url or "",
         "role": user.role,
         "is_new": str(is_new).lower()
     })
+    print(f"OAuth Google callback: params built, token present = {'token=' in params}")
     frontend_callback = f"{settings.frontend_url}/auth/google/callback?{params}"
+    print(f"OAuth Google callback: redirecting to = {frontend_callback[:150]}...")
     return RedirectResponse(url=frontend_callback)
 
 
