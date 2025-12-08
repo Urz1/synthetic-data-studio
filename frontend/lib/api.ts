@@ -27,7 +27,13 @@ import type {
   ModelCard,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
+
+// Debug log for production
+if (typeof window !== "undefined") {
+  console.log("🔧 API_BASE:", API_BASE);
+}
 
 class ApiClient {
   private token: string | null = null;
