@@ -31,7 +31,6 @@ export interface GeneratorConfig {
   use_differential_privacy: boolean
   target_epsilon: number
   target_delta: number
-  target_delta: number
   max_grad_norm: number
   synthetic_dataset_name?: string
 }

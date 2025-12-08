@@ -37,9 +37,9 @@ class ApiClient {
     this.token = token;
     if (typeof window !== "undefined") {
       if (token) {
-        localStorage.setItem("synth_token", token);
+        localStorage.setItem("token", token);
       } else {
-        localStorage.removeItem("synth_token");
+        localStorage.removeItem("token");
       }
     }
   }
@@ -47,7 +47,7 @@ class ApiClient {
   getToken(): string | null {
     if (this.token) return this.token;
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("synth_token");
+      this.token = localStorage.getItem("token");
     }
     return this.token;
   }

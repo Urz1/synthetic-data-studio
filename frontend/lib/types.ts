@@ -265,6 +265,16 @@ export interface RiskAssessment {
   evaluation_id: string;
   risk_level: "low" | "medium" | "high";
   risk_score: number;
+  overall_score: number;
+  interpretation: string;
+  privacy_score: number;
+  quality_score: number;
+  component_risks: Array<{
+    name: string;
+    score: number;
+    level: "low" | "medium" | "high";
+    details: string;
+  }>;
   risk_factors: {
     re_identification_risk: RiskFactor;
     attribute_disclosure_risk: RiskFactor;
@@ -297,6 +307,7 @@ export interface Job {
   updated_at: string;
   started_at?: string;
   completed_at?: string;
+  created_by?: string;
 }
 
 export interface ChatMessage {

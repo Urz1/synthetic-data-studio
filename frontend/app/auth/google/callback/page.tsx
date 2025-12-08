@@ -20,49 +20,63 @@ function CallbackContent() {
   const [error, setError] = useState<string>(derivedError)
 
   useEffect(() => {
-    if (derivedError || !token) return
+    console.log("[OAuth Callback] Token from URL:", token);
+    console.log("[OAuth Callback] Error from URL:", errorParam);
+    console.log("[OAuth Callback] Derived error:", derivedError);
+    
+    if (derivedError || !token) {
+      console.log("[OAuth Callback] Stopping - no token or has error");
+      return;
+    }
 
     // Backend already validated and sent token in URL
-    let cancelled = false
+    let cancelled = false;
 
     const run = async () => {
       try {
-        // Extract user data from URL params
-        const userId = searchParams.get("user_id")
-        const email = searchParams.get("email")
-        const name = searchParams.get("name")
-        const avatarUrl = searchParams.get("avatar_url")
-        const role = searchParams.get("role")
+        console.log("[OAuth Callback] Starting to process token...");
         
+        // Extract user data from URL params
+        const userId = searchParams.get("user_id");
+        const email = searchParams.get("email");
+        const name = searchParams.get("name");
+        const avatarUrl = searchParams.get("avatar_url");
+        const role = searchParams.get("role");
+
+        console.log("[OAuth Callback] User data:", { userId, email, name, role });
+
         const user = {
           id: userId,
           email: email,
           name: name,
           avatar_url: avatarUrl,
           role: role
-        }
+        };
 
         // Store token and user data
-        localStorage.setItem("token", token)
-        localStorage.setItem("user", JSON.stringify(user))
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
         
-        if (cancelled) return
-        setStatus("success")
-        // Use window.location for clean redirect after OAuth
-        window.location.href = "/dashboard"
-      } catch (err: any) {
-        if (cancelled) return
-        setStatus("error")
-        setError(err?.message || "Failed to complete login")
-      }
-    }
+        console.log("[OAuth Callback] Stored to localStorage, redirecting to dashboard...");
 
-    run()
+        if (cancelled) return;
+        setStatus("success");
+        // Use window.location for clean redirect after OAuth
+        window.location.href = "/dashboard";
+      } catch (err: any) {
+        console.error("[OAuth Callback] Error:", err);
+        if (cancelled) return;
+        setStatus("error");
+        setError(err?.message || "Failed to complete login");
+      }
+    };
+
+    run();
 
     return () => {
-      cancelled = true
-    }
-  }, [derivedError, token, searchParams, router])
+      cancelled = true;
+    };
+  }, [derivedError, token, searchParams, router, errorParam]);
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">

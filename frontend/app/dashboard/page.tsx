@@ -101,18 +101,21 @@ export default function DashboardPage() {
           if (apiError?.message?.includes("404") || apiError?.message?.includes("Not Found")) {
             console.warn("Dashboard summary endpoint not available, falling back to individual calls")
             
-            const apiCalls = [
+            const apiCalls: Promise<any>[] = [
               api.listDatasets().catch(() => []),
               api.listGenerators().catch(() => []),
               api.listEvaluations().catch(() => []),
             ]
             
             if (isAdmin) {
-              apiCalls.push(api.listAuditLogs({ limit: 5 }).catch(() => ({ logs: [] })))
+              apiCalls.push(api.listAuditLogs(0, 5).catch(() => ({ logs: [], total: 0 })))
             }
             
             const results = await Promise.all(apiCalls)
-            const [datasetsData, generatorsData, evaluationsData, auditLogsData] = results
+            const datasetsData = results[0] as any[]
+            const generatorsData = results[1] as any[]
+            const evaluationsData = results[2] as any[]
+            const auditLogsData = isAdmin ? results[3] as { logs: any[], total: number } : undefined
             
             // Calculate stats from fetched data
             const calculatedStats = {

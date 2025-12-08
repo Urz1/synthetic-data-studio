@@ -148,7 +148,7 @@ export function EvaluationMetricsGrid({ report, className }: EvaluationMetricsGr
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">DCR Risk</span>
               <span className="font-mono font-medium">
-                {report.evaluations.privacy?.summary.dcr_risk || "Unknown"}
+                {(report.evaluations.privacy?.summary as any)?.dcr_risk || "Unknown"}
               </span>
             </div>
             <div className="pt-2 border-t">

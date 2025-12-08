@@ -5,63 +5,78 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 
 function CallbackContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
-  const errorParam = searchParams.get("error")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+  const errorParam = searchParams.get("error");
 
   const derivedError = useMemo(() => {
-    if (errorParam) return errorParam === "access_denied" ? "You cancelled the authorization" : errorParam
-    if (!token) return "No authentication token received"
-    return ""
-  }, [errorParam, token])
+    if (errorParam) return errorParam === "access_denied" ? "You cancelled the authorization" : errorParam;
+    if (!token) return "No authentication token received";
+    return "";
+  }, [errorParam, token]);
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading")
-  const [error, setError] = useState<string>(derivedError)
+  const [status, setStatus] = useState<"loading" | "success" | "error">(derivedError ? "error" : "loading");
+  const [error, setError] = useState<string>(derivedError);
 
   useEffect(() => {
-    if (derivedError || !code) return
+    console.log("[OAuth Callback] Token from URL:", token);
+    console.log("[OAuth Callback] Error from URL:", errorParam);
+    console.log("[OAuth Callback] Derived error:", derivedError);
+    
+    if (derivedError || !token) {
+      console.log("[OAuth Callback] Stopping - no token or has error");
+      return;
+    }
 
-    // Fetch OAuth token from backend
-    let cancelled = false
+    // Backend already validated and sent token in URL
+    let cancelled = false;
 
     const run = async () => {
       try {
-        const response = await fetch(`/api/auth/github/callback?code=${code}&state=${state || ''})
+        console.log("[OAuth Callback] Starting to process token...");
         
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.detail || "OAuth authentication failed")
-        }
-        
-        const data = await response.json()
-        const { access_token, user } = data
-        
-        if (!access_token) {
-          throw new Error("No access token received from server")
-        }
+        // Extract user data from URL params
+        const userId = searchParams.get("user_id");
+        const email = searchParams.get("email");
+        const name = searchParams.get("name");
+        const avatarUrl = searchParams.get("avatar_url");
+        const role = searchParams.get("role");
+
+        console.log("[OAuth Callback] User data:", { userId, email, name, role });
+
+        const user = {
+          id: userId,
+          email: email,
+          name: name,
+          avatar_url: avatarUrl,
+          role: role
+        };
 
         // Store token and user data
-        localStorage.setItem("token", access_token)
-        localStorage.setItem("user", JSON.stringify(user))
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
         
-        if (cancelled) return
-        setStatus("success")
-        // Use window.location for clean redirect after OAuth
-        window.location.href = "/dashboard"
-      } catch (err: any) {
-        if (cancelled) return
-        setStatus("error")
-        setError(err?.message || "Failed to complete login")
-      }
-    }
+        console.log("[OAuth Callback] Stored to localStorage, redirecting to dashboard...");
 
-    run()
+        if (cancelled) return;
+        setStatus("success");
+        // Use window.location for clean redirect after OAuth
+        window.location.href = "/dashboard";
+      } catch (err: any) {
+        console.error("[OAuth Callback] Error:", err);
+        if (cancelled) return;
+        setStatus("error");
+        setError(err?.message || "Failed to complete login");
+      }
+    };
+
+    run();
 
     return () => {
-      cancelled = true
-    }
-  }, [derivedError, code, state, router])
+      cancelled = true;
+    };
+  }, [derivedError, token, searchParams, router, errorParam]);
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center">

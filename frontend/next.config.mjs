@@ -5,12 +5,14 @@ const nextConfig = {
   },
 
   reactStrictMode: false,  // Disable to prevent double mounting and duplicate API calls
-  swcMinify: true,
 
   // STRATEGY 1: Ship < 40 kB to paint
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+
+  // Silence workspace root warning
+  outputFileTracingRoot: 'C:/Users/abdux/Development/synth_studio_ultimate/frontend',
 
   experimental: {
     optimizeCss: true, // Inline critical CSS

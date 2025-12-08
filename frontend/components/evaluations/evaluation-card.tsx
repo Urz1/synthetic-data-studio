@@ -117,7 +117,7 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, onExport, 
           </div>
         ) : (
           <div className="flex items-center justify-center py-4">
-            <StatusBadge status={evaluation.status} />
+            <StatusBadge status={evaluation.status as any} />
           </div>
         )}
       </CardContent>

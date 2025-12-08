@@ -292,13 +292,13 @@ export default function RiskAssessmentPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(riskData.component_risks).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between">
-                        <span className="text-sm capitalize">{key.replace(/_/g, ' ')}</span>
+                    {riskData.component_risks.map((risk) => (
+                      <div key={risk.name} className="flex items-center justify-between">
+                        <span className="text-sm capitalize">{risk.name.replace(/_/g, ' ')}</span>
                         <div className="flex items-center gap-2">
-                          <Progress value={typeof value === 'number' ? value : 0} className="w-24 h-2" />
+                          <Progress value={risk.score} className="w-24 h-2" />
                           <span className="text-sm font-mono w-12 text-right">
-                            {typeof value === 'number' ? value.toFixed(1) : value}
+                            {risk.score.toFixed(1)}
                           </span>
                         </div>
                       </div>

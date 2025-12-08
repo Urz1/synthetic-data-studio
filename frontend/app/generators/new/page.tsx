@@ -33,7 +33,9 @@ export default function NewGeneratorPage() {
     async function loadDatasets() {
       try {
         const data = await api.listDatasets()
-        setDatasets(data)
+        // Handle both array and object with datasets property
+        const datasetsList = Array.isArray(data) ? data : (data as any).datasets || []
+        setDatasets(datasetsList)
       } catch (err) {
         console.error("Failed to load datasets:", err)
         setError("Failed to load datasets. Please try again.")
