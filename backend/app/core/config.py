@@ -21,15 +21,15 @@ class Settings:
     # OAuth - Google
     google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
     google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
-    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:3000/auth/google/callback")
-    
+    google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "https://synthdata.studio/auth/google/callback")
+
     # OAuth - GitHub
     github_client_id: str = os.getenv("GITHUB_CLIENT_ID", "")
     github_client_secret: str = os.getenv("GITHUB_CLIENT_SECRET", "")
-    github_redirect_uri: str = os.getenv("GITHUB_REDIRECT_URI", "http://localhost:3000/auth/github/callback")
-    
+    github_redirect_uri: str = os.getenv("GITHUB_REDIRECT_URI", "https://synthdata.studio/auth/github/callback")
+
     # Frontend URL (for OAuth redirects)
-    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    frontend_url: str = os.getenv("FRONTEND_URL", "https://synthdata.studio")
     
     def __post_init__(self):
         """Validate critical settings after initialization."""
