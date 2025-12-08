@@ -3,7 +3,7 @@
     "outputDirectory": ".next",
     "framework": "nextjs",
     "env": {
-        "NEXT_PUBLIC_API_URL": "https://synthdata.studio"
+        "NEXT_PUBLIC_API_URL": "https://api.synthdata.studio"
     },
     "regions": [
         "iad1"
