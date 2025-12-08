@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
 
 function CallbackContent() {
   const router = useRouter();
