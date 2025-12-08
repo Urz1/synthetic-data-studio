@@ -1,0 +1,9 @@
+{
+    "buildCommand": "pnpm build",
+    "outputDirectory": ".next",
+    "installCommand": "pnpm install",
+    "framework": "nextjs",
+    "env": {
+        "NEXT_PUBLIC_API_URL": "https://synthdata.studio"
+    }
+}
