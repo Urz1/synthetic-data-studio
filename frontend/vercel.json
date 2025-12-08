@@ -5,5 +5,7 @@
     "env": {
         "NEXT_PUBLIC_API_URL": "https://synthdata.studio"
     },
-    "regions": ["iad1"]
+    "regions": [
+        "iad1"
+    ]
 }
