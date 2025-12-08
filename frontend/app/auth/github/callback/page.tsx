@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 function CallbackContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
   const token = searchParams.get("token");
   const errorParam = searchParams.get("error");
 

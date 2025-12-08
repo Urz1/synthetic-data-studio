@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context"
 
 function CallbackContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const searchParams = new URLSearchParams(window.location.search)
   const token = searchParams.get("token")
   const errorParam = searchParams.get("error")
 
