@@ -143,8 +143,8 @@ def get_audit_stats(
     
     Returns summary of actions, top users, top resources, etc.
     """
-    # TODO: Implement aggregation queries
-    # For now, return basic counts
+    # NOTE: Advanced aggregation queries (top users, top resources) 
+    # will be added in future release with analytics dashboard
     total_logs = count_audit_logs(db, start_date=start_date, end_date=end_date)
     
     return {

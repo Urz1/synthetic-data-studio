@@ -32,7 +32,9 @@ export default function NewProjectPage() {
       })
       router.push("/projects")
     } catch (err) {
-      console.error("Failed to create project:", err)
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to create project:", err);
+      }
       alert(err instanceof Error ? err.message : "Failed to create project")
       setIsSubmitting(false)
     }

@@ -54,7 +54,9 @@ export default function PrivacyReportPage() {
         setError("No output dataset available for privacy analysis")
       }
     } catch (err) {
-      console.error("Failed to load generator:", err)
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to load generator:", err);
+      }
       setError(err instanceof Error ? err.message : "Failed to load privacy report")
     } finally {
       setLoading(false)
@@ -96,7 +98,9 @@ export default function PrivacyReportPage() {
         })
       }
     } catch (err) {
-      console.error("Failed to generate privacy report:", err)
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to generate privacy report:", err);
+      }
       const errorMsg = err instanceof Error ? err.message : "Failed to generate privacy report"
       setError(errorMsg)
       toast({
@@ -137,7 +141,9 @@ export default function PrivacyReportPage() {
         })
       }
     } catch (err) {
-      console.error("Failed to export:", err)
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to export:", err);
+      }
       toast({
         title: "Export Failed",
         description: err instanceof Error ? err.message : "Failed to export privacy report. Please ensure backend LLM service is configured.",

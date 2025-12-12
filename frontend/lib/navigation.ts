@@ -38,7 +38,9 @@ export function initPageWithBfCache(onRestore?: () => void) {
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {
       // Page was restored from bfcache
-      console.log("[bfcache] Page restored from cache");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[bfcache] Page restored from cache");
+      }
       onRestore?.();
     }
   });
@@ -56,7 +58,9 @@ export function persistStateForBfCache<T>(key: string, value: T) {
   try {
     sessionStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.warn("[bfcache] Failed to persist state:", e);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[bfcache] Failed to persist state:", e);
+    }
   }
 }
 
@@ -65,7 +69,9 @@ export function restoreStateFromBfCache<T>(key: string): T | null {
     const value = sessionStorage.getItem(key);
     return value ? JSON.parse(value) : null;
   } catch (e) {
-    console.warn("[bfcache] Failed to restore state:", e);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[bfcache] Failed to restore state:", e);
+    }
     return null;
   }
 }
@@ -78,7 +84,7 @@ export function monitorBfCacheEligibility() {
   if (typeof window === "undefined") return;
 
   window.addEventListener("pagehide", (event) => {
-    if (!event.persisted) {
+    if (!event.persisted && process.env.NODE_ENV === "development") {
       console.warn("[bfcache] Page not eligible for bfcache");
 
       // Log reasons (requires Chrome DevTools Protocol)

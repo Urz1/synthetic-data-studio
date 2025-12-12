@@ -49,7 +49,6 @@ export default function SyntheticDatasetDetailPage() {
   const [downloading, setDownloading] = React.useState(false)
 
   async function loadSyntheticDatasetDetails() {
-    console.log("loadSyntheticDatasetDetails ID:", id)
     try {
       setLoading(true)
       setError(null)

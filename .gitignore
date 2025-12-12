@@ -30,9 +30,19 @@ db.sqlite3
 .env.*
 !.env.example
 !.env.local.example
+!.env.production.template
 .env.production
 .env.development
 .env.test
+.env.local
+
+# Sensitive configuration
+**/secrets/
+**/*.secret
+**/*.key
+**/*.pem
+**/*.crt
+*.credentials
 
 # Editors
 .vscode/
@@ -120,4 +130,18 @@ credentials.json
 
 # Documentation temporary files
 docs/_build/
-docs/.doctrees/ 
+docs/.doctrees/
+
+# Internal documentation (not for public repo)
+*_INTERNAL.md
+*_NOTES.md
+*_TODO.md
+INTERNAL*.md
+NOTES.md
+TODO.md
+SCRATCH.md
+PRODUCTION_CHECKLIST.md
+PRODUCTION_CLEANUP_SUMMARY.md
+TECHNICAL_ASSESSMENT_*.md
+DEPLOYMENT_GUIDE.md
+INVESTOR_PRESENTATION.md

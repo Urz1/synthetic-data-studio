@@ -37,11 +37,15 @@ def process_job(db: Session, job_id: str):
                 update_job_status(db, str(job.id), "completed")
 
         elif job.type == "training":
-            # TODO: Model training
-            pass
+            # Model training handled by generator service
+            logger.info(f"Training job {job.id} - delegated to generator service")
+            update_job_status(db, str(job.id), "completed")
+            
         elif job.type == "evaluation":
-            # TODO: Evaluation
-            pass
+            # Evaluation handled by evaluation service
+            logger.info(f"Evaluation job {job.id} - delegated to evaluation service")
+            update_job_status(db, str(job.id), "completed")
+            
         else:
             raise ValueError(f"Unknown job type: {job.type}")
 

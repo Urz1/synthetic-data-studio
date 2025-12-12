@@ -124,7 +124,6 @@ export default function LoginPage() {
                   disabled={loading}
                   className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200"
                   onClick={() => {
-                    console.log('OAuth Google URL:', 'https://api.synthdata.studio/auth/google')
                     window.location.href = 'https://api.synthdata.studio/auth/google'
                   }}
                 >
@@ -154,7 +153,6 @@ export default function LoginPage() {
                   disabled={loading}
                   className="cursor-pointer hover:bg-accent hover:border-primary/50 transition-all duration-200"
                   onClick={() => {
-                    console.log('OAuth GitHub URL:', 'https://api.synthdata.studio/auth/github')
                     window.location.href = 'https://api.synthdata.studio/auth/github'
                   }}
                 >

@@ -67,7 +67,9 @@ export default function ProjectDetailPage() {
       setGenerators(data.generators)
       setEvaluations(data.evaluations)
     } catch (err) {
-      console.error("Failed to load project:", err)
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to load project:", err);
+      }
       setError(err instanceof Error ? err.message : "Failed to load project")
     } finally {
       setLoading(false)

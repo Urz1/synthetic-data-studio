@@ -99,7 +99,9 @@ export default function DashboardPage() {
           // Fallback to individual API calls if dashboard endpoint not available (404)
           // This happens if backend hasn't been restarted after adding new routes
           if (apiError?.message?.includes("404") || apiError?.message?.includes("Not Found")) {
-            console.warn("Dashboard summary endpoint not available, falling back to individual calls")
+            if (process.env.NODE_ENV === 'development') {
+              console.warn("Dashboard summary endpoint not available, falling back to individual calls");
+            }
             
             const apiCalls: Promise<any>[] = [
               api.listDatasets().catch(() => []),

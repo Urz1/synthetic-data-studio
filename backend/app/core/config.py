@@ -33,19 +33,22 @@ class Settings:
     
     def __post_init__(self):
         """Validate critical settings after initialization."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Secret key validation
         if not self.secret_key or self.secret_key == "change-me":
-            print("\n" + "="*60)
-            print("❌ CRITICAL SECURITY ERROR")
-            print("="*60)
-            print("SECRET_KEY environment variable is not set or using default value.")
-            print("This is a critical security vulnerability.")
-            print("")
-            print("To fix this:")
-            print("1. Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
-            print("2. Set it in your .env file: SECRET_KEY=your_generated_key")
-            print("3. Restart the server")
-            print("="*60 + "\n")
+            logger.critical("=" * 60)
+            logger.critical("❌ CRITICAL SECURITY ERROR")
+            logger.critical("=" * 60)
+            logger.critical("SECRET_KEY environment variable is not set or using default value.")
+            logger.critical("This is a critical security vulnerability.")
+            logger.critical("")
+            logger.critical("To fix this:")
+            logger.critical("1. Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
+            logger.critical("2. Set it in your .env file: SECRET_KEY=your_generated_key")
+            logger.critical("3. Restart the server")
+            logger.critical("=" * 60)
             sys.exit(1)
         
         # CORS configuration
@@ -57,14 +60,14 @@ class Settings:
                 # Production: Require explicit configuration
                 origins_env = os.getenv("ALLOWED_ORIGINS", "")
                 if not origins_env:
-                    print("\n" + "="*60)
-                    print("⚠️  WARNING: ALLOWED_ORIGINS not set")
-                    print("="*60)
-                    print("Running in production mode without ALLOWED_ORIGINS.")
-                    print("Defaulting to localhost only.")
-                    print("")
-                    print("To fix: Set ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com")
-                    print("="*60 + "\n")
+                    logger.warning("=" * 60)
+                    logger.warning("⚠️  WARNING: ALLOWED_ORIGINS not set")
+                    logger.warning("=" * 60)
+                    logger.warning("Running in production mode without ALLOWED_ORIGINS.")
+                    logger.warning("Defaulting to localhost only.")
+                    logger.warning("")
+                    logger.warning("To fix: Set ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com")
+                    logger.warning("=" * 60)
                     self.allowed_origins = ["http://localhost:3000", "http://localhost:8000", "https://www.synthdata.studio", "https://synthdata.studio", "https://api.synthdata.studio"]
                 else:
                     self.allowed_origins = [origin.strip() for origin in origins_env.split(",")]

@@ -37,7 +37,9 @@ export default function NewGeneratorPage() {
         const datasetsList = Array.isArray(data) ? data : (data as any).datasets || []
         setDatasets(datasetsList)
       } catch (err) {
-        console.error("Failed to load datasets:", err)
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Failed to load datasets:", err);
+        }
         setError("Failed to load datasets. Please try again.")
       } finally {
         setIsLoading(false)

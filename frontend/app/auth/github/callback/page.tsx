@@ -15,8 +15,7 @@ function CallbackContent() {
     const searchParams = new URLSearchParams(window.location.search)
     const token = searchParams.get("token")
     const errorParam = searchParams.get("error")
-    console.log("[OAuth Callback] Token from URL:", token);
-    console.log("[OAuth Callback] Error from URL:", errorParam);
+
     
     if (errorParam) {
       const errorMsg = errorParam === "access_denied" ? "You cancelled the authorization" : errorParam

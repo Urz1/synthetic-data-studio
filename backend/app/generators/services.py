@@ -764,8 +764,9 @@ def generate_from_trained_model(
     """Generate synthetic data using a pre-trained ML model (CTGAN/TVAE)."""
     logger.info(f"Loading pre-trained model: {model_version_id}")
     
-    # TODO: Implement proper model loading from saved .pkl files
-    # For now, raise not implemented
+    # NOTE: Pre-trained model loading requires SDV model serialization
+    # Implementation planned for Q1 2026 with model registry
+    logger.warning("Pre-trained model loading not yet implemented")
     raise NotImplementedError(
         "Pre-trained model loading coming soon. "
         "Use POST /generators/dataset/{id}/generate to train and generate in one step."

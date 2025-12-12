@@ -30,11 +30,6 @@ import type {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 
-// Debug log for production
-if (typeof window !== "undefined") {
-  console.log("🔧 API_BASE:", API_BASE);
-}
-
 class ApiClient {
   private token: string | null = null;
   private pendingRequests: Map<string, Promise<any>> = new Map();
@@ -68,7 +63,6 @@ class ApiClient {
 
     // Request deduplication: if same request is in flight, return existing promise
     if (method === "GET" && this.pendingRequests.has(cacheKey)) {
-      console.log("🔄 Deduplicating request:", url);
       return this.pendingRequests.get(cacheKey)!;
     }
 
@@ -85,7 +79,9 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    console.log("API Request:", url);
+    if (process.env.NODE_ENV === "development") {
+      console.log("API Request:", url);
+    }
 
     // Use default cache mode for GET requests (browser handles ETag/304)
     const fetchOptions: RequestInit = {
