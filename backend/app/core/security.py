@@ -27,18 +27,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     - Strict-Transport-Security: Enforces HTTPS
     - Referrer-Policy: Controls referrer information
     - Permissions-Policy: Controls browser features
+    - Content-Security-Policy: Prevents XSS and injection attacks
     """
     
-    def __init__(self, app, enable_hsts: bool = True):
+    def __init__(self, app, enable_hsts: bool = True, enable_csp: bool = True):
         """
         Initialize security headers middleware.
         
         Args:
             app: FastAPI application
             enable_hsts: Enable HSTS header (disable for local development)
+            enable_csp: Enable CSP header (can be relaxed for development)
         """
         super().__init__(app)
         self.enable_hsts = enable_hsts
+        self.enable_csp = enable_csp
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
@@ -65,6 +68,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if self.enable_hsts:
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"
+            )
+        
+        # Content-Security-Policy - XSS protection
+        # Note: 'unsafe-inline' and 'unsafe-eval' required for Next.js
+        if self.enable_csp:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data: https: blob:; "
+                "connect-src 'self' https://*.upstash.io wss://*.upstash.io; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
             )
         
         return response

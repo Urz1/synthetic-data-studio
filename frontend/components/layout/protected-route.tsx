@@ -16,7 +16,8 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login")
+      const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`)
+      router.push(`/login?next=${next}`)
     }
   }, [user, loading, router])
 

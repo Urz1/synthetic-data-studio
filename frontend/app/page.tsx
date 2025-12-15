@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useState, useEffect } from "react"
+import { AuthIntentLink } from "@/components/auth/auth-intent-link"
 
 // Purposeful display face for the marketing page
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700", "800"] })
@@ -131,11 +132,11 @@ export default function LandingPage() {
             <Link href="#security" className="text-gray-300 hover:text-white transition-colors">
               Security
             </Link>
-            <Link href="/login" className="text-gray-200 hover:text-white transition-colors">
+            <AuthIntentLink href="/login" eventLocation="navbar" mode="login" className="text-gray-200 hover:text-white transition-colors">
               Sign in
-            </Link>
+            </AuthIntentLink>
             <Button asChild className="rounded-full px-5 bg-white text-black hover:bg-gray-100">
-              <Link href="/register">Launch Studio</Link>
+              <AuthIntentLink href="/register" eventLocation="navbar" mode="register">Launch Studio</AuthIntentLink>
             </Button>
           </div>
 
@@ -159,11 +160,11 @@ export default function LandingPage() {
             <Link href="#security" className="text-gray-200" onClick={() => setMobileMenuOpen(false)}>
               Security
             </Link>
-            <Link href="/login" className="text-gray-200" onClick={() => setMobileMenuOpen(false)}>
+            <AuthIntentLink href="/login" eventLocation="mobile_nav" mode="login" className="text-gray-200" onClick={() => setMobileMenuOpen(false)}>
               Sign in
-            </Link>
+            </AuthIntentLink>
             <Button className="w-full rounded-full bg-white text-black" asChild>
-              <Link href="/register">Launch Studio</Link>
+              <AuthIntentLink href="/register" eventLocation="mobile_nav" mode="register" onClick={() => setMobileMenuOpen(false)}>Launch Studio</AuthIntentLink>
             </Button>
           </motion.div>
         )}
@@ -223,7 +224,7 @@ export default function LandingPage() {
                 className="flex flex-col sm:flex-row gap-3"
               >
                 <Button size="lg" className="h-12 rounded-full px-6" asChild>
-                  <Link href="/register">Launch the Studio</Link>
+                  <AuthIntentLink href="/register" eventLocation="hero" mode="register">Launch the Studio</AuthIntentLink>
                 </Button>
                 <Button
                   size="lg"
@@ -367,7 +368,7 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-4xl font-bold mt-2">The secure way to synthesize, evaluate, and export</h2>
             </div>
             <Button variant="outline" className="rounded-full border-white/20 text-white hover:bg-white/10" asChild>
-              <Link href="/login">Go to dashboard</Link>
+              <AuthIntentLink href="/login" eventLocation="platform_section" mode="login">Go to dashboard</AuthIntentLink>
             </Button>
           </div>
 
@@ -415,7 +416,7 @@ export default function LandingPage() {
             </div>
             <div className="flex gap-3">
               <Button className="rounded-full px-6" asChild>
-                <Link href="/register">Start free</Link>
+                <AuthIntentLink href="/register" eventLocation="pricing_section" mode="register">Start free</AuthIntentLink>
               </Button>
               <Button variant="outline" className="rounded-full border-white/20 text-white hover:bg-white/10" asChild>
                 <Link href="/contact">Talk with us</Link>
@@ -545,7 +546,7 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
                 <Button size="lg" className="rounded-full px-7" asChild>
-                  <Link href="/register">Start for free</Link>
+                  <AuthIntentLink href="/register" eventLocation="footer_cta" mode="register">Start for free</AuthIntentLink>
                 </Button>
                 <Button size="lg" variant="outline" className="rounded-full" asChild>
                   <Link href="/contact">Book a live demo</Link>

@@ -24,12 +24,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
-      const token = api.getToken()
+      let token = api.getToken()
+
+      // If we don't have a client token yet, try to recover it from the
+      // httpOnly session cookie via a server-validated endpoint.
+      if (!token) {
+        try {
+          const res = await fetch("/api/auth/session", {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            credentials: "include",
+          })
+
+          if (res.ok) {
+            const data = (await res.json()) as { ok: boolean; token?: string; user?: User }
+            if (data?.ok && data.token) {
+              api.setToken(data.token)
+              token = data.token
+              if (data.user) {
+                setUser(data.user)
+                setLoading(false)
+                return
+              }
+            }
+          }
+        } catch {
+          // ignore and fall back to unauthenticated
+        }
+      }
+
       if (token) {
         try {
           const currentUser = await api.getCurrentUser()
           setUser(currentUser)
-        } catch (error) {
+        } catch {
           // Token is invalid, clear it
           api.setToken(null)
         }
@@ -49,19 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (email: string, password: string) => {
-    try {
-      // Register the user
-      await api.register(email, password, "")
-      // After successful registration, log them in
-      const { access_token } = await api.login(email, password)
-      api.setToken(access_token)
-      const currentUser = await api.getCurrentUser()
-      setUser(currentUser)
-      router.push("/dashboard")
-    } catch (error) {
-      // Re-throw the error so the component can handle it
-      throw error
-    }
+    // Register the user - don't auto-login because email verification is required
+    await api.register(email, password, "")
+    // Registration successful - user needs to verify email before logging in
+    // The caller should redirect to login page with a success message
+    throw new Error("REGISTRATION_REQUIRES_VERIFICATION")
   }
 
   const completeOAuthLogin = async (token: string) => {

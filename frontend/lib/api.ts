@@ -27,6 +27,9 @@ import type {
   ModelCard,
 } from "./types";
 
+// API Base URL - uses environment variable
+// Development: Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
+// Production: Defaults to production URL if not set
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 
@@ -103,7 +106,10 @@ class ApiClient {
         if (response.status === 401) {
           this.setToken(null);
           if (typeof window !== "undefined") {
-            window.location.href = "/login";
+            const next = encodeURIComponent(
+              `${window.location.pathname}${window.location.search}`
+            );
+            window.location.href = `/login?next=${next}`;
           }
           throw new Error("Unauthorized");
         }

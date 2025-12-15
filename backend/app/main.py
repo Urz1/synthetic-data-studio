@@ -115,12 +115,13 @@ app.add_middleware(SecurityHeadersMiddleware, enable_hsts=not settings.debug)
 # Add audit logging middleware for enterprise compliance
 app.add_middleware(AuditMiddleware)
 
-# Add rate limiting middleware (disabled in DEBUG mode for easier testing)
-if not settings.debug:
-    app.add_middleware(RateLimitMiddleware, enabled=True)
-    logger.info("✅ Rate limiting middleware enabled")
+# Add rate limiting middleware - ALWAYS enabled (higher limits in debug mode for easier testing)
+# Security: Even if DEBUG=true leaks to production, rate limiting still works
+app.add_middleware(RateLimitMiddleware, enabled=True)
+if settings.debug:
+    logger.info("✅ Rate limiting middleware enabled (debug mode - higher limits)")
 else:
-    logger.warning("⚠️ Rate limiting disabled (DEBUG mode)")
+    logger.info("✅ Rate limiting middleware enabled")
 
 # Add metrics middleware for observability
 if OBSERVABILITY_AVAILABLE and MetricsMiddleware:

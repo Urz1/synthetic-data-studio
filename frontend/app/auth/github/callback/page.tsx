@@ -2,6 +2,8 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +18,6 @@ function CallbackContent() {
     const token = searchParams.get("token")
     const errorParam = searchParams.get("error")
 
-    
     if (errorParam) {
       const errorMsg = errorParam === "access_denied" ? "You cancelled the authorization" : errorParam
       setStatus("error")
@@ -35,16 +36,12 @@ function CallbackContent() {
 
     const run = async () => {
       try {
-        console.log("[OAuth Callback] Starting to process token...");
-        
         // Extract user data from URL params
         const userId = searchParams.get("user_id");
         const email = searchParams.get("email");
         const name = searchParams.get("name");
         const avatarUrl = searchParams.get("avatar_url");
         const role = searchParams.get("role");
-
-        console.log("[OAuth Callback] User data:", { userId, email, name, role });
 
         const user = {
           id: userId,
@@ -58,17 +55,14 @@ function CallbackContent() {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
         
-        console.log("[OAuth Callback] Stored to localStorage, redirecting to dashboard...");
-
         if (cancelled) return;
         setStatus("success");
         // Use window.location for clean redirect after OAuth
         window.location.href = "/dashboard";
-      } catch (err: any) {
-        console.error("[OAuth Callback] Error:", err);
+      } catch (err: unknown) {
         if (cancelled) return;
         setStatus("error");
-        setError(err?.message || "Failed to complete login");
+        setError(err instanceof Error ? err.message : "Failed to complete login");
       }
     };
 
@@ -80,27 +74,46 @@ function CallbackContent() {
   }, [router]);
 
   if (status === "loading") {
-    return <div className="flex min-h-screen items-center justify-center">
-      <p>Completing sign in...</p>
-    </div>
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-lg text-muted-foreground">Completing sign in...</p>
+      </div>
+    )
   }
 
   if (status === "error") {
-    return <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <p className="text-red-500">Error: {error}</p>
-      <a href="/login" className="text-blue-500 underline">Try again</a>
-    </div>
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
+        <div className="text-center space-y-2">
+          <p className="text-lg font-medium text-destructive">Authentication Error</p>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+        <Button asChild variant="outline">
+          <a href="/login">Back to login</a>
+        </Button>
+      </div>
+    )
   }
 
-  return <div className="flex min-h-screen items-center justify-center">
-    <p>Success! Redirecting to dashboard...</p>
-  </div>
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="text-lg text-muted-foreground">Success! Redirecting to dashboard...</p>
+    </div>
+  )
 }
 
 export default function GitHubCallbackPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    }>
       <CallbackContent />
     </Suspense>
   )
 }
+
