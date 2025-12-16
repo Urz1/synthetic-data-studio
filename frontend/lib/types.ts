@@ -301,13 +301,13 @@ export interface Job {
   status: "pending" | "running" | "completed" | "failed";
   generator_id?: string;
   dataset_id?: string;
+  initiated_by: string;
   progress?: number;
   error_message?: string;
   created_at: string;
   updated_at: string;
   started_at?: string;
   completed_at?: string;
-  created_by?: string;
 }
 
 export interface ChatMessage {

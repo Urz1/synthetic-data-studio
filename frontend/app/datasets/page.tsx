@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import type { Dataset } from "@/lib/types"
+import ProtectedRoute from "@/components/layout/protected-route"
 
 export default function DatasetsPage() {
   const [search, setSearch] = React.useState("")
@@ -78,6 +79,7 @@ export default function DatasetsPage() {
   })
 
   return (
+    <ProtectedRoute>
     <AppShell user={user || { full_name: "", email: "" }}>
       <PageHeader
         title="Datasets"
@@ -188,5 +190,6 @@ export default function DatasetsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
+    </ProtectedRoute>
   )
 }

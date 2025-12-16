@@ -7,13 +7,18 @@
 # Standard library
 import datetime
 import uuid
+import uuid as uuid_module
 from typing import List, Optional
+import logging
 
 # Third-party
 from sqlmodel import Session, select
 
+
 # Local - Module
 from .models import Job
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # REPOSITORIES
@@ -30,8 +35,18 @@ def get_jobs(db: Session, user_id: Optional[uuid.UUID] = None, skip: int = 0, li
 
 
 def get_job_by_id(db: Session, job_id: str) -> Optional[Job]:
-    """Get job by ID."""
-    return db.get(Job, job_id)
+    """Get job by ID (excludes soft-deleted)."""    
+    # Convert job_id to UUID if it's a string
+    if isinstance(job_id, str):
+        try:
+            job_uuid = uuid_module.UUID(job_id)
+        except ValueError:
+            return None
+    else:
+        job_uuid = job_id
+    
+    stmt = select(Job).where(Job.id == job_uuid, Job.deleted_at.is_(None))
+    return db.exec(stmt).first()
 
 
 def create_job(db: Session, job: Job) -> Job:
@@ -59,8 +74,6 @@ def update_job_status(
         error_message: Error message if status is failed (optional)
         synthetic_dataset_id: ID of generated dataset if completed (optional)
     """
-    import uuid as uuid_module
-    
     # Convert job_id to UUID if it's a string
     if isinstance(job_id, str):
         job_uuid = uuid_module.UUID(job_id)
@@ -76,13 +89,19 @@ def update_job_status(
         if synthetic_dataset_id:
             job.synthetic_dataset_id = synthetic_dataset_id
         
-        # Store error message if failed (we'd need to add this field to the model)
-        # For now, we'll log it
+        # Store error message in DB
         if error_message:
-            import logging
-            logger = logging.getLogger(__name__)
+            job.error_message = error_message
             logger.error(f"Job {job_id} failed: {error_message}")
         
         db.commit()
         db.refresh(job)
     return job
+
+
+def soft_delete_job(db: Session, job: Job, deleted_by: uuid.UUID = None) -> None:
+    """Soft-delete a job for audit trail."""
+    job.deleted_at = datetime.datetime.utcnow()
+    db.add(job)
+    db.commit()
+

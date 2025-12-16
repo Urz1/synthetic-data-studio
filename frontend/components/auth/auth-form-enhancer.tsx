@@ -175,14 +175,14 @@ export function AuthFormEnhancer({
           })
         }
 
-        if (typeof data.redirect === "string") {
-          window.location.assign(data.redirect)
-          navigated = true
-          return
-        }
-
-        window.location.assign("/dashboard")
+        // Validate redirect is a proper path (not empty, not external)
+        const redirectPath = typeof data.redirect === "string" && data.redirect.startsWith("/") && data.redirect.length > 1
+          ? data.redirect
+          : "/dashboard"
+        
+        window.location.assign(redirectPath)
         navigated = true
+        return
       } catch (err) {
         console.error("AuthFormEnhancer error:", err)
         // On error, reset UI so user can try again

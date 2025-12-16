@@ -8,11 +8,12 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GeneratorCard } from "@/components/generators/generator-card"
-import { Plus, Search, Filter, Loader2 } from "lucide-react"
+import { Plus, Search, Filter, Loader2, Code } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import type { Generator } from "@/lib/types"
+import ProtectedRoute from "@/components/layout/protected-route"
 
 export default function GeneratorsPage() {
   const [search, setSearch] = React.useState("")
@@ -48,17 +49,26 @@ export default function GeneratorsPage() {
   })
 
   return (
+    <ProtectedRoute>
     <AppShell user={user || { full_name: "", email: "" }}>
       <PageHeader
         title="Generators"
         description="Manage your synthetic data generators"
         actions={
-          <Button asChild>
-            <Link href="/generators/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Generator
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/generators/schema">
+                <Code className="mr-2 h-4 w-4" />
+                Schema Generator
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/generators/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Generator
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -143,5 +153,6 @@ export default function GeneratorsPage() {
       </>
       )}
     </AppShell>
+    </ProtectedRoute>
   )
 }

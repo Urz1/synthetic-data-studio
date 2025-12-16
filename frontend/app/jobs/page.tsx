@@ -27,7 +27,7 @@ export default function JobsPage() {
       let jobsData = await api.listJobs()
       // If not admin, filter jobs to only those initiated by current user
       if (user?.role !== "admin" && user?.id) {
-        jobsData = jobsData.filter(j => j.created_by === user.id)
+        jobsData = jobsData.filter(j => j.initiated_by === user.id)
       }
       setJobs(jobsData)
       setError("")
@@ -48,7 +48,9 @@ export default function JobsPage() {
     fetchJobs()
     
     // Auto-refresh every 5 seconds for running jobs
+    // Uses visibility API to pause polling when tab is hidden
     const interval = setInterval(() => {
+      if (document.hidden) return // Don't poll when tab is not visible
       if (jobs.some(j => j.status === "running" || j.status === "pending")) {
         fetchJobs()
       }
@@ -192,8 +194,12 @@ export default function JobsPage() {
             <p className="text-muted-foreground">Loading jobs...</p>
           </div>
         ) : error && jobs.length === 0 ? (
-          <div className="text-center py-12 text-destructive">
-            <p>{error}</p>
+          <div className="text-center py-12">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RotateCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
           </div>
         ) : (
           <>
@@ -276,7 +282,12 @@ export default function JobsPage() {
                   {job.error_message && (
                     <p className="text-sm text-destructive font-mono">{job.error_message}</p>
                   )}
-                  <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    disabled
+                    title="Job retry coming soon"
+                  >
                     <RotateCw className="mr-2 h-3 w-3" />
                     Retry Job
                   </Button>

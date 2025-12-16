@@ -113,7 +113,6 @@ def _list_generators_impl(
 
 
 @router.get("", response_model=list[GeneratorResponse])
-@router.get("", response_model=list[GeneratorResponse])
 @router.get("/", response_model=list[GeneratorResponse])
 def list_generators(
     dataset_id: Optional[str] = None,
@@ -138,6 +137,11 @@ def get_generator(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Ownership check
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this generator")
+    
     return generator
 
 
@@ -154,6 +158,10 @@ def delete_generator_endpoint(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Ownership check
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this generator")
     
     # Delete model from S3 if exists
     if is_s3_available() and generator.s3_model_key:
@@ -198,6 +206,10 @@ def download_generator_model(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Ownership check
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to download this model")
     
     # Check if model exists
     if generator.status != "completed":
@@ -265,6 +277,10 @@ def download_generator_model_file(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Ownership check
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to download this model")
     
     if not generator.model_path:
         raise HTTPException(status_code=404, detail="No model path found")
@@ -489,6 +505,10 @@ def start_generation(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Ownership check
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to generate from this model")
 
     # Update generator parameters with request data if provided
     if request:
@@ -538,6 +558,10 @@ def get_privacy_report(
     generator = get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Ownership check
+    if generator.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this privacy report")
     
     # Check if this is a DP model
     if not generator.type.startswith('dp-'):

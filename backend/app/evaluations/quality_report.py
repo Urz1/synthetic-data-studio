@@ -59,7 +59,11 @@ class QualityReportGenerator:
         sensitive_columns: Optional[List[str]] = None,
         include_statistical: bool = True,
         include_ml_utility: bool = True,
-        include_privacy: bool = True
+        include_privacy: bool = True,
+        # CONFIGURABLE WEIGHTS (audit fix - was hardcoded)
+        statistical_weight: float = 0.4,
+        ml_utility_weight: float = 0.3,
+        privacy_weight: float = 0.3
     ) -> Dict[str, Any]:
         """
         Generate comprehensive quality report.
@@ -84,8 +88,13 @@ class QualityReportGenerator:
             "dataset_info": {
                 "real_rows": len(self.real_data),
                 "synthetic_rows": len(self.synthetic_data),
-                "num_columns": len(self.real_data.columns),
-                "columns": list(self.real_data.columns)
+                "num_columns": len(self.real_data.columns)
+                # PRIVACY FIX: Removed "columns" list to avoid leaking sensitive attribute names
+            },
+            "scoring_weights": {  # AUDIT FIX: Document weights used
+                "statistical": statistical_weight,
+                "ml_utility": ml_utility_weight,
+                "privacy": privacy_weight
             },
             "evaluations": {}
         }

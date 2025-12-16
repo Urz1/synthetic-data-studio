@@ -200,8 +200,72 @@ class ApiClient {
     return this.request("/auth/me");
   }
 
-  logout() {
+  /**
+   * Logout and invalidate the current token on the server
+   */
+  async logout(): Promise<void> {
+    try {
+      // Call server to invalidate token
+      await this.request("/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore errors - token may already be invalid
+    } finally {
+      this.setToken(null);
+    }
+  }
+
+  /**
+   * Logout from all devices
+   */
+  async logoutAll(): Promise<{ ok: boolean; message: string }> {
+    const result = await this.request<{ ok: boolean; message: string }>(
+      "/auth/logout-all",
+      {
+        method: "POST",
+      }
+    );
     this.setToken(null);
+    return result;
+  }
+
+  /**
+   * Update the current user's profile
+   */
+  async updateProfile(data: {
+    full_name?: string;
+    bio?: string;
+  }): Promise<User> {
+    return this.request("/auth/me", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Change the current user's password
+   */
+  async changePassword(data: {
+    current_password: string;
+    new_password: string;
+  }): Promise<{ ok: boolean; message: string }> {
+    return this.request("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Delete the current user's account (GDPR)
+   */
+  async deleteAccount(): Promise<{ ok: boolean; message: string }> {
+    return this.request("/auth/account", { method: "DELETE" });
+  }
+
+  /**
+   * Export user's personal data (GDPR)
+   */
+  async exportAccountData(): Promise<Record<string, unknown>> {
+    return this.request("/auth/account/export");
   }
 
   async listOAuthProviders(): Promise<{ providers: OAuthProvider[] }> {

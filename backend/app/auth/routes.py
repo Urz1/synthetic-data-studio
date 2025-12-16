@@ -33,7 +33,8 @@ from .schemas import (
     UserCreate, UserResponse, UserLogin, Token, TokenPair, RefreshTokenRequest,
     OAuthProviderInfo, OAuthProvidersResponse, OAuthCallbackResponse,
     VerificationRequest, PasswordResetRequest, PasswordResetConfirm,
-    TwoFactorSetupResponse, TwoFactorVerifyRequest
+    TwoFactorSetupResponse, TwoFactorVerifyRequest,
+    ProfileUpdate, PasswordChange
 )
 from .repositories import create_user, get_user_by_email, verify_user_password, set_user_password
 from .services import (
@@ -531,6 +532,87 @@ def export_account_data(
     logger.info(f"Data exported for user: {current_user.email}")
     
     return user_data
+
+
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Update current user profile",
+    description="Update the authenticated user's profile information"
+)
+def update_profile(
+    payload: ProfileUpdate,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update the current user's profile.
+    
+    Only the provided fields will be updated.
+    """
+    now = datetime.utcnow()
+    
+    if payload.full_name is not None:
+        current_user.name = payload.full_name
+    
+    # Note: 'bio' is not currently in User model, but we accept it for future extension
+    
+    current_user.updated_at = now
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    logger.info(f"Profile updated for user: {current_user.email}")
+    
+    return current_user
+
+
+@router.post(
+    "/change-password",
+    summary="Change password",
+    description="Change the current user's password"
+)
+def change_password(
+    payload: PasswordChange,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Change the current user's password.
+    
+    Requires the current password for verification.
+    """
+    # Verify current password
+    if not current_user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change password for OAuth accounts"
+        )
+    
+    if not verify_user_password(current_user, payload.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    # Ensure new password is different
+    if payload.current_password == payload.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from current password"
+        )
+    
+    # Update password
+    set_user_password(current_user, payload.new_password)
+    current_user.updated_at = datetime.utcnow()
+    db.add(current_user)
+    db.commit()
+    
+    logger.info(f"Password changed for user: {current_user.email}")
+    
+    return {"ok": True, "message": "Password changed successfully"}
 
 
 @router.post(

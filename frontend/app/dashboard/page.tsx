@@ -259,11 +259,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg font-medium">Recent Activity</CardTitle>
                 <Badge variant="secondary" className="font-normal flex items-center gap-1">
                   <Activity className="h-3 w-3" />
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-                  </span>
-                  Live
+                  Audit Trail
                 </Badge>
               </div>
             </CardHeader>

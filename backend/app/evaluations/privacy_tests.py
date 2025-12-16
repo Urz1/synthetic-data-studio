@@ -91,8 +91,24 @@ class PrivacyEvaluator:
         """
         logger.info(f"Calculating Distance to Closest Record ({metric})...")
         
+        # MEMORY LIMIT CHECK: cdist on large matrices can exhaust memory
+        # Limit to max 10,000 x 10,000 comparisons (~800MB for float64)
+        MAX_RECORDS = 10000
+        real_sample = self.real_numerical
+        synth_sample = self.synthetic_numerical
+        
+        if len(self.real_numerical) > MAX_RECORDS or len(self.synthetic_numerical) > MAX_RECORDS:
+            logger.warning(f"Large dataset detected: sampling to {MAX_RECORDS} records for DCR calculation")
+            np.random.seed(42)  # Reproducibility
+            if len(self.real_numerical) > MAX_RECORDS:
+                real_idx = np.random.choice(len(self.real_numerical), MAX_RECORDS, replace=False)
+                real_sample = self.real_numerical[real_idx]
+            if len(self.synthetic_numerical) > MAX_RECORDS:
+                synth_idx = np.random.choice(len(self.synthetic_numerical), MAX_RECORDS, replace=False)
+                synth_sample = self.synthetic_numerical[synth_idx]
+        
         # Calculate pairwise distances
-        distances = cdist(self.synthetic_numerical, self.real_numerical, metric=metric)
+        distances = cdist(synth_sample, real_sample, metric=metric)
         
         # Find minimum distance for each synthetic record
         min_distances = distances.min(axis=1)
@@ -167,8 +183,9 @@ class PrivacyEvaluator:
         real_labeled = np.column_stack([self.real_numerical, np.ones(len(self.real_numerical))])
         synth_labeled = np.column_stack([self.synthetic_numerical, np.zeros(len(self.synthetic_numerical))])
         
-        # Combine and shuffle
+        # Combine and shuffle (FIXED: add seed for reproducibility)
         combined = np.vstack([real_labeled, synth_labeled])
+        np.random.seed(42)  # Reproducibility fix
         np.random.shuffle(combined)
         
         X = combined[:, :-1]

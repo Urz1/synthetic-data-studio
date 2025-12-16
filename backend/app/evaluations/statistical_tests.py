@@ -42,8 +42,19 @@ class StatisticalEvaluator:
         self.real_data = real_data
         self.synthetic_data = synthetic_data
         
-        # Ensure same columns
-        common_cols = set(real_data.columns) & set(synthetic_data.columns)
+        # Ensure same columns (with warning for dropped columns)
+        real_cols = set(real_data.columns)
+        synth_cols = set(synthetic_data.columns)
+        common_cols = real_cols & synth_cols
+        
+        # AUDIT FIX: Warn about dropped columns
+        dropped_from_real = real_cols - common_cols
+        dropped_from_synth = synth_cols - common_cols
+        if dropped_from_real:
+            logger.warning(f"Columns in real data not in synthetic (dropped): {dropped_from_real}")
+        if dropped_from_synth:
+            logger.warning(f"Columns in synthetic data not in real (dropped): {dropped_from_synth}")
+        
         self.real_data = real_data[list(common_cols)]
         self.synthetic_data = synthetic_data[list(common_cols)]
         

@@ -94,7 +94,7 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, onExport, 
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Statistical:</span>
                   <span className="font-mono">
-                    {((evaluation.report!.evaluations.statistical_similarity?.summary.pass_rate || 0) * 100).toFixed(0)}%
+                    {(evaluation.report!.evaluations.statistical_similarity?.summary.pass_rate || 0).toFixed(0)}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">

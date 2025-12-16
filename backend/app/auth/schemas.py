@@ -47,6 +47,24 @@ class UserLogin(BaseModel):
     otp: Optional[str] = None  # Required only if user enabled 2FA
 
 
+class ProfileUpdate(BaseModel):
+    """Schema for profile update."""
+    full_name: Optional[str] = Field(None, max_length=100)
+    bio: Optional[str] = Field(None, max_length=500)
+
+
+class PasswordChange(BaseModel):
+    """Schema for password change."""
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        """Validate new password complexity."""
+        return validate_password_strength(v)
+
+
 class UserResponse(BaseModel):
     """Schema for user response (public info)."""
     model_config = ConfigDict(from_attributes=True)

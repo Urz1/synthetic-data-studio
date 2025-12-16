@@ -452,7 +452,7 @@ export default function EvaluationDetailPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Evaluation</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete this evaluation? This action cannot be undone.
+                        Are you sure you want to delete this evaluation? It will be archived but can be recovered by an administrator.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

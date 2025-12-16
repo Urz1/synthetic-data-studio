@@ -14,12 +14,49 @@ import uuid
 # ============================================================================
 # REQUEST SCHEMAS
 # ============================================================================
-
+# Allowed column types for schema-based generation
+ALLOWED_TYPES = {
+        "string", "integer", "float", "boolean", "date", "datetime",
+        "email", "phone", "url", "uuid", "name", "address", "text"
+    }
 class SchemaInput(BaseModel):
     """Schema definition for manual data generation."""
     columns: Union[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]  # Support both formats
     project_id: Optional[uuid.UUID] = None
     dataset_name: Optional[str] = None
+
+    @classmethod
+    def validate_columns(cls, columns):
+        """Validate column definitions."""
+        if isinstance(columns, dict):
+            for col_name, col_config in columns.items():
+                if not isinstance(col_config, dict):
+                    raise ValueError(f"Column '{col_name}' config must be a dict")
+                col_type = col_config.get("type", "string")
+                if col_type.lower() not in cls.ALLOWED_TYPES:
+                    raise ValueError(
+                        f"Invalid type '{col_type}' for column '{col_name}'. "
+                        f"Allowed: {', '.join(sorted(cls.ALLOWED_TYPES))}"
+                    )
+        elif isinstance(columns, list):
+            for i, col in enumerate(columns):
+                if not isinstance(col, dict):
+                    raise ValueError(f"Column at index {i} must be a dict")
+                if "name" not in col:
+                    raise ValueError(f"Column at index {i} missing 'name' field")
+                col_type = col.get("type", "string")
+                if col_type.lower() not in cls.ALLOWED_TYPES:
+                    raise ValueError(
+                        f"Invalid type '{col_type}' for column '{col.get('name')}'. "
+                        f"Allowed: {', '.join(sorted(cls.ALLOWED_TYPES))}"
+                    )
+        else:
+            raise ValueError("'columns' must be a dict or list")
+        return columns
+    
+    def model_post_init(self, __context) -> None:
+        """Validate after initialization."""
+        self.validate_columns(self.columns)
 
 
 class MLGenerationConfig(BaseModel):

@@ -208,7 +208,8 @@ class MLUtilityEvaluator:
         if n_synth > len(X_train_synth):
             n_synth = len(X_train_synth)
         
-        # Sample synthetic data
+        # Sample synthetic data (FIXED: add seed for reproducibility)
+        np.random.seed(42)
         sample_indices = np.random.choice(len(X_train_synth), size=n_synth, replace=False)
         X_train_synth_sample = X_train_synth.iloc[sample_indices].reset_index(drop=True)
         y_train_synth_sample = y_train_synth[sample_indices] if isinstance(y_train_synth, np.ndarray) else y_train_synth.iloc[sample_indices].values

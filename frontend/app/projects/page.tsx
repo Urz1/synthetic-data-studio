@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Project } from "@/lib/types"
+import ProtectedRoute from "@/components/layout/protected-route"
 
 export default function ProjectsPage() {
   const { user } = useAuth()
@@ -36,7 +37,13 @@ export default function ProjectsPage() {
       const data = await api.listProjects()
       setProjects(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load projects")
+      // Distinguish network errors from API errors
+      const message = err instanceof Error ? err.message : "Failed to load projects"
+      if (message === "Failed to fetch" || message.includes("NetworkError")) {
+        setError("Unable to connect to server. Please check your connection and try again.")
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -64,6 +71,7 @@ export default function ProjectsPage() {
   }
 
   return (
+    <ProtectedRoute>
     <AppShell user={user || { full_name: "", email: "" }}>
       <PageHeader
         title="Projects"
@@ -81,7 +89,12 @@ export default function ProjectsPage() {
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={loadProjects} className="ml-4">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -209,8 +222,7 @@ export default function ProjectsPage() {
             <AlertDialogTitle>Delete Project?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete <strong>{projectToDelete?.name}</strong>?
-              This will permanently delete all datasets, generators, and evaluations in this project.
-              This action cannot be undone.
+              This will archive the project and its contents. An administrator can recover it if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -233,5 +245,6 @@ export default function ProjectsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
+    </ProtectedRoute>
   )
 }

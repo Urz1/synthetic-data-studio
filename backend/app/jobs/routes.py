@@ -16,7 +16,7 @@ from app.core.dependencies import get_db, get_current_user
 
 # Local - Module
 from .schemas import JobCreate, JobResponse
-from .repositories import get_jobs, create_job, get_job_by_id
+from .repositories import get_jobs, create_job, get_job_by_id, soft_delete_job
 from .models import Job
 
 # ============================================================================
@@ -53,6 +53,15 @@ def get_job(
     job = get_job_by_id(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    # SECURITY: Verify ownership (admin can view any job)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if job.initiated_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this job"
+        )
+    
     return job
 
 
@@ -70,3 +79,25 @@ def create_new_job(
     
     return create_job(db, db_job)
 
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Soft-delete a job."""    
+    job = get_job_by_id(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # SECURITY: Verify ownership (admin can delete any job)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if job.initiated_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this job"
+        )
+    
+    soft_delete_job(db, job)
+    return None

@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import type { Evaluation } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import ProtectedRoute from "@/components/layout/protected-route"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,7 @@ export default function EvaluationsPage() {
   const [error, setError] = React.useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [evaluationToDelete, setEvaluationToDelete] = React.useState<string | null>(null)
+  const [deleting, setDeleting] = React.useState(false)  // Loading state for delete
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -54,7 +56,13 @@ export default function EvaluationsPage() {
         setEvaluations([])
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load evaluations")
+      // Distinguish network errors from API errors
+      const message = err instanceof Error ? err.message : "Failed to load evaluations"
+      if (message === "Failed to fetch" || message.includes("NetworkError")) {
+        setError("Unable to connect to server. Please check your connection and try again.")
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -62,6 +70,7 @@ export default function EvaluationsPage() {
 
   async function handleDelete(id: string) {
     try {
+      setDeleting(true)
       await api.deleteEvaluation(id)
       toast({
         title: "Deleted",
@@ -76,6 +85,7 @@ export default function EvaluationsPage() {
         variant: "destructive",
       })
     } finally {
+      setDeleting(false)
       setDeleteDialogOpen(false)
       setEvaluationToDelete(null)
     }
@@ -88,6 +98,7 @@ export default function EvaluationsPage() {
   })
 
   return (
+    <ProtectedRoute>
     <AppShell user={user || { full_name: "", email: "" }}>
       <PageHeader
         title="Evaluations"
@@ -104,7 +115,12 @@ export default function EvaluationsPage() {
 
       {error && (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={loadEvaluations} className="ml-4">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -201,7 +217,7 @@ export default function EvaluationsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Evaluation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this evaluation? This action cannot be undone.
+              Are you sure you want to delete this evaluation? It will be archived but can be recovered by an administrator.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -216,5 +232,6 @@ export default function EvaluationsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppShell>
+    </ProtectedRoute>
   )
 }

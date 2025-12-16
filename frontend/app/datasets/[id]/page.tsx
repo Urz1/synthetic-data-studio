@@ -116,6 +116,29 @@ export default function DatasetDetailPage() {
     }
   }
 
+  const [isReprofiling, setIsReprofiling] = React.useState(false)
+
+  const handleReprofile = async () => {
+    try {
+      setIsReprofiling(true)
+      await api.profileDataset(id)
+      toast({
+        title: "Profiling started",
+        description: "Dataset is being profiled. Results will appear shortly.",
+      })
+      // Reload data to get updated profile
+      await loadDatasetDetails()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to start profiling",
+        variant: "destructive",
+      })
+    } finally {
+      setIsReprofiling(false)
+    }
+  }
+
   // Loading state
   if (loading) {
     return (
@@ -168,9 +191,9 @@ export default function DatasetDetailPage() {
               <Download className="mr-2 h-4 w-4" />
               Download
             </Button>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Re-profile
+            <Button variant="outline" size="sm" onClick={handleReprofile} disabled={isReprofiling}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isReprofiling ? 'animate-spin' : ''}`} />
+              {isReprofiling ? 'Profiling...' : 'Re-profile'}
             </Button>
             <Button asChild>
               <Link href={`/generators/new?dataset=${dataset.id}`}>
@@ -225,7 +248,7 @@ export default function DatasetDetailPage() {
               <div className="space-y-2">
                 {dataset.schema_data?.dtypes && Object.entries(dataset.schema_data.dtypes).map(([col, dtype]) => (
                   <div key={col} className="flex items-center justify-between text-sm">
-                    <span className="font-mono truncate max-w-[140px]">{col}</span>
+                    <span className="font-mono truncate max-w-[140px]" title={col}>{col}</span>
                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{dtype}</code>
                   </div>
                 ))}

@@ -311,6 +311,9 @@ export default function SchemaGeneratorPage() {
     { value: "phone", label: "Phone" },
     { value: "url", label: "URL" },
     { value: "uuid", label: "UUID" },
+    { value: "name", label: "Name" },
+    { value: "address", label: "Address" },
+    { value: "text", label: "Text" },
   ]
 
   return (
@@ -443,6 +446,20 @@ export default function SchemaGeneratorPage() {
                   <Label htmlFor="num-rows" className="text-sm font-medium">
                     Number of Rows to Generate
                   </Label>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {[100, 1000, 10000, 50000, 100000].map((preset) => (
+                      <Button
+                        key={preset}
+                        type="button"
+                        variant={numRows === preset ? "default" : "outline"}
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setNumRows(preset)}
+                      >
+                        {preset >= 1000 ? `${preset / 1000}K` : preset}
+                      </Button>
+                    ))}
+                  </div>
                 <Input
                   id="num-rows"
                   type="number"
@@ -466,6 +483,7 @@ export default function SchemaGeneratorPage() {
                     if (numRows > 100000) setNumRows(100000)
                   }}
                   className="text-lg font-semibold"
+                  placeholder="Custom"
                 />
                 <p className="text-xs text-muted-foreground">
                   Min: 1 | Max: 100,000 rows | Current: <span className="font-semibold">{numRows.toLocaleString()}</span>

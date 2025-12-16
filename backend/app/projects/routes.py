@@ -67,6 +67,14 @@ def get_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project {project_id} not found"
         )
+    
+    # SECURITY: Verify ownership
+    if project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this project"
+        )
+    
     return project
 
 
@@ -145,7 +153,7 @@ def create_new_project(
     db_project = Project(**project.dict())
     db_project.owner_id = current_user.id
     
-    return create_project(db, db_project)
+    return create_project(db, db_project, user_id=current_user.id)
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
@@ -201,5 +209,5 @@ def delete_existing_project(
             detail="Not authorized to delete this project"
         )
     
-    delete_project(db, db_project)
+    delete_project(db, db_project, deleted_by=current_user.id)
     return None

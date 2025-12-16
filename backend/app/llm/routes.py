@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 # Third-party
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -195,6 +195,14 @@ async def suggest_improvements(
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
     
+    # SECURITY: Verify ownership (admin can view any)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if evaluation.created_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this evaluation"
+        )
+    
     try:
         chat_service = ChatService()
         suggestions = await chat_service.suggest_improvements(evaluation.report)
@@ -288,14 +296,11 @@ async def detect_pii(
         analysis = await detector.analyze_dataset(request.data) # This might need adjustment based on detector API
         return analysis
     except Exception as e:
-        # Fallback if detector fails or API mismatch
         logger.error(f"PII detection failed: {e}")
-        # Return dummy response for now if detector fails (to pass tests)
-        # But ideally we should fix the detector call
-        return {
-            "overall_risk_level": "low",
-            "pii_detected": []
-        }
+        raise HTTPException(
+            status_code=500,
+            detail="PII detection failed. Please try again."
+        )
 
 
 @router.get("/privacy-report/{generator_id}")
@@ -341,6 +346,14 @@ async def get_privacy_report_cached(
     generator = generators_repo.get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Verify ownership (admin can view any)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if generator.created_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this generator"
+        )
     
     try:
         writer = ComplianceWriter()
@@ -450,6 +463,14 @@ async def get_model_card_cached(
     generator = generators_repo.get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Verify ownership (admin can view any)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if generator.created_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this generator"
+        )
     
     try:
         writer = ComplianceWriter()
@@ -865,7 +886,7 @@ async def export_privacy_report_docx(
             from app.exports import repositories as exports_repo
             import uuid as uuid_lib
             
-            pdf_bytes, s3_info = report_exporter.export_pdf_to_s3(
+            docx_bytes, s3_info = report_exporter.export_docx_to_s3(
                 content_markdown=content,
                 title=title,
                 user_id=str(current_user.id),
@@ -879,7 +900,7 @@ async def export_privacy_report_docx(
             # Create export record
             export_data = ExportCreate(
                 export_type=ExportType.PRIVACY_REPORT,
-                format=ExportFormat.PDF,
+                format=ExportFormat.DOCX,
                 title=title,
                 generator_id=uuid_lib.UUID(request.generator_id) if request.generator_id else None,
                 dataset_id=uuid_lib.UUID(request.dataset_id),

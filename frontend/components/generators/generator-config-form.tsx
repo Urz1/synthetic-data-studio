@@ -190,6 +190,7 @@ export function GeneratorConfigForm({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
+              {/* Rows to Generate - with presets */}
               <div className="space-y-2">
                 <Label htmlFor="num_rows" className="flex items-center gap-1">
                   Rows to Generate
@@ -202,6 +203,20 @@ export function GeneratorConfigForm({
                     </Tooltip>
                   </TooltipProvider>
                 </Label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[1000, 5000, 10000, 50000].map((preset) => (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant={config.num_rows === preset ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setConfig({ ...config, num_rows: preset })}
+                    >
+                      {preset >= 1000 ? `${preset / 1000}K` : preset}
+                    </Button>
+                  ))}
+                </div>
                 <Input
                   id="num_rows"
                   type="number"
@@ -209,11 +224,27 @@ export function GeneratorConfigForm({
                   max={1000000}
                   value={config.num_rows}
                   onChange={(e) => setConfig({ ...config, num_rows: Number.parseInt(e.target.value) || 0 })}
+                  placeholder="Custom"
                 />
               </div>
 
+              {/* Training Epochs - with presets */}
               <div className="space-y-2">
                 <Label htmlFor="epochs">Training Epochs</Label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[100, 300, 500, 1000].map((preset) => (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant={config.epochs === preset ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setConfig({ ...config, epochs: preset })}
+                    >
+                      {preset}
+                    </Button>
+                  ))}
+                </div>
                 <Input
                   id="epochs"
                   type="number"
@@ -222,14 +253,30 @@ export function GeneratorConfigForm({
                   value={config.epochs}
                   onChange={(e) => setConfig({ ...config, epochs: Number.parseInt(e.target.value) || 0 })}
                   className={cn(validation.errors.epochs && "border-destructive")}
+                  placeholder="Custom"
                 />
                 {validation.errors.epochs && (
                   <p className="text-xs text-destructive">{validation.errors.epochs}</p>
                 )}
               </div>
 
+              {/* Batch Size - with presets */}
               <div className="space-y-2">
                 <Label htmlFor="batch_size">Batch Size</Label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {[100, 250, 500, 1000].map((preset) => (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant={config.batch_size === preset ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setConfig({ ...config, batch_size: preset })}
+                    >
+                      {preset}
+                    </Button>
+                  ))}
+                </div>
                 <Input
                   id="batch_size"
                   type="number"
@@ -238,6 +285,7 @@ export function GeneratorConfigForm({
                   value={config.batch_size}
                   onChange={(e) => setConfig({ ...config, batch_size: Number.parseInt(e.target.value) || 0 })}
                   className={cn(validation.errors.batch_size && "border-destructive")}
+                  placeholder="Custom"
                 />
                 {validation.errors.batch_size && (
                   <p className="text-xs text-destructive">{validation.errors.batch_size}</p>

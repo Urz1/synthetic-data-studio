@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import type { Dataset } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
+import { useToast } from "@/hooks/use-toast"
 
 export default function NewGeneratorPage() {
   const router = useRouter()
@@ -24,9 +25,10 @@ export default function NewGeneratorPage() {
 
   const [datasets, setDatasets] = React.useState<Dataset[]>([])
   const [selectedDatasetId, setSelectedDatasetId] = React.useState(preselectedDataset || "")
+  const [loadingDatasets, setLoadingDatasets] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const { toast } = useToast()
 
   // Load datasets on mount
   React.useEffect(() => {
@@ -42,7 +44,7 @@ export default function NewGeneratorPage() {
         }
         setError("Failed to load datasets. Please try again.")
       } finally {
-        setIsLoading(false)
+        setLoadingDatasets(false)
       }
     }
     loadDatasets()
@@ -72,7 +74,13 @@ export default function NewGeneratorPage() {
         max_grad_norm: config.max_grad_norm
       })
       
-      // Redirect to generator details or list
+      // Success toast before redirect
+      toast({
+        title: "Generator Created",
+        description: `"${config.name}" is now training. You'll see progress on the next page.`,
+      })
+      
+      // Redirect to generator details
       router.push(`/generators/${response.generator_id}`)
       
     } catch (err) {
@@ -115,7 +123,7 @@ export default function NewGeneratorPage() {
                   <CardDescription>Choose the dataset to train your generator on</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {isLoading ? (
+                  {loadingDatasets ? (
                     <div className="flex justify-center p-4">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>

@@ -67,6 +67,7 @@ export default function GeneratorDetailPage() {
   const { toast } = useToast()
   const [downloadingModelCard, setDownloadingModelCard] = React.useState<string | null>(null)
   const [downloadingPrivacyReport, setDownloadingPrivacyReport] = React.useState<string | null>(null)
+  const [exportingModel, setExportingModel] = React.useState(false)
 
   // Load data
   React.useEffect(() => {
@@ -76,6 +77,8 @@ export default function GeneratorDetailPage() {
 
     // Poll for status updates if active
     const interval = setInterval(() => {
+      // Skip polling if tab is hidden
+      if (document.hidden) return
       if (generator && ["queued", "running", "generating"].includes(generator.status.toLowerCase())) {
         loadGeneratorDetails(true) // silent refresh
       }
@@ -157,6 +160,42 @@ export default function GeneratorDetailPage() {
       })
     } finally {
       setGenerating(false)
+    }
+  }
+
+  async function handleExportModel() {
+    if (generator?.status !== 'completed') {
+      toast({
+        title: "Model Not Ready",
+        description: "Generator must be completed before exporting the model.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setExportingModel(true)
+    try {
+      const result = await api.downloadModel(id)
+      if (result.download_url) {
+        window.open(result.download_url, '_blank')
+        toast({
+          title: "Download Started",
+          description: "Model file is being downloaded",
+        })
+      } else {
+        toast({
+          title: "Download Unavailable",
+          description: "Model download URL not available. Contact admin.",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Export Failed",
+        description: err instanceof Error ? err.message : "Failed to export model",
+        variant: "destructive",
+      })
+    } finally {
+      setExportingModel(false)
     }
   }
 
@@ -306,9 +345,13 @@ export default function GeneratorDetailPage() {
           description={`Type: ${generator.type || 'Unknown'} • Created ${generator.created_at ? new Date(generator.created_at).toLocaleDateString() : 'Unknown'}`}
           actions={
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Export Model
+              <Button variant="outline" size="sm" onClick={handleExportModel} disabled={exportingModel || generator.status !== 'completed'}>
+                {exportingModel ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {exportingModel ? 'Exporting...' : 'Export Model'}
               </Button>
               <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
                 <DialogTrigger asChild>
