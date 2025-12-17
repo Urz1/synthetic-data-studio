@@ -50,6 +50,28 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
+        <meta id="synth-theme-color" name="theme-color" content="#fafbfc" />
+
+        <script
+          // Runs before React hydration to avoid a theme flash.
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+  try {
+    var root = document.documentElement;
+    var stored = localStorage.getItem('theme') || 'system';
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var resolved = stored === 'system' ? (prefersDark ? 'dark' : 'light') : stored;
+    var isDark = resolved === 'dark';
+    root.classList.toggle('dark', isDark);
+    root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    root.style.colorScheme = isDark ? 'dark' : 'light';
+    var meta = document.getElementById('synth-theme-color');
+    if (meta) meta.setAttribute('content', isDark ? '#0c0d0f' : '#fafbfc');
+  } catch (e) {}
+})();`,
+          }}
+        />
+
         {/* STRATEGY 3: Kill the handshake wait */}
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.synthdata.studio'} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.synthdata.studio'} />

@@ -178,6 +178,17 @@
     @apply border-border outline-ring/50;
   }
 
+  a,
+  button,
+  [role="button"],
+  input,
+  textarea,
+  select {
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-duration: 100ms;
+    transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     /* Keeping font feature settings for better typography */
@@ -447,4 +458,25 @@
 
 .stagger-children>*:nth-child(6) {
   animation-delay: 250ms;
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-pulse,
+  .animate-pulse-subtle,
+  .animate-float,
+  .animate-shimmer,
+  .animate-ping,
+  .animate-bounce {
+    animation: none !important;
+  }
 }

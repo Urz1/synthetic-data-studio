@@ -14,7 +14,8 @@ import ProtectedRoute from "@/components/layout/protected-route"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { useTheme } from "next-themes"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,7 @@ export default function SettingsPage() {
   const { user, logout } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   
   // Profile state
   const [fullName, setFullName] = useState(user?.full_name || "")
@@ -132,6 +134,7 @@ export default function SettingsPage() {
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
           </TabsList>
 
           {/* Profile Settings */}
@@ -170,10 +173,7 @@ export default function SettingsPage() {
                 <CardFooter>
                   <Button onClick={handleProfileSave} disabled={isProfileSaving}>
                     {isProfileSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
+                      "Saving..."
                     ) : (
                       "Save Changes"
                     )}
@@ -253,10 +253,7 @@ export default function SettingsPage() {
                     disabled={isPasswordSaving || !currentPassword || !newPassword || !confirmPassword}
                   >
                     {isPasswordSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Updating...
-                      </>
+                      "Updating..."
                     ) : (
                       "Update Password"
                     )}
@@ -279,10 +276,7 @@ export default function SettingsPage() {
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" disabled={isDeleting}>
                           {isDeleting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Deleting...
-                            </>
+                            "Deleting..."
                           ) : (
                             "Delete My Account"
                           )}
@@ -307,6 +301,54 @@ export default function SettingsPage() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Appearance Settings */}
+          <TabsContent value="appearance">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Appearance</CardTitle>
+                  <CardDescription>
+                    Choose how Synth Studio looks. Your selection applies across the signed-in app.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Theme</Label>
+                    <RadioGroup
+                      value={theme || "system"}
+                      onValueChange={(value) => setTheme(value as "light" | "dark" | "system")}
+                      className="grid gap-3"
+                    >
+                      <label className="flex items-center gap-3 rounded-lg border border-border p-4">
+                        <RadioGroupItem value="system" />
+                        <div className="space-y-0.5">
+                          <div className="text-sm font-medium">System</div>
+                          <div className="text-xs text-muted-foreground">Match your device setting</div>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 rounded-lg border border-border p-4">
+                        <RadioGroupItem value="light" />
+                        <div className="space-y-0.5">
+                          <div className="text-sm font-medium">Light</div>
+                          <div className="text-xs text-muted-foreground">Bright surfaces for daytime work</div>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 rounded-lg border border-border p-4">
+                        <RadioGroupItem value="dark" />
+                        <div className="space-y-0.5">
+                          <div className="text-sm font-medium">Dark</div>
+                          <div className="text-xs text-muted-foreground">Low-glare surfaces for nighttime work</div>
+                        </div>
+                      </label>
+                    </RadioGroup>
                   </div>
                 </CardContent>
               </Card>
