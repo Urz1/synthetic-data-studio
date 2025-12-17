@@ -19,6 +19,7 @@ import {
   Menu,
   FileOutput,
   LogOut,
+  HelpCircle,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
@@ -53,6 +54,7 @@ const navItems = [
   { title: "Jobs", href: "/jobs", icon: Workflow },
   { title: "Assistant", href: "/assistant", icon: Sparkles },
   { title: "Settings", href: "/settings", icon: Settings },
+  { title: "Help & Docs", href: "https://docs.synthdata.studio", icon: HelpCircle },
 ]
 
 // Admin-only navigation items
@@ -122,17 +124,30 @@ export function AppShell({ children, user }: AppShellProps) {
               {navItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname?.startsWith(item.href)
+                const isExternal = item.href.startsWith("http")
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <Link
-                        href={item.href}
-                        className="flex items-center gap-3"
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="truncate">{item.title}</span>
-                      </Link>
+                      {isExternal ? (
+                        <a
+                          href={item.href}
+                          className="flex items-center gap-3"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span className="truncate">{item.title}</span>
+                        </a>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          className="flex items-center gap-3"
+                          aria-current={isActive ? "page" : undefined}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span className="truncate">{item.title}</span>
+                        </Link>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )

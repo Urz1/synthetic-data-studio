@@ -107,7 +107,10 @@ export default function LandingPage() {
   const trustLogos = ["HelixCare", "NovaBank", "Axiom Labs", "Northwind", "Lumina"]
 
   return (
-    <div className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 ${jakarta.variable}`}>
+    <div
+      className={`dark min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 ${jakarta.variable}`}
+      style={{ colorScheme: "dark" }}
+    >
       {/* Navbar */}
       <nav
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${
