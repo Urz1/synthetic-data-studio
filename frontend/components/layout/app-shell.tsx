@@ -199,6 +199,17 @@ export function AppShell({ children, user }: AppShellProps) {
               <ThemeToggle />
             </div>
             <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2"
+            >
+              <a href="https://docs.synthdata.studio" target="_blank" rel="noreferrer">
+                <HelpCircle className="h-4 w-4" />
+                Help & Docs
+              </a>
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               className="w-full justify-start gap-2"
