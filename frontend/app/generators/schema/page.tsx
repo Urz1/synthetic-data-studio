@@ -231,7 +231,6 @@ export default function SchemaGeneratorPage() {
 
       // Call API to generate
       const result = await api.generateSchemaBased(schemaConfig, numRows)
-      console.log("Schema API Raw Result:", result)
       
       // Robustly extract ID from various potential response formats
       // The backend returns a Dataset object, so 'id' is the primary field

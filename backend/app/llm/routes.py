@@ -398,6 +398,16 @@ async def get_privacy_report_cached(
             detail="Not authorized to access this generator"
         )
     
+    # VALIDATION: Privacy reports only meaningful for DP generators
+    dp_generator_types = ["dp-ctgan", "dp-tvae"]
+    if generator.type not in dp_generator_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Privacy reports are only available for differential privacy generators ({', '.join(dp_generator_types)}). "
+                   f"This generator uses '{generator.type}' which does not have privacy guarantees."
+        )
+
+    
     try:
         writer = ComplianceWriter()
         metadata = {
@@ -800,6 +810,15 @@ async def export_privacy_report_pdf(
     generator = None
     if request.generator_id:
         generator = generators_repo.get_generator_by_id(db, request.generator_id)
+        
+        # VALIDATION: Privacy reports only meaningful for DP generators
+        dp_generator_types = ["dp-ctgan", "dp-tvae"]
+        if generator and generator.type not in dp_generator_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Privacy reports are only available for differential privacy generators ({', '.join(dp_generator_types)}). "
+                       f"This generator uses '{generator.type}' which does not have privacy guarantees."
+            )
     
     try:
         # Generate comprehensive privacy report using LLM (markdown format)

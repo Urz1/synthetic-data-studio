@@ -134,7 +134,7 @@ try:
     PYTORCH_AVAILABLE = True
 except ImportError:
     PYTORCH_AVAILABLE = False
-    print("PyTorch not available, using basic statistical generation")
+    logging.getLogger(__name__).warning("PyTorch not available, using basic statistical generation")
 
 
 def generate_synthetic_data(generator: Generator, db: Session) -> Dataset:

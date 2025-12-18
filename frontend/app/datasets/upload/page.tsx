@@ -56,10 +56,10 @@ export default function DatasetUploadPage() {
       return
     }
 
-    // Validate file size (100MB max)
-    const maxSize = 100 * 1024 * 1024
+    // Validate file size (50MB max - optimized for CTGAN training)
+    const maxSize = 50 * 1024 * 1024
     if (selectedFile.size > maxSize) {
-      setError("File size must be less than 100MB")
+      setError("File size must be less than 50MB")
       return
     }
 
@@ -129,7 +129,7 @@ export default function DatasetUploadPage() {
             <CardHeader>
               <CardTitle>Dataset Upload</CardTitle>
               <CardDescription>
-                Supported formats: CSV, JSON (max 100MB)
+                Supported formats: CSV, JSON (max 50MB)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -232,7 +232,7 @@ export default function DatasetUploadPage() {
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>• CSV files should have headers in the first row</p>
               <p>• JSON files should be an array of objects</p>
-              <p>• Maximum file size: 100MB</p>
+              <p>• Maximum file size: 50MB</p>
               <p>• Data will be automatically profiled after upload</p>
               <p>• PII detection will run in the background</p>
             </CardContent>

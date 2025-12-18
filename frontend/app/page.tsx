@@ -31,6 +31,7 @@ import {
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useState, useEffect } from "react"
 import { AuthIntentLink } from "@/components/auth/auth-intent-link"
+import { HeroStory } from "@/components/sections/HeroStory"
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700", "800"] })
 
@@ -200,84 +201,8 @@ export default function LandingPage() {
         )}
       </nav>
 
-      {/* Hero */}
-      <section className="relative pt-28 md:pt-36 pb-16 md:pb-24 overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -left-24 top-10 h-96 w-96 bg-primary/10 blur-[120px] rounded-full" />
-          <div className="absolute right-[-12%] bottom-0 h-[420px] w-[420px] bg-primary/5 blur-[120px] rounded-full" />
-        </div>
-
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-7">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-primary"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-              </span>
-              Open Source · Self-Hostable
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.05 }}
-              className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight"
-            >
-              Generate Synthetic Data
-              <br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary/80 to-primary/60">
-                with Privacy Guarantees
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.1 }}
-              className="text-lg text-muted-foreground max-w-2xl mx-auto"
-            >
-              Synth Studio helps you create privacy-preserving synthetic data using differential privacy. 
-              Upload your data, choose a generator, and get statistically similar data without exposing real records.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.15 }}
-              className="flex flex-col sm:flex-row gap-3 justify-center"
-            >
-              <Button size="lg" className="h-12 rounded-full px-6" asChild>
-                <AuthIntentLink href="/register" eventLocation="hero" mode="register">Try Synth Studio Free</AuthIntentLink>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-12 rounded-full px-6"
-                asChild
-              >
-                <Link href="https://github.com/Urz1/synthetic-data-studio" target="_blank" rel="noreferrer">
-                  <Github className="h-5 w-5 mr-2" />
-                  View on GitHub
-                </Link>
-              </Button>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.45, delay: 0.2 }}
-              className="text-sm text-muted-foreground"
-            >
-              Free to use · No credit card required · Self-host or use cloud
-            </motion.p>
-          </div>
-        </div>
-      </section>
+      {/* Animated Hero Story */}
+      <HeroStory theme={isDark ? "dark" : "light"} />
 
       {/* What it does - honest section */}
       <section className="py-12 border-y border-border bg-muted/30">

@@ -409,6 +409,21 @@ def generate_from_schema(
     Creates a 'schema' type Generator record to track the lineage/source 
     of this synthetic dataset, ensuring it appears in listing endpoints.
     """
+    # VALIDATION: Row limits for schema-based generation
+    MIN_ROWS = 10
+    MAX_ROWS = 100_000  # 100K max for schema-based (LLM seeding is expensive)
+    
+    if num_rows < MIN_ROWS:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"num_rows must be at least {MIN_ROWS}"
+        )
+    if num_rows > MAX_ROWS:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"num_rows cannot exceed {MAX_ROWS:,} for schema-based generation"
+        )
+    
     # Create persistent generator record
     dataset_name = schema_input.dataset_name or "schema_generated"
     

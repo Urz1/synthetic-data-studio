@@ -183,8 +183,8 @@ async def upload_dataset(
     Returns:
         Created dataset object
     """
-    # Maximum file size: 100MB
-    MAX_FILE_SIZE = 100 * 1024 * 1024
+    # Maximum file size: 50MB (optimal for CTGAN training memory)
+    MAX_FILE_SIZE = 50 * 1024 * 1024
     
     # Verify project exists
     project = get_project_by_id(db, uuid.UUID(project_id))
