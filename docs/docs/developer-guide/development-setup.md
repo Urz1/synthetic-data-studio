@@ -1,4 +1,4 @@
-﻿---
+---
 id: developer-guide-development-setup
 title: "Development Setup"
 sidebar_label: "Development Setup"
@@ -6,28 +6,33 @@ sidebar_position: 3
 slug: /developer-guide/development-setup
 tags: [developer, setup]
 ---
+
 # Development Setup
 
 This guide covers setting up a local development environment for Synthetic Data Studio, including prerequisites, installation, and development workflows.
 
-##  Prerequisites
+## ? Prerequisites
 
 ### Required Software
 
 #### Python Environment
+
 - **Python 3.9+**: Download from [python.org](https://python.org)
 - **pip**: Python package installer (included with Python)
 - **venv**: Virtual environment module (included with Python)
 
 #### Version Control
+
 - **Git**: Download from [git-scm.com](https://git-scm.com)
 
 #### Database (Choose One)
+
 - **SQLite**: Included with Python (recommended for development)
 - **PostgreSQL**: Download from [postgresql.org](https://postgresql.org)
 - **MySQL/MariaDB**: Download from [mariadb.org](https://mariadb.org)
 
 #### Optional Tools
+
 - **Docker**: For containerized development
 - **Redis**: For background job queuing
 - **VS Code**: Recommended IDE with Python extensions
@@ -35,16 +40,18 @@ This guide covers setting up a local development environment for Synthetic Data 
 ### System Requirements
 
 #### Minimum
+
 - **RAM**: 4GB
 - **Disk Space**: 2GB free
 - **OS**: Windows 10+, macOS 10.15+, Ubuntu 18.04+
 
 #### Recommended
+
 - **RAM**: 8GB+
 - **Disk Space**: 5GB free
 - **GPU**: NVIDIA GPU with CUDA support (optional, for ML acceleration)
 
-##  Quick Setup
+## Quick Setup
 
 ### 1. Clone Repository
 
@@ -120,7 +127,7 @@ curl http://localhost:8000/health
 
 Open your browser to: http://localhost:8000/docs
 
-## ⚙ Configuration
+## ? Configuration
 
 ### Environment Variables
 
@@ -163,20 +170,24 @@ LOG_LEVEL=DEBUG
 ### Database Options
 
 #### SQLite (Simplest)
+
 ```env
 DATABASE_URL=sqlite:///./dev.db
 ```
--  No additional setup required
--  File-based database
--  Perfect for development
-- ❌ Not suitable for production
+
+- No additional setup required
+- File-based database
+- Perfect for development
+- ? Not suitable for production
 
 #### PostgreSQL (Production-like)
+
 ```env
 DATABASE_URL=postgresql://username:password@localhost:5432/synth_dev
 ```
 
 Setup:
+
 ```bash
 # Install PostgreSQL
 # macOS: brew install postgresql
@@ -195,6 +206,7 @@ psql -c "ALTER USER synth_user PASSWORD 'your-password';"
 ```
 
 #### MySQL/MariaDB
+
 ```env
 DATABASE_URL=mysql://username:password@localhost:3306/synth_dev
 ```
@@ -219,7 +231,7 @@ USE_OPENAI=true
 OPENAI_API_KEY=your-openai-api-key
 ```
 
-##  Testing Setup
+## Testing Setup
 
 ### Install Test Dependencies
 
@@ -255,13 +267,13 @@ TESTING=true
 SECRET_KEY=test-secret-key
 ```
 
-## � Docker Development (Alternative)
+## Docker Development (Alternative)
 
 ### Using Docker Compose
 
 ```yaml
 # docker-compose.dev.yml
-version: '3.8'
+version: "3.8"
 services:
   app:
     build: .
@@ -311,11 +323,12 @@ docker-compose -f docker-compose.dev.yml logs -f app
 docker-compose -f docker-compose.dev.yml exec app pytest
 ```
 
-##  Development Tools
+## ? Development Tools
 
 ### Code Quality
 
 #### Linting
+
 ```bash
 # Install linting tools
 pip install flake8 black isort mypy
@@ -365,6 +378,7 @@ Create `.vscode/settings.json`:
 ```
 
 #### VS Code Extensions
+
 - Python
 - Pylance
 - Python Docstring Generator
@@ -396,7 +410,14 @@ Create `.vscode/launch.json`:
       "type": "python",
       "request": "launch",
       "module": "uvicorn",
-      "args": ["app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
+      "args": [
+        "app.main:app",
+        "--reload",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
       "cwd": "${workspaceFolder}/backend",
       "python": "${workspaceFolder}/backend/.venv/bin/python"
     }
@@ -404,7 +425,7 @@ Create `.vscode/launch.json`:
 }
 ```
 
-##  Monitoring Development
+## Monitoring Development
 
 ### Application Logs
 
@@ -439,16 +460,18 @@ du -sh uploads/
 du -sh *.db
 ```
 
-##  Development Workflows
+## Development Workflows
 
 ### Feature Development
 
 1. **Create Feature Branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
 2. **Implement Changes**
+
    ```bash
    # Make your changes
    # Add tests
@@ -456,6 +479,7 @@ du -sh *.db
    ```
 
 3. **Run Quality Checks**
+
    ```bash
    # Lint and format
    pre-commit run --all-files
@@ -468,6 +492,7 @@ du -sh *.db
    ```
 
 4. **Test Integration**
+
    ```bash
    # Start server
    uvicorn app.main:app --reload
@@ -501,6 +526,7 @@ python -m app.database.create_tables
 ### API Development
 
 1. **Design API First**
+
    ```python
    # Define Pydantic models
    class CreateGeneratorRequest(BaseModel):
@@ -515,6 +541,7 @@ python -m app.database.create_tables
    ```
 
 2. **Implement Route Handler**
+
    ```python
    @router.post("/", response_model=GeneratorResponse)
    async def create_generator(
@@ -536,35 +563,40 @@ python -m app.database.create_tables
        assert response.status_code == 200
    ```
 
-## � Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
 **Module Import Errors**
+
 ```
 Error: No module named 'app.core.config'
 Solution: Activate virtual environment: source .venv/bin/activate
 ```
 
 **Database Connection Failed**
+
 ```
 Error: Could not connect to database
 Solution: Check DATABASE_URL in .env, ensure database is running
 ```
 
 **Port Already in Use**
+
 ```
 Error: [Errno 48] Address already in use
 Solution: Kill process on port: lsof -ti:8000 | xargs kill -9
 ```
 
 **CUDA/GPU Issues**
+
 ```
 Error: CUDA out of memory
 Solution: Reduce batch_size, use CPU: export CUDA_VISIBLE_DEVICES=""
 ```
 
 **Permission Errors**
+
 ```
 Error: Permission denied
 Solution: Check file permissions, ensure write access to uploads/
@@ -577,7 +609,7 @@ Solution: Check file permissions, ensure write access to uploads/
 - **Tests**: Run `pytest -v` for verbose test output
 - **GitHub Issues**: Search existing issues or create new ones
 
-##  Advanced Setup
+## Advanced Setup
 
 ### Background Jobs (Redis + Celery)
 
@@ -617,7 +649,7 @@ Using VS Code Remote:
 3. Clone repository on remote
 4. Set up environment as usual
 
-##  Next Steps
+## ? Next Steps
 
 Now that your development environment is set up:
 
@@ -629,4 +661,3 @@ Now that your development environment is set up:
 ---
 
 **Need help?** Check our [Troubleshooting Guide](../reference/troubleshooting.md) or create an issue on GitHub.
-

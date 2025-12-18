@@ -5,7 +5,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 const config: Config = {
   title: "Synth Studio",
   tagline: "Privacy-Preserving Synthetic Data Generation",
-  favicon: "img/favicon.png",
+  favicon: "img/logo.png",
 
   future: {
     v4: true,
@@ -35,6 +35,14 @@ const config: Config = {
       attributes: {
         name: "algolia-site-verification",
         content: "37FAECC146DDD827",
+      },
+    },
+    {
+      tagName: "link",
+      attributes: {
+        rel: "apple-touch-icon",
+        sizes: "180x180",
+        href: "/img/apple-touch-icon.png",
       },
     },
   ],

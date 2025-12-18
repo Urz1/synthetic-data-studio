@@ -3,6 +3,9 @@
  * Custom CSS to match the main app's purple/blue theme
  */
 
+/* Import MDX component styles */
+@import '../components/components.css';
+
 /* Light mode - Purple theme */
 :root {
   --ifm-color-primary: #7c3aed;

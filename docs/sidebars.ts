@@ -9,7 +9,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "doc",
       id: "docs-index",
-      label: "Documentation Home",
+      label: "Documentation Index",
     },
     {
       type: "category",
@@ -71,6 +71,7 @@ const sidebars: SidebarsConfig = {
         "reference/reference-privacy-levels",
         "reference/reference-supported-formats",
         "reference/reference-troubleshooting",
+        "reference/component-guide",
       ],
     },
   ],

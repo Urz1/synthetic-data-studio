@@ -1,4 +1,4 @@
-﻿---
+---
 id: developer-guide-deployment
 title: "Deployment Guide"
 sidebar_label: "Deployment"
@@ -6,11 +6,12 @@ sidebar_position: 5
 slug: /developer-guide/deployment
 tags: [developer, deployment]
 ---
+
 # Deployment Guide
 
 Complete guide for deploying Synthetic Data Studio to production environments, including Docker, cloud platforms, and scaling considerations.
 
-##  Quick Deployment Options
+## Quick Deployment Options
 
 ### Option 1: Docker (Recommended)
 
@@ -26,6 +27,7 @@ docker-compose up -d
 ### Option 2: Cloud Platforms
 
 #### Heroku
+
 ```bash
 # Create Heroku app
 heroku create your-app-name
@@ -39,6 +41,7 @@ git push heroku main
 ```
 
 #### Railway
+
 ```bash
 # Connect GitHub repo to Railway
 # Set environment variables in dashboard
@@ -46,13 +49,14 @@ git push heroku main
 ```
 
 #### Render
+
 ```bash
 # Connect GitHub repo
 # Set build command: pip install -r requirements.txt
 # Set start command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-## � Docker Deployment
+## Docker Deployment
 
 ### Production Dockerfile
 
@@ -103,7 +107,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--worker
 ### Docker Compose for Production
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -181,7 +185,7 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-## ☁ Cloud Platform Deployments
+## ? Cloud Platform Deployments
 
 ### AWS Deployment
 
@@ -197,32 +201,31 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "1024",
   "memory": "2048",
-  "containerDefinitions": [
-    {
-      "name": "app",
-      "image": "your-registry/synth-studio:latest",
-      "essential": true,
-      "portMappings": [
-        {
-          "containerPort": 8000,
-          "hostPort": 8000
-        }
-      ],
-      "environment": [
-        {"name": "SECRET_KEY", "value": "your-secret"},
-        {"name": "DATABASE_URL", "value": "postgresql://..."},
-        {"name": "REDIS_URL", "value": "redis://..."}
-      ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/synth-studio",
-          "awslogs-region": "us-east-1",
-          "awslogs-stream-prefix": "ecs"
-        }
-      }
-    }
-  ]
+  "containerDefinitions":
+    [
+      {
+        "name": "app",
+        "image": "your-registry/synth-studio:latest",
+        "essential": true,
+        "portMappings": [{ "containerPort": 8000, "hostPort": 8000 }],
+        "environment":
+          [
+            { "name": "SECRET_KEY", "value": "your-secret" },
+            { "name": "DATABASE_URL", "value": "postgresql://..." },
+            { "name": "REDIS_URL", "value": "redis://..." },
+          ],
+        "logConfiguration":
+          {
+            "logDriver": "awslogs",
+            "options":
+              {
+                "awslogs-group": "/ecs/synth-studio",
+                "awslogs-region": "us-east-1",
+                "awslogs-stream-prefix": "ecs",
+              },
+          },
+      },
+    ],
 }
 ```
 
@@ -267,8 +270,8 @@ env_variables:
   DATABASE_URL: your-database-url
 
 handlers:
-- url: /.*
-  script: auto
+  - url: /.*
+    script: auto
 ```
 
 ### Azure Deployment
@@ -290,7 +293,7 @@ az container create \
   --dns-name-label synth-studio
 ```
 
-##  Production Configuration
+## ? Production Configuration
 
 ### Environment Variables
 
@@ -414,7 +417,7 @@ celery -A app.core.celery_app worker --loglevel=info --concurrency=4
 celery -A app.core.celery_app beat --loglevel=info
 ```
 
-##  Reverse Proxy Setup
+## Reverse Proxy Setup
 
 ### Nginx Configuration
 
@@ -481,7 +484,7 @@ certbot certonly --nginx -d your-domain.com
 openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
 ```
 
-##  Monitoring & Observability
+## Monitoring & Observability
 
 ### Application Monitoring
 
@@ -561,7 +564,7 @@ def setup_logging():
     logger.addHandler(file_handler)
 ```
 
-##  Scaling Strategies
+## Scaling Strategies
 
 ### Horizontal Scaling
 
@@ -608,10 +611,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 4G
         reservations:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 2G
 ```
 
@@ -632,15 +635,15 @@ spec:
   minReplicas: 2
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
 ```
 
-## � Security Hardening
+## Security Hardening
 
 ### Production Security Checklist
 
@@ -675,7 +678,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 ```
 
-## � Backup & Recovery
+## Backup & Recovery
 
 ### Database Backups
 
@@ -703,7 +706,7 @@ aws s3 sync uploads/ s3://synth-studio-backups/$(date +%Y%m%d)/
 aws s3 sync s3://synth-studio-backups/latest/ uploads/
 ```
 
-##  Performance Optimization
+## Performance Optimization
 
 ### Database Optimization
 
@@ -749,7 +752,7 @@ location /static/ {
 }
 ```
 
-##  Maintenance Tasks
+## Maintenance Tasks
 
 ### Regular Maintenance
 
@@ -792,29 +795,33 @@ if __name__ == "__main__":
     check_health()
 ```
 
-##  Troubleshooting Production Issues
+## Troubleshooting Production Issues
 
 ### Common Production Problems
 
 **High Memory Usage**
+
 ```
 Cause: Large datasets, memory leaks
 Solution: Implement streaming, add memory limits, monitor GC
 ```
 
 **Slow Response Times**
+
 ```
 Cause: Database queries, external API calls
 Solution: Add caching, optimize queries, use async operations
 ```
 
 **Database Connection Pool Exhausted**
+
 ```
 Cause: Too many concurrent connections
 Solution: Increase pool size, implement connection pooling
 ```
 
 **Background Jobs Stuck**
+
 ```
 Cause: Worker crashes, Redis issues
 Solution: Monitor Celery, implement retry logic, add dead letter queues
@@ -823,4 +830,3 @@ Solution: Monitor Celery, implement retry logic, add dead letter queues
 ---
 
 **Ready to deploy?** Start with our [Installation Guide](../getting-started/installation.md) and scale up to production using the configurations above.
-

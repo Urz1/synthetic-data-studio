@@ -1,4 +1,4 @@
-﻿---
+---
 id: developer-guide-testing
 title: "Testing Guide"
 sidebar_label: "Testing"
@@ -6,26 +6,27 @@ sidebar_position: 4
 slug: /developer-guide/testing
 tags: [developer, testing]
 ---
+
 # Testing Guide
 
 Comprehensive guide to testing Synthetic Data Studio, including unit tests, integration tests, end-to-end tests, and testing best practices.
 
-##  Testing Overview
+## Testing Overview
 
 Synthetic Data Studio uses a multi-layered testing approach to ensure code quality, functionality, and reliability:
 
 ### Testing Pyramid
 
 ```
-┌─────────────┐  Few (10-20%)
-│   E2E Tests  │  End-to-end user workflows
-├─────────────┤
-│Integration  │  Component interactions (20-30%)
-│   Tests     │  API endpoints, database operations
-├─────────────┤
-│ Unit Tests  │  Individual functions/classes (50-70%)
-│             │  Business logic, utilities
-└─────────────┘
++-------------+  Few (10-20%)
+�   E2E Tests  �  End-to-end user workflows
++-------------�
+�Integration  �  Component interactions (20-30%)
+�   Tests     �  API endpoints, database operations
++-------------�
+� Unit Tests  �  Individual functions/classes (50-70%)
+�             �  Business logic, utilities
++-------------+
 ```
 
 ### Test Categories
@@ -36,7 +37,7 @@ Synthetic Data Studio uses a multi-layered testing approach to ensure code quali
 - **Security Tests**: Test authentication, authorization, and privacy
 - **Performance Tests**: Test scalability and resource usage
 
-##  Quick Start Testing
+## Quick Start Testing
 
 ### Install Test Dependencies
 
@@ -80,29 +81,29 @@ pytest tests/e2e/
 pytest tests/security/
 ```
 
-##  Test Structure
+## Test Structure
 
 ### Directory Organization
 
 ```
 tests/
-├── conftest.py              # Shared test fixtures and configuration
-├── unit/                    # Unit tests
-│   ├── test_auth.py         # Authentication logic tests
-│   ├── test_generators.py   # Generator service tests
-│   ├── test_evaluations.py  # Evaluation logic tests
-│   └── test_utils.py        # Utility function tests
-├── integration/             # Integration tests
-│   ├── test_api.py          # API endpoint tests
-│   ├── test_database.py     # Database operation tests
-│   └── test_services.py     # Service integration tests
-├── e2e/                     # End-to-end tests
-│   ├── test_workflows.py    # Complete user workflows
-│   └── test_data_pipeline.py # Data processing pipelines
-└── security/                # Security-specific tests
-    ├── test_auth_security.py # Authentication security
-    ├── test_dp_security.py  # Differential privacy validation
-    └── test_api_security.py # API security tests
++-- conftest.py              # Shared test fixtures and configuration
++-- unit/                    # Unit tests
+�   +-- test_auth.py         # Authentication logic tests
+�   +-- test_generators.py   # Generator service tests
+�   +-- test_evaluations.py  # Evaluation logic tests
+�   +-- test_utils.py        # Utility function tests
++-- integration/             # Integration tests
+�   +-- test_api.py          # API endpoint tests
+�   +-- test_database.py     # Database operation tests
+�   +-- test_services.py     # Service integration tests
++-- e2e/                     # End-to-end tests
+�   +-- test_workflows.py    # Complete user workflows
+�   +-- test_data_pipeline.py # Data processing pipelines
++-- security/                # Security-specific tests
+    +-- test_auth_security.py # Authentication security
+    +-- test_dp_security.py  # Differential privacy validation
+    +-- test_api_security.py # API security tests
 ```
 
 ### Test Naming Conventions
@@ -123,7 +124,7 @@ def test_complete_synthesis_workflow():
 def test_user_registration_to_generation():
 ```
 
-##  Testing Tools & Frameworks
+## ? Testing Tools & Frameworks
 
 ### Core Testing Framework
 
@@ -216,7 +217,7 @@ async def auth_token(client, test_user):
     return response.json()["access_token"]
 ```
 
-##  Writing Tests
+## ? Writing Tests
 
 ### Unit Test Example
 
@@ -392,7 +393,7 @@ class TestSynthesisWorkflow:
         # assert download_response.status_code == 200
 ```
 
-##  Security Testing
+## Security Testing
 
 ### Authentication Tests
 
@@ -456,7 +457,7 @@ class TestDifferentialPrivacy:
         # (Implementation would check actual noise application)
 ```
 
-##  Test Coverage & Quality
+## Test Coverage & Quality
 
 ### Coverage Requirements
 
@@ -471,13 +472,13 @@ open htmlcov/index.html
 
 ### Coverage Goals by Module
 
-| Module | Target Coverage | Rationale |
-|--------|----------------|-----------|
-| Core (config, utils) | 90% | Critical infrastructure |
-| Services | 85% | Business logic |
-| Routes | 80% | API endpoints |
-| Models | 75% | Data structures |
-| Tests | N/A | Test code itself |
+| Module               | Target Coverage | Rationale               |
+| -------------------- | --------------- | ----------------------- |
+| Core (config, utils) | 90%             | Critical infrastructure |
+| Services             | 85%             | Business logic          |
+| Routes               | 80%             | API endpoints           |
+| Models               | 75%             | Data structures         |
+| Tests                | N/A             | Test code itself        |
 
 ### Code Quality Metrics
 
@@ -489,7 +490,7 @@ isort --check-only --diff app/ tests/
 mypy app/ --ignore-missing-imports
 ```
 
-##  Continuous Integration
+## ? Continuous Integration
 
 ### GitHub Actions Example
 
@@ -507,25 +508,25 @@ jobs:
         python-version: [3.9, 3.10, 3.11]
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-    - name: Run tests
-      run: pytest --cov=app --cov-report=xml
+      - name: Run tests
+        run: pytest --cov=app --cov-report=xml
 
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
 ```
 
 ### Pre-commit Hooks
@@ -558,7 +559,7 @@ repos:
       - id: flake8
 ```
 
-##  Testing Best Practices
+## Testing Best Practices
 
 ### Test Organization
 
@@ -614,11 +615,12 @@ def test_database_operation(db_session):
     # Cleanup happens automatically with fixtures
 ```
 
-## � Debugging Tests
+## Debugging Tests
 
 ### Common Issues
 
 **Test Isolation Problems**
+
 ```python
 # Problem: Tests affect each other through shared state
 # Solution: Use unique test data and proper cleanup
@@ -635,6 +637,7 @@ def test_create_another_user(db_session):  # This might fail if previous test's 
 ```
 
 **Async Test Issues**
+
 ```python
 # Problem: Forgetting await
 async def test_async_function():
@@ -648,6 +651,7 @@ async def test_async_endpoint(client):
 ```
 
 **Fixture Scoping Issues**
+
 ```python
 # Problem: Using session-scoped fixtures for unit tests
 @pytest.fixture(scope="session")  # Too broad scope
@@ -660,7 +664,7 @@ def db_session():
     # Fresh session for each test
 ```
 
-##  Performance Testing
+## Performance Testing
 
 ### Load Testing
 
@@ -702,7 +706,7 @@ def test_memory_usage():
     assert peak < 100 * 1024 * 1024  # Less than 100MB
 ```
 
-##  Test Maintenance
+## Test Maintenance
 
 ### Regular Maintenance Tasks
 
@@ -734,7 +738,7 @@ def test_complex_business_logic():
     pass
 ```
 
-##  Success Metrics
+## Success Metrics
 
 ### Test Quality Metrics
 
@@ -753,4 +757,3 @@ def test_complex_business_logic():
 ---
 
 **Ready to contribute?** Check our [Contributing Guide](../../CONTRIBUTING.md) for testing guidelines and run `pytest` to ensure your changes don't break existing functionality.
-

@@ -1,4 +1,4 @@
-﻿---
+---
 id: developer-guide-index
 title: "Developer Guide"
 sidebar_label: "Developer Guide"

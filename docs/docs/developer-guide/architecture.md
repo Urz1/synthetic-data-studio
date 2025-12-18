@@ -1,4 +1,4 @@
-﻿---
+---
 id: developer-guide-architecture
 title: "System Architecture"
 sidebar_label: "Architecture"
@@ -6,121 +6,129 @@ sidebar_position: 1
 slug: /developer-guide/architecture
 tags: [developer, architecture]
 ---
+
 # System Architecture
 
 This document provides a comprehensive overview of Synthetic Data Studio's system architecture, design principles, and technical implementation.
 
-##  High-Level Architecture
+## ? High-Level Architecture
 
 ### System Overview
 
 Synthetic Data Studio is built as a modern, scalable web application using FastAPI and follows a modular, service-oriented architecture.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    SYNTHETIC DATA STUDIO                    │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
-│  │   Web API   │ │ Background  │ │   AI/LLM   │ │ Storage │ │
-│  │  (FastAPI)  │ │  Workers    │ │  Services  │ │ Service │ │
-│  │             │ │ (Celery)    │ │ (Gemini)   │ │ (S3)    │ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
-│  │  Business   │ │   Data      │ │ Repository │ │  Core   │ │
-│  │  Services   │ │   Models    │ │   Layer    │ │ Services│ │
-│  │             │ │ (SQLModel)  │ │ (CRUD)     │ │         │ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                 DATABASE LAYER                          │ │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │ │
-│  │  │ PostgreSQL  │ │  SQLite    │ │   Redis     │        │ │
-│  │  │ (Primary)   │ │ (Dev/Test) │ │ (Caching)   │        │ │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+�                    SYNTHETIC DATA STUDIO                    �
++-------------------------------------------------------------�
+�  +-------------+ +-------------+ +-------------+ +---------+ �
+�  �   Web API   � � Background  � �   AI/LLM   � � Storage � �
+�  �  (FastAPI)  � �  Workers    � �  Services  � � Service � �
+�  �             � � (Celery)    � � (Gemini)   � � (S3)    � �
+�  +-------------+ +-------------+ +-------------+ +---------+ �
++-------------------------------------------------------------�
+�  +-------------+ +-------------+ +-------------+ +---------+ �
+�  �  Business   � �   Data      � � Repository � �  Core   � �
+�  �  Services   � �   Models    � �   Layer    � � Services� �
+�  �             � � (SQLModel)  � � (CRUD)     � �         � �
+�  +-------------+ +-------------+ +-------------+ +---------+ �
++-------------------------------------------------------------�
+�  +---------------------------------------------------------+ �
+�  �                 DATABASE LAYER                          � �
+�  �  +-------------+ +-------------+ +-------------+        � �
+�  �  � PostgreSQL  � �  SQLite    � �   Redis     �        � �
+�  �  � (Primary)   � � (Dev/Test) � � (Caching)   �        � �
+�  �  +-------------+ +-------------+ +-------------+        � �
+�  +---------------------------------------------------------+ �
++-------------------------------------------------------------+
 ```
 
-##  Architectural Principles
+## Architectural Principles
 
 ### 1. Modular Design
+
 - **Separation of Concerns**: Each module has a single responsibility
 - **Dependency Injection**: Clean interfaces between components
 - **Plugin Architecture**: Extensible service implementations
 
 ### 2. API-First Design
+
 - **RESTful APIs**: Consistent, versioned endpoints
 - **OpenAPI Specification**: Auto-generated API documentation
 - **Type Safety**: Pydantic models for request/response validation
 
 ### 3. Privacy by Design
+
 - **Differential Privacy**: Mathematical privacy guarantees built-in
 - **Safety Validation**: Multi-layer privacy checks
 - **Audit Trail**: Comprehensive logging for compliance
 
 ### 4. Scalability & Performance
+
 - **Asynchronous Processing**: Background jobs for long-running tasks
 - **Caching Strategy**: Redis for session and result caching
 - **Resource Optimization**: GPU support for ML workloads
 
-##  Directory Structure
+## Directory Structure
 
 ### Root Level
+
 ```
 backend/
-├── app/                    # Main application code
-├── docs/                   # Documentation
-├── tests/                  # Test suites
-├── scripts/                # Utility scripts
-├── requirements*.txt       # Python dependencies
-├── pytest.ini             # Test configuration
-├── Dockerfile             # Container definition
-└── docker-compose.yml     # Local development stack
++-- app/                    # Main application code
++-- docs/                   # Documentation
++-- tests/                  # Test suites
++-- scripts/                # Utility scripts
++-- requirements*.txt       # Python dependencies
++-- pytest.ini             # Test configuration
++-- Dockerfile             # Container definition
++-- docker-compose.yml     # Local development stack
 ```
 
 ### Application Structure (`app/`)
+
 ```
 app/
-├── main.py                # FastAPI application entry point
-├── api.py                 # API router aggregation
-├── core/                  # Core functionality
-│   ├── config.py          # Configuration management
-│   ├── dependencies.py    # Dependency injection
-│   ├── exceptions.py      # Custom exceptions
-│   ├── security.py        # Authentication & authorization
-│   ├── utils.py           # Utility functions
-│   └── validators.py      # Input validation
-├── auth/                  # Authentication module
-│   ├── models.py          # User models
-│   ├── repositories.py    # User data access
-│   ├── routes.py          # Auth endpoints
-│   ├── schemas.py         # Auth request/response models
-│   └── services.py        # Auth business logic
-├── datasets/              # Dataset management
-├── generators/            # Synthesis orchestration
-├── evaluations/           # Quality assessment
-├── llm/                   # AI features
-├── models/                # ML model management
-├── compliance/            # Compliance endpoints
-├── jobs/                  # Background job processing
-├── projects/              # Project management
-├── services/              # Business logic services
-│   ├── synthesis/         # ML synthesis implementations
-│   ├── privacy/           # Privacy validation & reporting
-│   └── llm/               # AI service integrations
-├── database/              # Database layer
-│   ├── database.py        # Connection management
-│   ├── models/            # Base models
-│   └── migrations/        # Schema migrations
-└── storage/               # File storage abstraction
++-- main.py                # FastAPI application entry point
++-- api.py                 # API router aggregation
++-- core/                  # Core functionality
+�   +-- config.py          # Configuration management
+�   +-- dependencies.py    # Dependency injection
+�   +-- exceptions.py      # Custom exceptions
+�   +-- security.py        # Authentication & authorization
+�   +-- utils.py           # Utility functions
+�   +-- validators.py      # Input validation
++-- auth/                  # Authentication module
+�   +-- models.py          # User models
+�   +-- repositories.py    # User data access
+�   +-- routes.py          # Auth endpoints
+�   +-- schemas.py         # Auth request/response models
+�   +-- services.py        # Auth business logic
++-- datasets/              # Dataset management
++-- generators/            # Synthesis orchestration
++-- evaluations/           # Quality assessment
++-- llm/                   # AI features
++-- models/                # ML model management
++-- compliance/            # Compliance endpoints
++-- jobs/                  # Background job processing
++-- projects/              # Project management
++-- services/              # Business logic services
+�   +-- synthesis/         # ML synthesis implementations
+�   +-- privacy/           # Privacy validation & reporting
+�   +-- llm/               # AI service integrations
++-- database/              # Database layer
+�   +-- database.py        # Connection management
+�   +-- models/            # Base models
+�   +-- migrations/        # Schema migrations
++-- storage/               # File storage abstraction
 ```
 
-##  Core Components
+## ? Core Components
 
 ### FastAPI Application Layer
 
 #### Main Application (`main.py`)
+
 ```python
 # Application initialization
 app = FastAPI(
@@ -148,6 +156,7 @@ async def lifespan(app: FastAPI):
 ```
 
 #### API Router Aggregation (`api.py`)
+
 ```python
 # Centralized router loading
 modules_to_load = [
@@ -169,6 +178,7 @@ for module in modules_to_load:
 ### Data Models & Persistence
 
 #### SQLModel Integration
+
 ```python
 # Base model with common fields
 class BaseModel(SQLModel):
@@ -187,6 +197,7 @@ class Generator(BaseModel, table=True):
 ```
 
 #### Repository Pattern
+
 ```python
 class GeneratorRepository:
     def __init__(self, session: Session):
@@ -209,6 +220,7 @@ class GeneratorRepository:
 ### Service Layer Architecture
 
 #### Business Logic Services
+
 ```python
 class GeneratorService:
     def __init__(self, repository: GeneratorRepository):
@@ -227,6 +239,7 @@ class GeneratorService:
 ```
 
 #### Synthesis Services
+
 ```python
 class CTGANService:
     def __init__(self, config: DPConfig):
@@ -248,6 +261,7 @@ class CTGANService:
 ### Background Processing
 
 #### Celery Integration
+
 ```python
 # Task definition
 @celery_app.task(bind=True)
@@ -270,6 +284,7 @@ def generate_synthetic_data(self, generator_id: str):
 ```
 
 #### Job Management
+
 ```python
 class JobManager:
     def __init__(self, celery_app):
@@ -290,11 +305,12 @@ class JobManager:
         )
 ```
 
-## � Security Architecture
+## Security Architecture
 
 ### Authentication & Authorization
 
 #### JWT-Based Auth
+
 ```python
 class AuthService:
     def __init__(self, secret_key: str, algorithm: str):
@@ -316,6 +332,7 @@ class AuthService:
 ```
 
 #### Role-Based Access Control
+
 ```python
 class PermissionChecker:
     def __init__(self, user: User):
@@ -335,6 +352,7 @@ class PermissionChecker:
 ### Privacy & Compliance
 
 #### Differential Privacy Framework
+
 ```python
 class DPFramework:
     def __init__(self, accountant: PrivacyAccountant):
@@ -354,6 +372,7 @@ class DPFramework:
 ```
 
 #### Audit Logging
+
 ```python
 class AuditLogger:
     def __init__(self, logger: logging.Logger):
@@ -373,47 +392,48 @@ class AuditLogger:
         )
 ```
 
-##  Data Flow Architecture
+## Data Flow Architecture
 
 ### Synthesis Pipeline
 
 ```
 Raw Data Input
-       ↓
+       ?
 Data Validation & Profiling
-       ↓
+       ?
 Privacy Configuration Validation
-       ↓
+       ?
 Background Job Submission
-       ↓
+       ?
 ML Model Training (GPU/CPU)
-       ↓
+       ?
 Privacy Accounting & Validation
-       ↓
+       ?
 Synthetic Data Generation
-       ↓
+       ?
 Quality Evaluation
-       ↓
+       ?
 Result Storage & Notification
 ```
 
 ### API Request Flow
 
 ```
-HTTP Request → Middleware (CORS, Auth) → Route Handler → Service Layer → Repository → Database
-                                                                 ↓
-Response ← JSON Serialization ← Pydantic Models ← Business Logic ← Data Access
+HTTP Request ? Middleware (CORS, Auth) ? Route Handler ? Service Layer ? Repository ? Database
+                                                                 ?
+Response ? JSON Serialization ? Pydantic Models ? Business Logic ? Data Access
 ```
 
 ### Background Job Flow
 
 ```
-API Request → Job Submission → Queue (Redis) → Worker (Celery) → Task Execution → Result Storage → Notification
+API Request ? Job Submission ? Queue (Redis) ? Worker (Celery) ? Task Execution ? Result Storage ? Notification
 ```
 
-##  Configuration Management
+## ? Configuration Management
 
 ### Environment-Based Config
+
 ```python
 class Settings(BaseSettings):
     # Database
@@ -438,6 +458,7 @@ class Settings(BaseSettings):
 ```
 
 ### Dependency Injection
+
 ```python
 def get_db() -> Generator[Session, None, None]:
     """Database session dependency."""
@@ -470,59 +491,65 @@ def get_current_user(
     return user
 ```
 
-##  Scalability Considerations
+## Scalability Considerations
 
 ### Horizontal Scaling
+
 - **Stateless API**: No server-side session storage
 - **Database Connection Pooling**: Efficient connection management
 - **Background Job Distribution**: Multiple worker processes
 - **Load Balancing**: API gateway for traffic distribution
 
 ### Performance Optimization
+
 - **Async/Await**: Non-blocking I/O operations
 - **Caching**: Redis for frequently accessed data
 - **Database Indexing**: Optimized queries
 - **GPU Support**: CUDA acceleration for ML workloads
 
 ### Monitoring & Observability
+
 - **Structured Logging**: JSON-formatted logs
 - **Metrics Collection**: Prometheus-compatible metrics
 - **Health Checks**: Application and dependency monitoring
 - **Distributed Tracing**: Request flow tracking
 
-##  Testing Architecture
+## Testing Architecture
 
 ### Test Pyramid
+
 ```
-┌─────────────┐  Few (Integration/E2E)
-│   E2E Tests  │
-├─────────────┤
-│Integration  │  Some
-│   Tests     │
-├─────────────┤
-│ Unit Tests  │  Many
-│             │
-└─────────────┘
++-------------+  Few (Integration/E2E)
+�   E2E Tests  �
++-------------�
+�Integration  �  Some
+�   Tests     �
++-------------�
+� Unit Tests  �  Many
+�             �
++-------------+
 ```
 
 ### Test Structure
+
 ```
 tests/
-├── unit/              # Unit tests
-│   ├── test_services/ # Service layer tests
-│   ├── test_models/   # Model tests
-│   └── test_utils/    # Utility tests
-├── integration/       # Integration tests
-│   ├── test_api/      # API endpoint tests
-│   └── test_db/       # Database integration
-├── e2e/               # End-to-end tests
-│   └── test_workflows/# Complete workflow tests
-└── conftest.py        # Test configuration
++-- unit/              # Unit tests
+�   +-- test_services/ # Service layer tests
+�   +-- test_models/   # Model tests
+�   +-- test_utils/    # Utility tests
++-- integration/       # Integration tests
+�   +-- test_api/      # API endpoint tests
+�   +-- test_db/       # Database integration
++-- e2e/               # End-to-end tests
+�   +-- test_workflows/# Complete workflow tests
++-- conftest.py        # Test configuration
 ```
 
-##  Deployment Architecture
+## Deployment Architecture
 
 ### Containerized Deployment
+
 ```dockerfile
 FROM python:3.9-slim
 
@@ -550,34 +577,37 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ### Production Stack
+
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Load Balancer │    │   API Gateway   │    │   Application   │
-│    (Nginx)      │────│   (Kong/Traefik)│────│    (FastAPI)    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                        │                        │
-         │                        │                        │
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Redis Cache   │    │   PostgreSQL    │    │   Background    │
-│                 │    │   Database      │    │   Workers       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
++-----------------+    +-----------------+    +-----------------+
+�   Load Balancer �    �   API Gateway   �    �   Application   �
+�    (Nginx)      �----�   (Kong/Traefik)�----�    (FastAPI)    �
++-----------------+    +-----------------+    +-----------------+
+         �                        �                        �
+         �                        �                        �
++-----------------+    +-----------------+    +-----------------+
+�   Redis Cache   �    �   PostgreSQL    �    �   Background    �
+�                 �    �   Database      �    �   Workers       �
++-----------------+    +-----------------+    +-----------------+
 ```
 
-##  Integration Points
+## Integration Points
 
 ### External Services
+
 - **AI Providers**: Google Gemini, Groq for LLM features
 - **Cloud Storage**: AWS S3, Google Cloud Storage
 - **Monitoring**: Prometheus, Grafana for observability
 - **Logging**: ELK stack for log aggregation
 
 ### API Ecosystem
+
 - **REST API**: Primary interface for web/mobile clients
 - **GraphQL**: Optional for complex data requirements
 - **Webhooks**: Event-driven integrations
 - **Streaming**: Real-time progress updates
 
-##  Further Reading
+## Further Reading
 
 - **[API Examples](../examples/)**: Code examples and API usage
 - **[Development Setup](development-setup.md)**: Local development environment
@@ -587,4 +617,3 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ---
 
 **Need help understanding the architecture?** Check our [Development Setup Guide](development-setup.md) to get started with local development.
-
