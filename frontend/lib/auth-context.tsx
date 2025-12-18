@@ -24,11 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
+      console.log("[Auth] Starting checkAuth...")
       let token = api.getToken()
+      console.log("[Auth] Token from api.getToken():", token ? "EXISTS" : "NULL")
 
       // If we don't have a client token yet, try to recover it from the
       // httpOnly session cookie via a server-validated endpoint.
       if (!token) {
+        console.log("[Auth] No token, trying /api/auth/session...")
         try {
           const res = await fetch("/api/auth/session", {
             method: "GET",
@@ -36,31 +39,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             credentials: "include",
           })
 
+          console.log("[Auth] /api/auth/session response:", res.status)
           if (res.ok) {
             const data = (await res.json()) as { ok: boolean; token?: string; user?: User }
             if (data?.ok && data.token) {
               api.setToken(data.token)
               token = data.token
               if (data.user) {
+                console.log("[Auth] User from session:", data.user.email)
                 setUser(data.user)
                 setLoading(false)
                 return
               }
             }
           }
-        } catch {
+        } catch (e) {
+          console.log("[Auth] Session fetch error:", e)
           // ignore and fall back to unauthenticated
         }
       }
 
       if (token) {
+        console.log("[Auth] Token exists, calling getCurrentUser...")
         try {
           const currentUser = await api.getCurrentUser()
+          console.log("[Auth] getCurrentUser success:", currentUser?.email)
           setUser(currentUser)
-        } catch {
+        } catch (e) {
+          console.log("[Auth] getCurrentUser FAILED:", e)
           // Token is invalid, clear it
           api.setToken(null)
         }
+      } else {
+        console.log("[Auth] No token found, user is unauthenticated")
       }
       setLoading(false)
     }
