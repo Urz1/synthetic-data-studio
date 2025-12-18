@@ -1,0 +1,356 @@
+/* HeroStory Animation Keyframes - Side-by-Side Layout */
+/* Duration: 400ms fade, 600ms morph, 200ms pulse; cubic-bezier(0.4, 0, 0.2, 1) */
+
+.heroStory {
+    position: relative;
+}
+
+/* ============================================
+   LAYOUT
+   ============================================ */
+
+.animationPane {
+    perspective: 1000px;
+}
+
+.animationContainer {
+    transition: transform 300ms ease;
+}
+
+.animationContainer:hover {
+    transform: translateY(-4px);
+}
+
+.textPane {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
+   SLIDE IN ANIMATIONS
+   ============================================ */
+
+.slideIn {
+    animation: slideIn 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.fadeInLeft {
+    animation: fadeInLeft 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.fadeInRight {
+    animation: fadeInRight 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.fadeInUp {
+    animation: fadeInUp 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    opacity: 0;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   SCENE 1: PRIVACY ANIMATION
+   ============================================ */
+
+.dataCard {
+    transition: all 300ms ease;
+}
+
+.dataCard:hover {
+    transform: scale(1.02);
+}
+
+.redact {
+    animation: redact 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: 400ms;
+}
+
+@keyframes redact {
+    0% {
+        background-color: transparent;
+    }
+
+    50% {
+        background-color: hsl(var(--destructive) / 0.3);
+        filter: blur(2px);
+    }
+
+    100% {
+        background-color: transparent;
+        filter: blur(0);
+    }
+}
+
+.scaleIn {
+    animation: scaleIn 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: 200ms;
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.shieldPulse {
+    animation: shieldPulse 2s ease-in-out infinite;
+}
+
+@keyframes shieldPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.shieldGlow {
+    animation: shieldGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes shieldGlow {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 0 transparent);
+    }
+
+    50% {
+        filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.5));
+    }
+}
+
+.checkAppear {
+    animation: checkAppear 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: 600ms;
+    opacity: 0;
+    transform: scale(0);
+}
+
+@keyframes checkAppear {
+    from {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ============================================
+   SCENE 2: SCHEMA ANIMATION
+   ============================================ */
+
+.schemaCard,
+.rowsCard {
+    transition: all 300ms ease;
+}
+
+.typeLine {
+    opacity: 0;
+    animation: typeLine 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes typeLine {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.printRow {
+    opacity: 0;
+    animation: printRow 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes printRow {
+    from {
+        opacity: 0;
+        background-color: hsl(var(--primary) / 0.2);
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        background-color: hsl(var(--muted) / 0.5);
+        transform: translateY(0);
+    }
+}
+
+.arrowPulse {
+    animation: arrowPulse 1500ms ease-in-out infinite;
+}
+
+@keyframes arrowPulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: translateX(0);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateX(5px);
+    }
+}
+
+/* ============================================
+   SCENE 3: REPORT ANIMATION
+   ============================================ */
+
+.reportCard {
+    transform-style: preserve-3d;
+}
+
+.cardFlip {
+    animation: cardFlip 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes cardFlip {
+    from {
+        transform: rotateY(-15deg) scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: rotateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.badgeDrop {
+    opacity: 0;
+    animation: badgeDrop 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes badgeDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-15px) scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.downloadBounce {
+    opacity: 0;
+    animation: downloadBounce 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes downloadBounce {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    60% {
+        opacity: 1;
+        transform: translateY(3px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .slideIn,
+    .fadeInLeft,
+    .fadeInRight,
+    .fadeInUp,
+    .scaleIn,
+    .shieldPulse,
+    .shieldGlow,
+    .checkAppear,
+    .typeLine,
+    .printRow,
+    .arrowPulse,
+    .cardFlip,
+    .badgeDrop,
+    .downloadBounce,
+    .redact {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}

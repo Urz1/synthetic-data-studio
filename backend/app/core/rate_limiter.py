@@ -112,10 +112,14 @@ RATE_LIMITS = {
     "default": {"limit": 200, "window": 60},  # 200 per minute
 }
 
+# Debug mode multiplier - increase limits for easier testing
+DEBUG_RATE_LIMIT_MULTIPLIER = 10
+
 
 def get_rate_limit_config(path: str) -> dict:
     """Get rate limit configuration for a path."""
     import re
+    from app.core.config import settings
     
     # Check specific patterns
     for pattern, config in RATE_LIMITS.items():
@@ -125,9 +129,15 @@ def get_rate_limit_config(path: str) -> dict:
         # Convert pattern to regex
         regex_pattern = pattern.replace("*", "[^/]+")
         if re.match(f"^{regex_pattern}$", path):
+            # Apply debug multiplier if in debug mode
+            if settings.debug:
+                return {"limit": config["limit"] * DEBUG_RATE_LIMIT_MULTIPLIER, "window": config["window"]}
             return config
     
-    return RATE_LIMITS["default"]
+    default_config = RATE_LIMITS["default"]
+    if settings.debug:
+        return {"limit": default_config["limit"] * DEBUG_RATE_LIMIT_MULTIPLIER, "window": default_config["window"]}
+    return default_config
 
 
 def get_client_identifier(request: Request) -> str:

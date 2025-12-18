@@ -4,9 +4,12 @@ from dataclasses import dataclass
 import os
 import sys
 from typing import List
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Ensure we load the backend-local .env regardless of CWD.
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=_BACKEND_ROOT / ".env")
 
 
 @dataclass
@@ -35,6 +38,11 @@ class Settings:
         """Validate critical settings after initialization."""
         import logging
         logger = logging.getLogger(__name__)
+
+        allow_unsafe = (
+            os.getenv("TESTING") == "1" or
+            os.getenv("ALEMBIC_RUNNING") == "1"
+        )
         
         # Secret key validation
         if not self.secret_key or self.secret_key == "change-me":
@@ -49,7 +57,14 @@ class Settings:
             logger.critical("2. Set it in your .env file: SECRET_KEY=your_generated_key")
             logger.critical("3. Restart the server")
             logger.critical("=" * 60)
-            sys.exit(1)
+
+            if allow_unsafe:
+                # Migrations/tests shouldn't hard-exit the process.
+                # Keep it deterministic but obviously not secure.
+                self.secret_key = "insecure-dev-secret-key"
+                logger.critical("Continuing because TESTING/ALEMBIC_RUNNING is set.")
+            else:
+                sys.exit(1)
         
         # CORS configuration
         if self.allowed_origins is None:

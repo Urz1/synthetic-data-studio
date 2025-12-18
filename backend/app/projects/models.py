@@ -15,3 +15,9 @@ class Project(SQLModel, table=True):
     default_retention_days: int = Field(default=30)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    
+    # Audit trail fields
+    created_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
+    deleted_at: Optional[datetime.datetime] = Field(default=None)
+    deleted_by: Optional[uuid.UUID] = Field(default=None)
+

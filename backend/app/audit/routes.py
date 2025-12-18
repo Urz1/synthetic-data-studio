@@ -75,6 +75,23 @@ def list_audit_logs(
     return logs
 
 
+@router.get("/my-activity", response_model=List[AuditLogResponse])
+def get_my_activity(
+    limit: int = Query(10, ge=1, le=100, description="Maximum results"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get the current user's own audit logs.
+    
+    Any authenticated user can access their own activity history.
+    This is a non-admin endpoint for users to see their recent actions.
+    """
+    logs = get_user_audit_logs(db, current_user.id, limit, offset)
+    return logs
+
+
 @router.get("/{audit_log_id}", response_model=AuditLogResponse)
 def get_audit_log(
     audit_log_id: str,

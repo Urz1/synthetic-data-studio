@@ -14,17 +14,7 @@ import { api } from "@/lib/api"
 import type { Evaluation, Generator, Dataset } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { useToast } from "@/hooks/use-toast"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 
 export default function EvaluationDetailPage() {
   const params = useParams()
@@ -38,6 +28,8 @@ export default function EvaluationDetailPage() {
   const [dataset, setDataset] = React.useState<Dataset | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const { toast } = useToast()
   const [loadingImprovements, setLoadingImprovements] = React.useState(false)
   const [improvements, setImprovements] = React.useState<any>(null)
@@ -131,18 +123,30 @@ export default function EvaluationDetailPage() {
 
   async function handleDelete() {
     try {
-      await api.deleteEvaluation(id)
+      setIsDeleting(true)
+      
       toast({
-        title: "Deleted",
-        description: "Evaluation has been deleted successfully.",
+        title: `Deleting evaluation...`,
+        description: "Please wait while the evaluation is being removed.",
       })
+      
+      await api.deleteEvaluation(id)
+      
+      toast({
+        title: "Evaluation deleted",
+        description: "The evaluation has been permanently removed.",
+      })
+      
       router.push("/evaluations")
     } catch (err) {
       toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to delete evaluation",
+        title: "Could not delete evaluation",
+        description: "Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
     }
   }
 
@@ -325,32 +329,43 @@ export default function EvaluationDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {improvements.suggestions.map((suggestion: any, idx: number) => (
-                      <div key={idx} className="border-l-2 border-primary pl-4 py-2">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm mb-1">{suggestion.area || `Suggestion ${idx + 1}`}</h4>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {suggestion.suggestion || suggestion.message}
-                            </p>
-                            {suggestion.implementation && (
-                              <div className="bg-muted p-2 rounded text-xs mt-2">
-                                <span className="font-medium">Implementation: </span>
-                                {suggestion.implementation}
+                    {improvements.suggestions.map((suggestion: any, idx: number) => {
+                      // Handle both string and object formats from backend
+                      const isString = typeof suggestion === 'string'
+                      const displayText = isString 
+                        ? suggestion 
+                        : (suggestion.suggestion || suggestion.message || suggestion.text || JSON.stringify(suggestion))
+                      const area = isString ? null : suggestion.area
+                      
+                      return (
+                        <div key={idx} className="border-l-2 border-primary pl-4 py-2">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm mb-1">
+                                {area || `Suggestion ${idx + 1}`}
+                              </h4>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {displayText}
+                              </p>
+                              {!isString && suggestion.implementation && (
+                                <div className="bg-muted p-2 rounded text-xs mt-2">
+                                  <span className="font-medium">Implementation: </span>
+                                  {suggestion.implementation}
+                                </div>
+                              )}
+                            </div>
+                            {!isString && suggestion.current_value !== undefined && suggestion.target_value !== undefined && (
+                              <div className="text-right">
+                                <div className="text-xs text-muted-foreground">Current</div>
+                                <div className="text-sm font-medium">{(suggestion.current_value * 100).toFixed(1)}%</div>
+                                <div className="text-xs text-muted-foreground mt-1">Target</div>
+                                <div className="text-sm font-medium text-primary">{(suggestion.target_value * 100).toFixed(1)}%</div>
                               </div>
                             )}
                           </div>
-                          {suggestion.current_value !== undefined && suggestion.target_value !== undefined && (
-                            <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Current</div>
-                              <div className="text-sm font-medium">{(suggestion.current_value * 100).toFixed(1)}%</div>
-                              <div className="text-xs text-muted-foreground mt-1">Target</div>
-                              <div className="text-sm font-medium text-primary">{(suggestion.target_value * 100).toFixed(1)}%</div>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -441,31 +456,24 @@ export default function EvaluationDetailPage() {
                 <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
               </CardHeader>
               <CardContent>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="w-full">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Evaluation
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Evaluation</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this evaluation? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Evaluation
+                </Button>
+                
+                <DeleteConfirmationDialog
+                  entityType="Evaluation"
+                  entityName={`Evaluation ${evaluation.id.slice(0, 8)}`}
+                  open={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                  onConfirm={handleDelete}
+                  isDeleting={isDeleting}
+                />
               </CardContent>
             </Card>
           </div>

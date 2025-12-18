@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 # Third-party
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -195,6 +195,14 @@ async def suggest_improvements(
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
     
+    # SECURITY: Verify ownership (admin can view any)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if evaluation.created_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this evaluation"
+        )
+    
     try:
         chat_service = ChatService()
         suggestions = await chat_service.suggest_improvements(evaluation.report)
@@ -283,19 +291,59 @@ async def detect_pii(
         
     try:
         detector = EnhancedPIIDetector()
-        # Convert list of dicts to format expected by detector if needed
-        # For now, assuming detector handles it or we mock it
-        analysis = await detector.analyze_dataset(request.data) # This might need adjustment based on detector API
-        return analysis
-    except Exception as e:
-        # Fallback if detector fails or API mismatch
-        logger.error(f"PII detection failed: {e}")
-        # Return dummy response for now if detector fails (to pass tests)
-        # But ideally we should fix the detector call
+        
+        # Convert list of dicts to column-based format expected by detector
+        # Input: [{"name": "John", "email": "john@example.com"}, ...]
+        # Output: {"name": {"samples": ["John", ...], "stats": {...}}, ...}
+        columns_data: Dict[str, Dict[str, Any]] = {}
+        
+        for record in request.data:
+            if isinstance(record, dict):
+                for col_name, value in record.items():
+                    if col_name not in columns_data:
+                        columns_data[col_name] = {"samples": [], "stats": {"dtype": "object"}}
+                    columns_data[col_name]["samples"].append(value)
+        
+        if not columns_data:
+            raise HTTPException(status_code=422, detail="No valid columns found in data")
+        
+        # Add basic stats
+        for col_name, col_data in columns_data.items():
+            samples = col_data["samples"]
+            col_data["stats"] = {
+                "dtype": "object",
+                "unique_count": len(set(str(s) for s in samples)),
+                "total_count": len(samples)
+            }
+        
+        analysis = await detector.analyze_dataset(columns_data)
+        
+        # Also return in a format friendly for the frontend
+        pii_detected = []
+        for col_name, col_analysis in analysis.get("column_analyses", {}).items():
+            if col_analysis.get("contains_pii"):
+                pii_detected.append({
+                    "field": col_name,
+                    "type": col_analysis.get("pii_type", "unknown"),
+                    "confidence": col_analysis.get("confidence", 0),
+                    "risk_level": col_analysis.get("risk_level", "unknown")
+                })
+        
         return {
-            "overall_risk_level": "low",
-            "pii_detected": []
+            "overall_risk_level": analysis.get("overall_risk_level", "low"),
+            "pii_detected": pii_detected,
+            "total_columns": analysis.get("total_columns", len(columns_data)),
+            "columns_with_pii": analysis.get("columns_with_pii", len(pii_detected)),
+            "recommendations": analysis.get("recommendations", [])
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PII detection failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="PII detection failed. Please try again."
+        )
 
 
 @router.get("/privacy-report/{generator_id}")
@@ -342,21 +390,38 @@ async def get_privacy_report_cached(
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
     
+    # SECURITY: Verify ownership (admin can view any)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if generator.created_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this generator"
+        )
+    
+    # VALIDATION: Privacy reports only meaningful for DP generators
+    dp_generator_types = ["dp-ctgan", "dp-tvae"]
+    if generator.type not in dp_generator_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Privacy reports are only available for differential privacy generators ({', '.join(dp_generator_types)}). "
+                   f"This generator uses '{generator.type}' which does not have privacy guarantees."
+        )
+
+    
     try:
         writer = ComplianceWriter()
         metadata = {
+            "generator_id": generator_id,
+            "name": generator.name,
             "type": generator.type,
             "privacy_config": generator.privacy_config,
-            "training_metadata": generator.training_metadata
+            "training_metadata": generator.training_metadata,
+            "status": generator.status
         }
         
-        report = await writer.generate_compliance_report(
-            generator_metadata=metadata,
-            framework="Privacy"
-        )
-        if isinstance(report, str):
-            return {"report": report, "framework": "Privacy", "cached": False}
-        return {**report, "cached": False}
+        # Use generate_privacy_report (NOT generate_compliance_report) for privacy reports
+        report_markdown = await writer.generate_privacy_report(generator_metadata=metadata)
+        return {"report": report_markdown, "generator_id": generator_id, "cached": False}
     except Exception as e:
         logger.error(f"Privacy report generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -450,6 +515,14 @@ async def get_model_card_cached(
     generator = generators_repo.get_generator_by_id(db, generator_id)
     if not generator:
         raise HTTPException(status_code=404, detail="Generator not found")
+    
+    # SECURITY: Verify ownership (admin can view any)
+    is_admin = hasattr(current_user, "role") and current_user.role == "admin"
+    if generator.created_by != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this generator"
+        )
     
     try:
         writer = ComplianceWriter()
@@ -737,6 +810,15 @@ async def export_privacy_report_pdf(
     generator = None
     if request.generator_id:
         generator = generators_repo.get_generator_by_id(db, request.generator_id)
+        
+        # VALIDATION: Privacy reports only meaningful for DP generators
+        dp_generator_types = ["dp-ctgan", "dp-tvae"]
+        if generator and generator.type not in dp_generator_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Privacy reports are only available for differential privacy generators ({', '.join(dp_generator_types)}). "
+                       f"This generator uses '{generator.type}' which does not have privacy guarantees."
+            )
     
     try:
         # Generate comprehensive privacy report using LLM (markdown format)
@@ -750,8 +832,10 @@ async def export_privacy_report_pdf(
             "status": generator.status if generator else "Unknown"
         }
         
-        # Generate privacy report in markdown format (like model card)
+        logger.info(f"[PRIVACY REPORT] Generating privacy report for generator {request.generator_id}")
+        # Generate privacy report in markdown format (NOT model card)
         content = await writer.generate_privacy_report(generator_metadata=metadata)
+        logger.info(f"[PRIVACY REPORT] Generated content starts with: {content[:100] if content else 'EMPTY'}...")
         
         title = f"Privacy Report: {generator.name if generator else 'Unknown Generator'}"
         
@@ -865,7 +949,7 @@ async def export_privacy_report_docx(
             from app.exports import repositories as exports_repo
             import uuid as uuid_lib
             
-            pdf_bytes, s3_info = report_exporter.export_pdf_to_s3(
+            docx_bytes, s3_info = report_exporter.export_docx_to_s3(
                 content_markdown=content,
                 title=title,
                 user_id=str(current_user.id),
@@ -879,7 +963,7 @@ async def export_privacy_report_docx(
             # Create export record
             export_data = ExportCreate(
                 export_type=ExportType.PRIVACY_REPORT,
-                format=ExportFormat.PDF,
+                format=ExportFormat.DOCX,
                 title=title,
                 generator_id=uuid_lib.UUID(request.generator_id) if request.generator_id else None,
                 dataset_id=uuid_lib.UUID(request.dataset_id),

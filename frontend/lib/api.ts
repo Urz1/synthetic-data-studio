@@ -27,6 +27,9 @@ import type {
   ModelCard,
 } from "./types";
 
+// API Base URL - uses environment variable
+// Development: Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
+// Production: Defaults to production URL if not set
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 
@@ -103,7 +106,10 @@ class ApiClient {
         if (response.status === 401) {
           this.setToken(null);
           if (typeof window !== "undefined") {
-            window.location.href = "/login";
+            const next = encodeURIComponent(
+              `${window.location.pathname}${window.location.search}`
+            );
+            window.location.href = `/login?next=${next}`;
           }
           throw new Error("Unauthorized");
         }
@@ -194,12 +200,95 @@ class ApiClient {
     return this.request("/auth/me");
   }
 
-  logout() {
+  /**
+   * Logout and invalidate the current token on the server
+   */
+  async logout(): Promise<void> {
+    try {
+      // Call server to invalidate token
+      await this.request("/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore errors - token may already be invalid
+    } finally {
+      this.setToken(null);
+    }
+  }
+
+  /**
+   * Logout from all devices
+   */
+  async logoutAll(): Promise<{ ok: boolean; message: string }> {
+    const result = await this.request<{ ok: boolean; message: string }>(
+      "/auth/logout-all",
+      {
+        method: "POST",
+      }
+    );
     this.setToken(null);
+    return result;
+  }
+
+  /**
+   * Update the current user's profile
+   */
+  async updateProfile(data: {
+    full_name?: string;
+    bio?: string;
+  }): Promise<User> {
+    return this.request("/auth/me", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Change the current user's password
+   */
+  async changePassword(data: {
+    current_password: string;
+    new_password: string;
+  }): Promise<{ ok: boolean; message: string }> {
+    return this.request("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Delete the current user's account (GDPR)
+   */
+  async deleteAccount(): Promise<{ ok: boolean; message: string }> {
+    return this.request("/auth/account", { method: "DELETE" });
+  }
+
+  /**
+   * Export user's personal data (GDPR)
+   */
+  async exportAccountData(): Promise<Record<string, unknown>> {
+    return this.request("/auth/account/export");
   }
 
   async listOAuthProviders(): Promise<{ providers: OAuthProvider[] }> {
     return this.request("/auth/providers");
+  }
+
+  // Two-Factor Authentication
+  async setup2FA(): Promise<{ secret: string; otpauth_url: string }> {
+    return this.request("/auth/2fa/setup", { method: "POST" });
+  }
+
+  async enable2FA(code: string): Promise<{ ok: boolean }> {
+    return this.request("/auth/2fa/enable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async disable2FA(code: string): Promise<{ ok: boolean }> {
+    return this.request("/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
   }
 
   async handleGoogleCallback(
@@ -282,8 +371,13 @@ class ApiClient {
   }
 
   // Projects
-  async listProjects(skip = 0, limit = 50): Promise<Project[]> {
-    return this.request(`/projects?skip=${skip}&limit=${limit}`);
+  async listProjects(
+    skip = 0,
+    limit = 50,
+    forceRefresh = false
+  ): Promise<Project[]> {
+    const cacheBust = forceRefresh ? `&_t=${Date.now()}` : "";
+    return this.request(`/projects?skip=${skip}&limit=${limit}${cacheBust}`);
   }
 
   async getProject(id: string): Promise<Project> {
@@ -330,13 +424,15 @@ class ApiClient {
   async listDatasets(
     projectId?: string,
     skip = 0,
-    limit = 50
+    limit = 50,
+    forceRefresh = false
   ): Promise<{ datasets: Dataset[]; total: number }> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
     });
     if (projectId) params.append("project_id", projectId);
+    if (forceRefresh) params.append("_t", String(Date.now()));
     return this.request(`/datasets?${params}`);
   }
 

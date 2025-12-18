@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import ProtectedRoute from "@/components/layout/protected-route"
 
 export default function NewProjectPage() {
   const router = useRouter()
@@ -19,28 +21,31 @@ export default function NewProjectPage() {
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [retention, setRetention] = React.useState("90")
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      await api.createProject({
+      const project = await api.createProject({
         name,
         description: description || undefined,
         default_retention_days: parseInt(retention, 10),
       })
+      toast({ title: "Project Created", description: `"${name}" has been created successfully.` })
       router.push("/projects")
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         console.error("Failed to create project:", err);
       }
-      alert(err instanceof Error ? err.message : "Failed to create project")
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to create project", variant: "destructive" })
       setIsSubmitting(false)
     }
   }
 
   return (
+    <ProtectedRoute>
     <AppShell>
       <PageHeader
         title="Create Project"
@@ -115,5 +120,6 @@ export default function NewProjectPage() {
         </CardContent>
       </Card>
     </AppShell>
+    </ProtectedRoute>
   )
 }

@@ -2,9 +2,12 @@
 
 import uuid
 import datetime
+import logging
 from sqlmodel import Session
-from .models import Dataset
+from .models import Dataset,DatasetFile
+from pathlib import Path
 
+logger = logging.getLogger(__name__)
 
 def get_datasets(db: Session):
     return db.query(Dataset).all()
@@ -23,7 +26,7 @@ def create_dataset(db: Session, dataset: Dataset):
 
 def delete_dataset(db: Session, dataset_id: str):
     """Delete a dataset (hard delete - removes file and database record)."""
-    from pathlib import Path
+    
     
     dataset = get_dataset_by_id(db, dataset_id)
     if not dataset:
@@ -37,11 +40,14 @@ def delete_dataset(db: Session, dataset_id: str):
             file_path = upload_dir / dataset.original_filename
             if file_path.exists():
                 file_path.unlink()
-                print(f"Deleted file: {file_path}")
+                logger.info(f"Deleted file: {file_path}")
         except Exception as e:
-            print(f"Warning: Could not delete file {dataset.original_filename}: {e}")
+            logger.warning(f"Could not delete file {dataset.original_filename}: {e}")
     
-    # Set deleted_at timestamp (for audit trail)
+    # Delete related dataset_files first (cascade delete to avoid FK constraint)
+    db.query(DatasetFile).filter(DatasetFile.dataset_id == dataset.id).delete()
+    
+    # Set deleted_at timestamp (for audit trail before hard delete)
     dataset.deleted_at = datetime.datetime.utcnow()
     
     # Hard delete from database

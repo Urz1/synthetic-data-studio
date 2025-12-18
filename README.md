@@ -8,6 +8,33 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB)](backend/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6)](frontend/)
 
+## 🚀 Quick Start
+
+**No hardcoded URLs!** Everything is environment-based for easy local development.
+
+### Local Development
+
+```bash
+# Frontend
+cd frontend
+cp .env.local.example .env.local
+# Edit .env.local: NEXT_PUBLIC_API_URL=http://localhost:8000
+pnpm install && pnpm dev
+
+# Backend
+cd backend
+cp .env.example .env
+# Edit .env: FRONTEND_URL=http://localhost:3000
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+**That's it!** Frontend at http://localhost:3000, Backend at http://localhost:8000
+
+📖 Full guide: [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)
+
+---
+
 ## 🎯 Overview
 
 Synth Studio enables regulated startups to generate high-fidelity, privacy-safe synthetic data with differential privacy guarantees. Built for healthcare (HIPAA) and fintech (SOC-2/GDPR) compliance, it accelerates pilot approvals and security reviews without exposing sensitive PII/PHI.

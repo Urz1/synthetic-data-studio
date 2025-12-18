@@ -17,7 +17,8 @@ def create_evaluation(
     db: Session,
     generator_id: str,
     dataset_id: str,
-    report: dict
+    report: dict,
+    created_by: str = None  # ADDED: User ID for audit trail
 ) -> Evaluation:
     """
     Create new evaluation record.
@@ -27,6 +28,7 @@ def create_evaluation(
         generator_id: Generator ID
         dataset_id: Dataset ID
         report: Quality report dictionary
+        created_by: User ID who ran the evaluation
     
     Returns:
         Created evaluation record
@@ -34,18 +36,24 @@ def create_evaluation(
     # Convert string IDs to UUID objects
     gen_uuid = uuid.UUID(generator_id) if isinstance(generator_id, str) else generator_id
     ds_uuid = uuid.UUID(dataset_id) if isinstance(dataset_id, str) else dataset_id
+    user_uuid = uuid.UUID(created_by) if created_by and isinstance(created_by, str) else created_by
+    
+    # Compute artifact hash for integrity verification
+    artifact_hash = Evaluation.compute_report_hash(report)
     
     evaluation = Evaluation(
         generator_id=gen_uuid,
         dataset_id=ds_uuid,
-        report=report
+        report=report,
+        created_by=user_uuid,
+        artifact_hash=artifact_hash
     )
     
     db.add(evaluation)
     db.commit()
     db.refresh(evaluation)
     
-    logger.info(f"Created evaluation {evaluation.id}")
+    logger.info(f"Created evaluation {evaluation.id} by user {created_by} (hash: {artifact_hash[:12]}...)")
     
     return evaluation
 
@@ -99,25 +107,33 @@ def list_evaluations_by_dataset(db: Session, dataset_id: str) -> List[Evaluation
     ).order_by(Evaluation.created_at.desc()).all()
 
 
-def delete_evaluation(db: Session, evaluation_id: str) -> bool:
+def delete_evaluation(db: Session, evaluation_id: str, deleted_by: str = None) -> bool:
     """
-    Delete evaluation.
+    Soft-delete evaluation (for audit trail immutability).
     
     Args:
         db: Database session
         evaluation_id: Evaluation ID
+        deleted_by: User ID who is deleting
     
     Returns:
-        True if deleted, False if not found
+        True if soft-deleted, False if not found
     """
+    from datetime import datetime
+    
     eval_uuid = uuid.UUID(evaluation_id) if isinstance(evaluation_id, str) else evaluation_id
     evaluation = get_evaluation(db, str(eval_uuid))
     if not evaluation:
         return False
     
-    db.delete(evaluation)
+    # SOFT DELETE: Set deleted_at timestamp instead of removing record
+    evaluation.deleted_at = datetime.utcnow()
+    if deleted_by:
+        evaluation.deleted_by = uuid.UUID(deleted_by) if isinstance(deleted_by, str) else deleted_by
+    
+    db.add(evaluation)
     db.commit()
     
-    logger.info(f"Deleted evaluation {evaluation_id}")
+    logger.info(f"Soft-deleted evaluation {evaluation_id} by user {deleted_by}")
     
     return True

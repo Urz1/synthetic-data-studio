@@ -7,6 +7,7 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
+  is_2fa_enabled?: boolean;
   created_at: string;
   role?: string;
   avatar_url?: string | null;
@@ -158,6 +159,7 @@ export interface SchemaGeneratorConfig {
   >;
   project_id?: string;
   dataset_name?: string;
+  use_llm_seed?: boolean; // Use LLM for realistic seed data generation
 }
 
 export interface PrivacyConfig {
@@ -301,13 +303,13 @@ export interface Job {
   status: "pending" | "running" | "completed" | "failed";
   generator_id?: string;
   dataset_id?: string;
+  initiated_by: string;
   progress?: number;
   error_message?: string;
   created_at: string;
   updated_at: string;
   started_at?: string;
   completed_at?: string;
-  created_by?: string;
 }
 
 export interface ChatMessage {

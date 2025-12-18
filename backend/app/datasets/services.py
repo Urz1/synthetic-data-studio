@@ -91,6 +91,7 @@ async def process_uploaded_file(
         s3_key=s3_key,  # Store S3 key if uploaded to S3
         size_bytes=file_path.stat().st_size,
         row_count=len(df),
+        column_count=len(df.columns),  # Store column count directly
         schema_data=schema,
         checksum=checksum,
         uploader_id=uploader_id  # Set owner

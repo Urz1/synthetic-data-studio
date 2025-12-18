@@ -85,25 +85,25 @@ def is_s3_available() -> bool:
 # ENDPOINTS
 # ============================================================================
 
-@router.get("", response_model=list[Dataset])
-@router.get("/", response_model=list[Dataset])
+@router.get("", response_model=list[DatasetResponse])
+@router.get("/", response_model=list[DatasetResponse])
 def list_datasets(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> list[Dataset]:
+) -> list[DatasetResponse]:
     """List all datasets for the current user."""
     # SECURITY: Filter to only return datasets uploaded by current user
     statement = select(Dataset).where(Dataset.uploader_id == current_user.id)
     datasets = db.exec(statement).all()
-    return datasets
+    return [DatasetResponse.from_dataset(d) for d in datasets]
 
 
-@router.get("/{dataset_id}")
+@router.get("/{dataset_id}", response_model=DatasetResponse)
 def get_dataset(
     dataset_id: str,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
-) -> Dataset:
+) -> DatasetResponse:
     """Get a specific dataset by ID."""
     dataset_uuid = validate_uuid(dataset_id, "dataset_id")
     dataset = get_dataset_by_id(db, str(dataset_uuid))
@@ -114,7 +114,7 @@ def get_dataset(
     # Security: Verify ownership
     check_resource_ownership(dataset, current_user.id)
     
-    return dataset
+    return DatasetResponse.from_dataset(dataset)
 
 
 @router.get("/{dataset_id}/download")
@@ -183,8 +183,8 @@ async def upload_dataset(
     Returns:
         Created dataset object
     """
-    # Maximum file size: 100MB
-    MAX_FILE_SIZE = 100 * 1024 * 1024
+    # Maximum file size: 50MB (optimal for CTGAN training memory)
+    MAX_FILE_SIZE = 50 * 1024 * 1024
     
     # Verify project exists
     project = get_project_by_id(db, uuid.UUID(project_id))
@@ -257,7 +257,7 @@ async def upload_dataset(
         )
 
 
-    return dataset
+    return DatasetResponse.from_dataset(dataset)
 
 
 @router.get("/{dataset_id}/details")
@@ -285,7 +285,7 @@ def get_dataset_details(
     generators = db.exec(generators_stmt).all()
     
     return {
-        "dataset": dataset,
+        "dataset": DatasetResponse.from_dataset(dataset),
         "generators": generators,
         "stats": {
             "generator_count": len(generators)

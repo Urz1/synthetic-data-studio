@@ -1,0 +1,12 @@
+announcement:
+  label: Announcement
+  description: Product announcements and updates
+welcome:
+  label: Welcome
+  description: Welcome posts
+tutorial:
+  label: Tutorial
+  description: Step-by-step guides
+privacy:
+  label: Privacy
+  description: Privacy and compliance topics

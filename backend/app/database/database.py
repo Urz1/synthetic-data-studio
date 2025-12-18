@@ -1,25 +1,34 @@
 import os
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
 
-load_dotenv()
+# Ensure we load the backend-local .env regardless of CWD.
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=_BACKEND_ROOT / ".env")
 
 db_url = os.getenv("DATABASE_URL")
 
+allow_unsafe = os.getenv("TESTING") == "1" or os.getenv("ALEMBIC_RUNNING") == "1"
+
 # Validate DATABASE_URL is set
 if not db_url:
-    print("\n" + "=" * 60)
-    print("❌ CRITICAL ERROR: DATABASE_URL not set")
-    print("=" * 60)
-    print("Please set DATABASE_URL in your .env file.")
-    print("Examples:")
-    print("  SQLite: DATABASE_URL=sqlite:///./synth_studio.db")
-    print("  PostgreSQL: DATABASE_URL=postgresql://user:pass@localhost:5432/dbname")
-    print("=" * 60 + "\n")
-    sys.exit(1)
+    if allow_unsafe:
+        # Keep imports working for migrations/tests.
+        db_url = "sqlite:///./test.db"
+    else:
+        print("\n" + "=" * 60)
+        print("❌ CRITICAL ERROR: DATABASE_URL not set")
+        print("=" * 60)
+        print("Please set DATABASE_URL in your .env file.")
+        print("Examples:")
+        print("  SQLite: DATABASE_URL=sqlite:///./synth_studio.db")
+        print("  PostgreSQL: DATABASE_URL=postgresql://user:pass@localhost:5432/dbname")
+        print("=" * 60 + "\n")
+        sys.exit(1)
 
 # Production-ready connection pooling settings
 if "postgresql" in db_url:

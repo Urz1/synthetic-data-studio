@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 
 export default function GeneratorDetailPage() {
   const params = useParams()
@@ -58,6 +59,8 @@ export default function GeneratorDetailPage() {
   const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const [generateDialogOpen, setGenerateDialogOpen] = React.useState(false)
   const [generating, setGenerating] = React.useState(false)
   const [numRows, setNumRows] = React.useState("1000")
@@ -67,6 +70,11 @@ export default function GeneratorDetailPage() {
   const { toast } = useToast()
   const [downloadingModelCard, setDownloadingModelCard] = React.useState<string | null>(null)
   const [downloadingPrivacyReport, setDownloadingPrivacyReport] = React.useState<string | null>(null)
+  const [exportingModel, setExportingModel] = React.useState(false)
+  const [downloadingSyntheticData, setDownloadingSyntheticData] = React.useState(false)
+
+  // Computed: disable all LLM buttons when any LLM operation is active
+  const isAnyLLMOperationActive = Boolean(downloadingModelCard || downloadingPrivacyReport)
 
   // Load data
   React.useEffect(() => {
@@ -76,6 +84,8 @@ export default function GeneratorDetailPage() {
 
     // Poll for status updates if active
     const interval = setInterval(() => {
+      // Skip polling if tab is hidden
+      if (document.hidden) return
       if (generator && ["queued", "running", "generating"].includes(generator.status.toLowerCase())) {
         loadGeneratorDetails(true) // silent refresh
       }
@@ -160,6 +170,92 @@ export default function GeneratorDetailPage() {
     }
   }
 
+  async function handleExportModel() {
+    if (generator?.status !== 'completed') {
+      toast({
+        title: "Model Not Ready",
+        description: "Generator must be completed before exporting the model.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setExportingModel(true)
+    try {
+      const result = await api.downloadModel(id)
+      if (result.download_url) {
+        window.open(result.download_url, '_blank')
+        toast({
+          title: "Download Started",
+          description: "Model file is being downloaded",
+        })
+      } else {
+        toast({
+          title: "Download Unavailable",
+          description: "Model download URL not available. Contact admin.",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Export Failed",
+        description: err instanceof Error ? err.message : "Failed to export model",
+        variant: "destructive",
+      })
+    } finally {
+      setExportingModel(false)
+    }
+  }
+
+  async function handleDownloadSyntheticData() {
+    if (!generator?.output_dataset_id) {
+      toast({
+        title: "No Data Available",
+        description: "This generator has not produced any synthetic data yet.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setDownloadingSyntheticData(true)
+    toast({
+      title: "Preparing download...",
+      description: "Generating download link",
+    })
+
+    try {
+      const result = await api.downloadDataset(generator.output_dataset_id)
+      
+      if (result.download_url) {
+        // Trigger browser download
+        const link = document.createElement('a')
+        link.href = result.download_url
+        link.download = result.filename || `${generator.name}_synthetic.csv`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        toast({
+          title: "Download complete",
+          description: `${result.filename || 'Synthetic data'} saved`,
+        })
+      } else {
+        toast({
+          title: "Download unavailable",
+          description: "Could not generate download link. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Download failed – please try again",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloadingSyntheticData(false)
+    }
+  }
+
   async function handleDownloadModelCard(format: 'pdf' | 'docx' | 'json') {
     if (!generator?.output_dataset_id) return
 
@@ -230,9 +326,9 @@ export default function GeneratorDetailPage() {
         URL.revokeObjectURL(url)
       } else {
         // Download PDF or DOCX from S3
-        const result = await api.exportModelCard(
-          id, // generator_id (correct order!)
+        const result = await api.exportPrivacyReport(
           generator.output_dataset_id, // dataset_id
+          id, // generator_id
           format,
           true // save to S3
         )
@@ -306,9 +402,29 @@ export default function GeneratorDetailPage() {
           description={`Type: ${generator.type || 'Unknown'} • Created ${generator.created_at ? new Date(generator.created_at).toLocaleDateString() : 'Unknown'}`}
           actions={
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Export Model
+              {/* Download Synthetic Data Button */}
+              {generator.output_dataset_id && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleDownloadSyntheticData} 
+                  disabled={downloadingSyntheticData}
+                >
+                  {downloadingSyntheticData ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {downloadingSyntheticData ? 'Downloading...' : 'Download Data'}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleExportModel} disabled={exportingModel || generator.status !== 'completed'}>
+                {exportingModel ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {exportingModel ? 'Exporting...' : 'Export Model'}
               </Button>
               <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
                 <DialogTrigger asChild>
@@ -481,7 +597,7 @@ export default function GeneratorDetailPage() {
                       size="sm" 
                       className="w-full justify-start" 
                       onClick={() => handleDownloadModelCard('pdf')}
-                      disabled={!generator.output_dataset_id || downloadingModelCard === 'pdf'}
+                      disabled={!generator.output_dataset_id || isAnyLLMOperationActive}
                     >
                       {downloadingModelCard === 'pdf' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -495,7 +611,7 @@ export default function GeneratorDetailPage() {
                       size="sm" 
                       className="w-full justify-start" 
                       onClick={() => handleDownloadModelCard('docx')}
-                      disabled={!generator.output_dataset_id || downloadingModelCard === 'docx'}
+                      disabled={!generator.output_dataset_id || isAnyLLMOperationActive}
                     >
                       {downloadingModelCard === 'docx' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -509,7 +625,7 @@ export default function GeneratorDetailPage() {
                       size="sm" 
                       className="w-full justify-start" 
                       onClick={() => handleDownloadModelCard('json')}
-                      disabled={!generator.output_dataset_id || downloadingModelCard === 'json'}
+                      disabled={!generator.output_dataset_id || isAnyLLMOperationActive}
                     >
                       {downloadingModelCard === 'json' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -532,7 +648,7 @@ export default function GeneratorDetailPage() {
                       size="sm" 
                       className="w-full justify-start" 
                       onClick={() => handleDownloadPrivacyReport('pdf')}
-                      disabled={!generator.output_dataset_id || downloadingPrivacyReport === 'pdf'}
+                      disabled={!generator.output_dataset_id || isAnyLLMOperationActive}
                     >
                       {downloadingPrivacyReport === 'pdf' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -546,7 +662,7 @@ export default function GeneratorDetailPage() {
                       size="sm" 
                       className="w-full justify-start" 
                       onClick={() => handleDownloadPrivacyReport('docx')}
-                      disabled={!generator.output_dataset_id || downloadingPrivacyReport === 'docx'}
+                      disabled={!generator.output_dataset_id || isAnyLLMOperationActive}
                     >
                       {downloadingPrivacyReport === 'docx' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -560,7 +676,7 @@ export default function GeneratorDetailPage() {
                       size="sm" 
                       className="w-full justify-start" 
                       onClick={() => handleDownloadPrivacyReport('json')}
-                      disabled={!generator.output_dataset_id || downloadingPrivacyReport === 'json'}
+                      disabled={!generator.output_dataset_id || isAnyLLMOperationActive}
                     >
                       {downloadingPrivacyReport === 'json' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -676,6 +792,56 @@ export default function GeneratorDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Danger Zone */}
+        <Card className="mt-6 border-destructive/20">
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Generator
+            </Button>
+            
+            <DeleteConfirmationDialog
+              entityType="Generator"
+              entityName={generator.name}
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              onConfirm={async () => {
+                try {
+                  setIsDeleting(true)
+                  toast({
+                    title: `Deleting ${generator.name}...`,
+                    description: "Please wait while the generator is being removed.",
+                  })
+                  await api.deleteGenerator(id)
+                  toast({
+                    title: "Generator deleted",
+                    description: `${generator.name} has been permanently removed.`,
+                  })
+                  router.push("/generators")
+                } catch (err) {
+                  toast({
+                    title: `Could not delete ${generator.name}`,
+                    description: "Please try again.",
+                    variant: "destructive",
+                  })
+                } finally {
+                  setIsDeleting(false)
+                  setDeleteDialogOpen(false)
+                }
+              }}
+              isDeleting={isDeleting}
+            />
+          </CardContent>
+        </Card>
       </AppShell>
     </ProtectedRoute>
   )

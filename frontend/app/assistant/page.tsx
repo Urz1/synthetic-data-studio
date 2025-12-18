@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles, Send, Lightbulb, Search, Code, MessageSquare, Loader2 } from "lucide-react"
+import { Sparkles, Send, Lightbulb, Search, Code, MessageSquare, Loader2, AlertTriangle, ShieldCheck, ShieldAlert, Copy, Check } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { api } from "@/lib/api"
+import ReactMarkdown from "react-markdown"
 import type { ChatMessage as OriginalChatMessage } from "@/lib/types"
 
 type ChatMessage = OriginalChatMessage & {
@@ -96,6 +97,11 @@ export default function AssistantPage() {
   const [schemaInput, setSchemaInput] = useState("")
   const [generatedFeatures, setGeneratedFeatures] = useState<string[]>([])
   const [isFeaturesLoading, setIsFeaturesLoading] = useState(false)
+
+  // PII detection state
+  const [piiSampleData, setPiiSampleData] = useState("")
+  const [piiResult, setPiiResult] = useState<{ overall_risk_level: string; pii_detected: Array<any> } | null>(null)
+  const [isPiiLoading, setIsPiiLoading] = useState(false)
 
   const handleSendMessage = async () => {
     if (!message.trim() || isChatLoading) return
@@ -189,6 +195,60 @@ export default function AssistantPage() {
       })
     } finally {
       setIsFeaturesLoading(false)
+    }
+  }
+
+  const handlePiiDetection = async () => {
+    if (!piiSampleData.trim() || isPiiLoading) return
+
+    setIsPiiLoading(true)
+    setPiiResult(null)
+    try {
+      // Parse the sample data - try JSON first, then CSV-like format
+      let parsedData: Array<Record<string, any>> = []
+      
+      try {
+        parsedData = JSON.parse(piiSampleData)
+        if (!Array.isArray(parsedData)) {
+          parsedData = [parsedData]
+        }
+      } catch {
+        // Try CSV-like parsing (comma or tab separated)
+        const lines = piiSampleData.trim().split('\n')
+        if (lines.length >= 2) {
+          const delimiter = lines[0].includes('\t') ? '\t' : ','
+          const headers = lines[0].split(delimiter).map(h => h.trim())
+          parsedData = lines.slice(1).map(line => {
+            const values = line.split(delimiter)
+            const obj: Record<string, any> = {}
+            headers.forEach((h, i) => {
+              obj[h] = values[i]?.trim() || ''
+            })
+            return obj
+          })
+        } else {
+          throw new Error('Invalid format')
+        }
+      }
+
+      if (parsedData.length === 0) {
+        throw new Error('No data found')
+      }
+
+      const result = await api.detectPiiLLM(parsedData)
+      setPiiResult(result)
+      toast({
+        title: "Scan Complete",
+        description: `Risk level: ${result.overall_risk_level}`,
+      })
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to detect PII. Use JSON or CSV format.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsPiiLoading(false)
     }
   }
 
@@ -321,9 +381,44 @@ export default function AssistantPage() {
                                 : "bg-muted"
                             }`}
                           >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                              {msg.content}
-                            </p>
+                            {msg.role === "assistant" ? (
+                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown
+                                  components={{
+                                    // Style code blocks
+                                    code: ({ className, children, ...props }) => {
+                                      const isInline = !className
+                                      return isInline ? (
+                                        <code className="bg-background/50 px-1 py-0.5 rounded text-xs" {...props}>
+                                          {children}
+                                        </code>
+                                      ) : (
+                                        <code className={`block bg-background/50 p-2 rounded text-xs overflow-x-auto ${className}`} {...props}>
+                                          {children}
+                                        </code>
+                                      )
+                                    },
+                                    // Style paragraphs
+                                    p: ({ children }) => (
+                                      <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>
+                                    ),
+                                    // Style lists
+                                    ul: ({ children }) => (
+                                      <ul className="text-sm list-disc list-inside space-y-1 mb-2">{children}</ul>
+                                    ),
+                                    ol: ({ children }) => (
+                                      <ol className="text-sm list-decimal list-inside space-y-1 mb-2">{children}</ol>
+                                    ),
+                                  }}
+                                >
+                                  {msg.content}
+                                </ReactMarkdown>
+                              </div>
+                            ) : (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {msg.content}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -412,6 +507,38 @@ export default function AssistantPage() {
                   </Button>
                 </div>
 
+                {/* Quick metric suggestions */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">Quick select:</span>
+                  {['Epsilon', 'Statistical Similarity', 'ML Utility', 'Privacy Score', 'K-Anonymity', 'L-Diversity'].map((metric) => (
+                    <Button
+                      key={metric}
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={async () => {
+                        setMetricQuery(metric)
+                        setIsMetricLoading(true)
+                        try {
+                          const result = await api.explainMetric(metric)
+                          setMetricResult(result)
+                        } catch (err) {
+                          toast({
+                            title: "Error",
+                            description: err instanceof Error ? err.message : "Failed to explain metric",
+                            variant: "destructive",
+                          })
+                        } finally {
+                          setIsMetricLoading(false)
+                        }
+                      }}
+                      disabled={isMetricLoading}
+                    >
+                      {metric}
+                    </Button>
+                  ))}
+                </div>
+
                 {metricResult && (
                   <Card>
                     <CardHeader>
@@ -443,7 +570,7 @@ export default function AssistantPage() {
                 {!metricResult && !isMetricLoading && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Search className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                    <p className="text-sm">Enter a metric name to get an explanation</p>
+                    <p className="text-sm">Select a metric above or enter your own</p>
                   </div>
                 )}
               </CardContent>
@@ -455,25 +582,82 @@ export default function AssistantPage() {
             <Card>
               <CardHeader>
                 <CardTitle>AI-Powered PII Detection</CardTitle>
-                <CardDescription>Use LLM to identify sensitive data with enhanced accuracy</CardDescription>
+                <CardDescription>Paste sample data to scan for personally identifiable information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4" />
-                    How to use PII Detection:
-                  </p>
-                  <ol className="text-sm text-muted-foreground space-y-1 ml-6 list-decimal">
-                    <li>Upload a dataset in the Datasets page</li>
-                    <li>Open the dataset details page</li>
-                    <li>Click &quot;Run PII Detection&quot; or &quot;Enhanced PII Detection&quot;</li>
-                    <li>View results with AI-powered recommendations</li>
-                  </ol>
-                </div>
-                <Button className="w-full" onClick={() => window.location.href = '/datasets'}>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Go to Datasets
+                <Textarea
+                  placeholder={`Paste sample data in JSON or CSV format:
+
+JSON: [{"name": "John Doe", "email": "john@example.com"}]
+
+CSV:
+name,email,phone
+John Doe,john@example.com,555-1234`}
+                  rows={6}
+                  value={piiSampleData}
+                  onChange={(e) => setPiiSampleData(e.target.value)}
+                  disabled={isPiiLoading}
+                  className="font-mono text-sm"
+                />
+                <Button 
+                  className="w-full" 
+                  onClick={handlePiiDetection}
+                  disabled={isPiiLoading || !piiSampleData.trim()}
+                >
+                  {isPiiLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...</>
+                  ) : (
+                    <><ShieldAlert className="mr-2 h-4 w-4" /> Scan for PII</>
+                  )}
                 </Button>
+
+                {piiResult && (
+                  <div className="space-y-4">
+                    {/* Risk Level Badge */}
+                    <div className={`p-4 rounded-lg border flex items-center gap-3 ${
+                      piiResult.overall_risk_level === 'high' 
+                        ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'
+                        : piiResult.overall_risk_level === 'medium'
+                        ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800'
+                        : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'
+                    }`}>
+                      {piiResult.overall_risk_level === 'high' ? (
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                      ) : piiResult.overall_risk_level === 'medium' ? (
+                        <ShieldAlert className="h-5 w-5 text-amber-500" />
+                      ) : (
+                        <ShieldCheck className="h-5 w-5 text-green-500" />
+                      )}
+                      <div>
+                        <p className="font-medium capitalize">{piiResult.overall_risk_level} Risk</p>
+                        <p className="text-sm text-muted-foreground">
+                          {piiResult.pii_detected?.length || 0} PII field(s) detected
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Detected PII List */}
+                    {piiResult.pii_detected && piiResult.pii_detected.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Detected Fields:</p>
+                        <div className="space-y-2">
+                          {piiResult.pii_detected.map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded">
+                              <code className="text-sm">{item.field || item.column || JSON.stringify(item)}</code>
+                              <Badge variant="outline">{item.type || item.pii_type || 'PII'}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground text-center">
+                    For full dataset scanning, <a href="/datasets" className="underline">upload to Datasets</a>
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -514,8 +698,26 @@ export default function AssistantPage() {
                 </Button>
 
                 {generatedFeatures.length > 0 && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-3">Suggested columns:</p>
+                  <div className="p-4 bg-muted rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">Suggested columns:</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => {
+                          const jsonSchema = generatedFeatures.map(f => {
+                            const [name, type] = f.split(':').map(s => s.trim())
+                            return { name: name || f, type: type || 'string' }
+                          })
+                          navigator.clipboard.writeText(JSON.stringify(jsonSchema, null, 2))
+                          toast({ title: "Copied!", description: "Schema copied to clipboard as JSON" })
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy JSON
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       {generatedFeatures.map((feature, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm">

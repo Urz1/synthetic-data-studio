@@ -10,6 +10,9 @@ import { DataTable } from "@/components/ui/data-table"
 import { Download, FileText, Trash2, File, Calendar, CheckCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
+import { useDeleteWithProgress } from "@/hooks/use-delete-with-progress"
+import { cn } from "@/lib/utils"
 import type { Export } from "@/lib/types"
 
 // Mock exports data
@@ -21,8 +24,8 @@ const mockExports: Export[] = [
     format: "pdf",
     status: "completed",
     download_url: "https://example.com/exports/model-card-gen-123.pdf",
-    created_at: "2024-12-03T14:30:00Z",
-    expires_at: "2024-12-10T14:30:00Z",
+    created_at: "2025-12-03T14:30:00Z",
+    expires_at: "2025-12-10T14:30:00Z",
   },
   {
     id: "export-2",
@@ -31,8 +34,8 @@ const mockExports: Export[] = [
     format: "docx",
     status: "completed",
     download_url: "https://example.com/exports/privacy-report-gen-456.docx",
-    created_at: "2024-12-03T10:15:00Z",
-    expires_at: "2024-12-10T10:15:00Z",
+    created_at: "2025-12-03T10:15:00Z",
+    expires_at: "2025-12-10T10:15:00Z",
   },
   {
     id: "export-3",
@@ -41,8 +44,8 @@ const mockExports: Export[] = [
     format: "csv",
     status: "completed",
     download_url: "https://example.com/exports/dataset-ds-789.csv",
-    created_at: "2024-12-02T16:45:00Z",
-    expires_at: "2024-12-09T16:45:00Z",
+    created_at: "2025-12-02T16:45:00Z",
+    expires_at: "2025-12-09T16:45:00Z",
   },
   {
     id: "export-4",
@@ -50,8 +53,8 @@ const mockExports: Export[] = [
     export_type: "model_card",
     format: "pdf",
     status: "pending",
-    created_at: "2024-12-03T15:00:00Z",
-    expires_at: "2024-12-10T15:00:00Z",
+    created_at: "2025-12-03T15:00:00Z",
+    expires_at: "2025-12-10T15:00:00Z",
   },
   {
     id: "export-5",
@@ -59,14 +62,28 @@ const mockExports: Export[] = [
     export_type: "dataset",
     format: "json",
     status: "failed",
-    created_at: "2024-12-01T08:00:00Z",
-    expires_at: "2024-12-08T08:00:00Z",
+    created_at: "2025-12-01T08:00:00Z",
+    expires_at: "2025-12-08T08:00:00Z",
   },
 ]
 
 export default function ExportsPage() {
   const { user } = useAuth()
   const [exports, setExports] = useState(mockExports)
+  const [exportToDelete, setExportToDelete] = useState<Export | null>(null)
+
+  // Delete hook with progress tracking
+  const { isDeleting, isGhostId, startDelete } = useDeleteWithProgress({
+    entityType: "Export",
+    onSuccess: (id) => {
+      // Remove deleted export from state immediately
+      setExports(prev => prev.filter(e => e.id !== id))
+      setExportToDelete(null)
+    },
+    onError: () => {
+      setExportToDelete(null)
+    },
+  })
 
   const handleDownload = (exportItem: Export) => {
     if (exportItem.download_url) {
@@ -74,8 +91,21 @@ export default function ExportsPage() {
     }
   }
 
-  const handleDelete = (exportId: string) => {
-    setExports(exports.filter(e => e.id !== exportId))
+  const handleDeleteClick = (exportItem: Export) => {
+    setExportToDelete(exportItem)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!exportToDelete) return
+    
+    await startDelete(
+      exportToDelete.id,
+      `${exportToDelete.export_type} export`,
+      async () => {
+        // Simulated deletion - in real app this would call api.deleteExport
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    )
   }
 
   const getExportIcon = (type: Export["export_type"]) => {
@@ -242,7 +272,7 @@ export default function ExportsPage() {
                 {
                   label: "Delete",
                   icon: <Trash2 className="h-4 w-4" />,
-                  onClick: (row: { id: string }) => handleDelete(row.id),
+                  onClick: (row: Export) => handleDeleteClick(row),
                   variant: "destructive" as const,
                 },
               ].filter((action) => {
@@ -268,6 +298,16 @@ export default function ExportsPage() {
             <p>• Large exports may take several minutes to generate</p>
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <DeleteConfirmationDialog
+          entityType="Export"
+          entityName={exportToDelete ? `${exportToDelete.export_type.replace(/_/g, " ")} export` : undefined}
+          open={!!exportToDelete}
+          onOpenChange={(open) => !open && setExportToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          isDeleting={isDeleting}
+        />
       </AppShell>
     </ProtectedRoute>
   )

@@ -14,8 +14,11 @@ class AuditAction(str, Enum):
     
     # Authentication
     LOGIN = "login"
+    LOGIN_FAILED = "login_failed"
     LOGOUT = "logout"
     REGISTER = "register"
+    ACCOUNT_DELETED = "account_deleted"
+    DATA_EXPORTED = "data_exported"
     
     # Data operations
     UPLOAD = "upload"

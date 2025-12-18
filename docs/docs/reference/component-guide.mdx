@@ -1,0 +1,210 @@
+---
+id: component-guide
+title: "MDX Component Guide"
+sidebar_label: "Component Guide"
+sidebar_position: 99
+slug: /reference/component-guide
+description: "Reference guide for using Synth Studio documentation MDX components including IconFeature, Param, and Badge."
+keywords: [components, mdx, documentation, guide]
+tags: [reference, components]
+---
+
+import {
+  IconFeature,
+  FeatureGrid,
+  Param,
+  Badge,
+  BadgeGroup,
+} from "@site/src/components";
+
+# MDX Component Guide
+
+This guide covers the custom MDX components available for Synth Studio documentation. These components ensure consistent styling and functionality across all documentation pages.
+
+---
+
+## IconFeature
+
+Display feature cards with icons in grid layouts.
+
+### Props
+
+| Prop                                                        | Type   | Required | Description                                    |
+| ----------------------------------------------------------- | ------ | -------- | ---------------------------------------------- |
+| <Param name="icon" type="string" copyable={false} />        | string | Yes      | Icon name (e.g., "ShieldCheck", "Lock", "Bot") |
+| <Param name="title" type="string" copyable={false} />       | string | Yes      | Feature title                                  |
+| <Param name="children" type="ReactNode" copyable={false} /> | node   | Yes      | Description content                            |
+
+### Available Icons
+
+`ShieldCheck` · `Lock` · `Bot` · `BarChart` · `Sparkles` · `Building` · `BookOpen` · `Code` · `Shield` · `Database` · `Rocket` · `Settings` · `FileText` · `Users` · `CheckCircle`
+
+### Usage
+
+```mdx
+import { IconFeature, FeatureGrid } from "@site/src/components";
+
+<FeatureGrid>
+  <IconFeature icon="ShieldCheck" title="Privacy First">
+    Mathematical privacy guarantees with differential privacy.
+  </IconFeature>
+  <IconFeature icon="Bot" title="AI-Powered">
+    Smart suggestions and automated documentation.
+  </IconFeature>
+  <IconFeature icon="BarChart" title="Quality Metrics">
+    Comprehensive statistical evaluation.
+  </IconFeature>
+</FeatureGrid>
+```
+
+### Live Example
+
+<FeatureGrid>
+  <IconFeature icon="ShieldCheck" title="Privacy First">
+    Mathematical privacy guarantees with differential privacy.
+  </IconFeature>
+  <IconFeature icon="Bot" title="AI-Powered">
+    Smart suggestions and automated documentation.
+  </IconFeature>
+  <IconFeature icon="BarChart" title="Quality Metrics">
+    Comprehensive statistical evaluation.
+  </IconFeature>
+</FeatureGrid>
+
+---
+
+## Param
+
+Display inline code-styled parameters with optional copy button.
+
+### Props
+
+| Prop                                                      | Type    | Required | Default | Description      |
+| --------------------------------------------------------- | ------- | -------- | ------- | ---------------- |
+| <Param name="name" type="string" copyable={false} />      | string  | Yes      | -       | Parameter name   |
+| <Param name="type" type="string" copyable={false} />      | string  | No       | -       | Type annotation  |
+| <Param name="copyable" type="boolean" copyable={false} /> | boolean | No       | `true`  | Show copy button |
+
+### Usage
+
+```mdx
+import { Param } from "@site/src/components";
+
+Set <Param name="epsilon" type="float" /> to configure the privacy budget.
+
+The <Param name="SYNTH_STUDIO_SECRET_KEY" /> environment variable is required.
+```
+
+### Live Example
+
+Set <Param name="epsilon" type="float" /> to configure the privacy budget (typically between 0.1 and 10.0).
+
+The <Param name="SYNTH_STUDIO_SECRET_KEY" /> environment variable is required for authentication.
+
+---
+
+## Badge
+
+Display compliance badges for regulatory frameworks.
+
+### Props
+
+| Prop                                                 | Type                                          | Required | Description                 |
+| ---------------------------------------------------- | --------------------------------------------- | -------- | --------------------------- |
+| <Param name="type" type="string" copyable={false} /> | `'HIPAA'` \| `'GDPR'` \| `'CCPA'` \| `'SOC2'` | Yes      | Badge type                  |
+| <Param name="href" type="string" copyable={false} /> | string                                        | No       | Link to audit documentation |
+
+### Usage
+
+```mdx
+import { Badge, BadgeGroup } from "@site/src/components";
+
+<BadgeGroup>
+  <Badge type="HIPAA" />
+  <Badge type="GDPR" />
+  <Badge type="CCPA" />
+  <Badge type="SOC2" />
+</BadgeGroup>
+```
+
+### Live Example
+
+<BadgeGroup>
+  <Badge type="HIPAA" />
+  <Badge type="GDPR" />
+  <Badge type="CCPA" />
+  <Badge type="SOC2" />
+</BadgeGroup>
+
+---
+
+## Page Template
+
+Every documentation page should follow this template:
+
+```mdx
+---
+id: unique-doc-id
+title: "Page Title"
+sidebar_label: "Sidebar Label"
+sidebar_position: 1
+slug: /path/to/page
+description: "SEO meta description (150-160 characters recommended)."
+keywords: [keyword1, keyword2, keyword3]
+tags: [category, feature]
+---
+
+import {
+  IconFeature,
+  FeatureGrid,
+  Param,
+  Badge,
+  BadgeGroup,
+} from "@site/src/components";
+
+# Page Title
+
+Brief introduction paragraph explaining what this page covers.
+
+## Section Heading
+
+Content with proper formatting...
+
+### Subsection
+
+More detailed content...
+
+---
+
+## Next Steps
+
+- [Related Page 1](./related-page-1.md)
+- [Related Page 2](./related-page-2.md)
+```
+
+### Frontmatter Fields
+
+| Field              | Required    | Description                               |
+| ------------------ | ----------- | ----------------------------------------- |
+| `id`               | Yes         | Unique identifier for sidebar linking     |
+| `title`            | Yes         | Page title (used in metadata and heading) |
+| `sidebar_label`    | Yes         | Short label for sidebar navigation        |
+| `sidebar_position` | Yes         | Ordering in sidebar (lower = higher)      |
+| `slug`             | Yes         | URL path for the page                     |
+| `description`      | Yes         | SEO meta description                      |
+| `keywords`         | Recommended | SEO keywords array                        |
+| `tags`             | Recommended | Tags for categorization                   |
+
+---
+
+## Best Practices
+
+1. **Use FeatureGrid for features**: Always wrap `IconFeature` components in `FeatureGrid` for proper layout.
+
+2. **Use Param for code references**: Any configuration option, environment variable, or API parameter should use `Param`.
+
+3. **Group badges together**: Use `BadgeGroup` to wrap multiple `Badge` components.
+
+4. **Keep descriptions concise**: IconFeature descriptions should be 1-2 sentences maximum.
+
+5. **Use consistent icons**: Refer to the available icons list above to maintain visual consistency.

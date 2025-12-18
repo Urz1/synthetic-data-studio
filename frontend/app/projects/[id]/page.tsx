@@ -31,6 +31,7 @@ import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { api } from "@/lib/api"
 import type { Project, Dataset, Generator, Evaluation } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
 
 
 export default function ProjectDetailPage() {
@@ -46,6 +47,7 @@ export default function ProjectDetailPage() {
   const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const { toast } = useToast()
 
   // Load data
   React.useEffect(() => {
@@ -120,7 +122,16 @@ export default function ProjectDetailPage() {
                   Back to Projects
                 </Link>
               </Button>
-              <Button variant="outline" size="icon">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => {
+                  // Navigate to settings tab by setting URL hash or use tab state
+                  const tabsElement = document.querySelector('[value="settings"]') as HTMLButtonElement
+                  if (tabsElement) tabsElement.click()
+                }}
+                title="Project Settings"
+              >
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
@@ -289,8 +300,33 @@ export default function ProjectDetailPage() {
                       icon: <Eye className="h-4 w-4" />,
                       onClick: (row) => router.push(`/generators/${row.id}`),
                     },
-                    { label: "Download", icon: <Download className="h-4 w-4" />, onClick: () => {} },
-                    { label: "Evaluate", icon: <Play className="h-4 w-4" />, onClick: () => {} },
+                    {
+                      label: "Download Model",
+                      icon: <Download className="h-4 w-4" />,
+                      onClick: async (row) => {
+                        if (row.status !== "completed") {
+                          toast({ title: "Not Ready", description: "Generator training must complete first.", variant: "destructive" })
+                          return
+                        }
+                        try {
+                          await api.downloadModel(row.id)
+                          toast({ title: "Download Started", description: "Model download initiated." })
+                        } catch (err) {
+                          toast({ title: "Download Failed", description: err instanceof Error ? err.message : "Failed to download", variant: "destructive" })
+                        }
+                      },
+                    },
+                    {
+                      label: "Run Evaluation",
+                      icon: <Play className="h-4 w-4" />,
+                      onClick: (row) => {
+                        if (row.status !== "completed") {
+                          toast({ title: "Not Ready", description: "Generator training must complete before evaluation.", variant: "destructive" })
+                          return
+                        }
+                        router.push(`/evaluations/new?generator_id=${row.id}`)
+                      },
+                    },
                   ]}
                 />
               </CardContent>

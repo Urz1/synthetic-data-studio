@@ -12,21 +12,25 @@ import hashlib
 import hmac
 import secrets
 import time
+import logging
 from typing import Optional, Dict, Any
 from urllib.parse import urlencode
 
 import httpx
 
 from app.core.config import settings
+from app.core.redis_utils import set_with_expiry, get_value, delete_key
+
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
 # OAUTH STATE MANAGEMENT (CSRF Protection)
 # ============================================================================
 
-# In-memory state store (for single-instance deployment)
-# For production with multiple instances, use Redis
-_oauth_states: Dict[str, float] = {}
+# Key prefix for OAuth state in Redis
+OAUTH_STATE_PREFIX = "oauth_state:"
 STATE_EXPIRY_SECONDS = 600  # 10 minutes
 
 
@@ -34,14 +38,19 @@ def generate_oauth_state() -> str:
     """
     Generate a secure OAuth state token for CSRF protection.
     
+    Uses Redis if available, falls back to in-memory.
+    
     Returns:
         Cryptographically secure state token
     """
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = time.time()
     
-    # Cleanup expired states
-    _cleanup_expired_states()
+    # Store with TTL (auto-expires)
+    set_with_expiry(
+        f"{OAUTH_STATE_PREFIX}{state}",
+        str(time.time()),
+        STATE_EXPIRY_SECONDS
+    )
     
     return state
 
@@ -50,33 +59,37 @@ def validate_oauth_state(state: str) -> bool:
     """
     Validate an OAuth state token.
     
+    Uses Redis if available, falls back to in-memory.
+    State is consumed (deleted) after validation (one-time use).
+    
     Args:
         state: State token to validate
         
     Returns:
         True if valid, False otherwise
     """
-    if not state or state not in _oauth_states:
+    if not state:
         return False
     
-    created_at = _oauth_states.pop(state)  # Remove after use (one-time)
+    key = f"{OAUTH_STATE_PREFIX}{state}"
+    created_at_str = get_value(key)
     
-    # Check expiry
-    if time.time() - created_at > STATE_EXPIRY_SECONDS:
+    if not created_at_str:
+        return False
+    
+    # Delete after use (one-time token)
+    delete_key(key)
+    
+    # Check expiry (belt-and-suspenders with Redis TTL)
+    try:
+        created_at = float(created_at_str)
+        if time.time() - created_at > STATE_EXPIRY_SECONDS:
+            return False
+    except (ValueError, TypeError):
         return False
     
     return True
 
-
-def _cleanup_expired_states():
-    """Remove expired state tokens."""
-    current_time = time.time()
-    expired = [
-        s for s, t in _oauth_states.items() 
-        if current_time - t > STATE_EXPIRY_SECONDS
-    ]
-    for s in expired:
-        _oauth_states.pop(s, None)
 
 
 # ============================================================================
@@ -144,9 +157,10 @@ class GoogleOAuth(OAuthProvider):
     
     def is_configured(self) -> bool:
         """Check if Google OAuth is properly configured."""
-        print(f"[DEBUG] Google OAuth Config - Client ID: {self.client_id[:20] if self.client_id else 'NOT SET'}...")
-        print(f"[DEBUG] Google OAuth Config - Client Secret: {'SET' if self.client_secret else 'NOT SET'}")
-        return bool(self.client_id and self.client_secret)
+        configured = bool(self.client_id and self.client_secret)
+        if not configured:
+            logger.warning("Google OAuth not configured - missing client ID or secret")
+        return configured
     
     def get_authorization_url(self, state: str) -> str:
         """Generate Google OAuth authorization URL."""

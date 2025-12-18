@@ -237,7 +237,8 @@ async def run_evaluation(
             db=db,
             generator_id=request.generator_id,
             dataset_id=request.dataset_id,
-            report=report
+            report=report,
+            created_by=str(current_user.id)  # AUDIT: Track who ran evaluation
         )
         
         logger.info(f"✓ Evaluation {evaluation.id} completed: {report['overall_assessment']['overall_quality']}")
@@ -282,6 +283,14 @@ def get_evaluation_endpoint(
             detail=f"Evaluation {evaluation_id} not found"
         )
     
+    # SECURITY: Ownership check - verify user owns the generator
+    generator = get_generator_by_id(db, str(evaluation.generator_id))
+    if not generator or generator.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this evaluation"
+        )
+    
     return EvaluationResponse(
         id=str(evaluation.id),
         generator_id=str(evaluation.generator_id),
@@ -312,7 +321,18 @@ async def list_generator_evaluations(
     # Validate UUID
     validate_uuid(generator_id, "generator_id")
     
+    # SECURITY: Ownership check - verify user owns the generator
+    generator = get_generator_by_id(db, generator_id)
+    if not generator or generator.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view evaluations for this generator"
+        )
+    
     evaluations = list_evaluations_by_generator(db, generator_id)
+    
+    # Filter out soft-deleted evaluations
+    active_evaluations = [e for e in evaluations if e.deleted_at is None]
     
     return [
         EvaluationResponse(
@@ -323,7 +343,7 @@ async def list_generator_evaluations(
             report=e.report,
             created_at=e.created_at
         )
-        for e in evaluations
+        for e in active_evaluations
     ]
 
 
@@ -701,8 +721,8 @@ def delete_evaluation_endpoint(
             detail="Not authorized to delete this evaluation"
         )
     
-    # Delete the evaluation
-    success = delete_evaluation(db, evaluation_id)
+    # Soft-delete the evaluation (audit trail preserved)
+    success = delete_evaluation(db, evaluation_id, deleted_by=str(current_user.id))
     
     if not success:
         raise HTTPException(

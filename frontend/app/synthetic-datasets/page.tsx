@@ -15,32 +15,37 @@ import { api } from "@/lib/api"
 import type { SyntheticDataset } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { useToast } from "@/hooks/use-toast"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
+import { useDeleteWithProgress } from "@/hooks/use-delete-with-progress"
+import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 export default function SyntheticDatasetsPage() {
   const [search, setSearch] = React.useState("")
   const [datasets, setDatasets] = React.useState<SyntheticDataset[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-  const [datasetToDelete, setDatasetToDelete] = React.useState<string | null>(null)
+  const [datasetToDelete, setDatasetToDelete] = React.useState<SyntheticDataset | null>(null)
   const { user } = useAuth()
   const { toast } = useToast()
+
+  // Delete hook with progress tracking
+  const { isDeleting, isGhostId, startDelete } = useDeleteWithProgress({
+    entityType: "Synthetic Dataset",
+    onSuccess: (id) => {
+      // Remove deleted dataset from state immediately
+      setDatasets(prev => prev.filter(d => d.id !== id))
+      setDatasetToDelete(null)
+    },
+    onError: () => {
+      setDatasetToDelete(null)
+    },
+  })
 
   React.useEffect(() => {
     loadSyntheticDatasets()
@@ -59,25 +64,14 @@ export default function SyntheticDatasetsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    try {
-      await api.deleteSyntheticDataset(id)
-      toast({
-        title: "Deleted",
-        description: "Synthetic dataset has been deleted successfully.",
-      })
-      // Refresh the list
-      await loadSyntheticDatasets()
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to delete synthetic dataset",
-        variant: "destructive",
-      })
-    } finally {
-      setDeleteDialogOpen(false)
-      setDatasetToDelete(null)
-    }
+  const handleConfirmDelete = async () => {
+    if (!datasetToDelete) return
+    
+    await startDelete(
+      datasetToDelete.id,
+      datasetToDelete.name,
+      () => api.deleteSyntheticDataset(datasetToDelete.id)
+    )
   }
 
   async function handleDownload(id: string) {
@@ -192,10 +186,7 @@ export default function SyntheticDatasetsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => {
-                                setDatasetToDelete(dataset.id)
-                                setDeleteDialogOpen(true)
-                              }}
+                              onClick={() => setDatasetToDelete(dataset)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -240,25 +231,15 @@ export default function SyntheticDatasetsPage() {
           </>
         )}
 
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Synthetic Dataset</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete this synthetic dataset? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => datasetToDelete && handleDelete(datasetToDelete)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Delete Confirmation Dialog */}
+        <DeleteConfirmationDialog
+          entityType="Synthetic Dataset"
+          entityName={datasetToDelete?.name}
+          open={!!datasetToDelete}
+          onOpenChange={(open) => !open && setDatasetToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          isDeleting={isDeleting}
+        />
       </AppShell>
     </ProtectedRoute>
   )

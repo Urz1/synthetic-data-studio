@@ -95,7 +95,7 @@ def generate_realistic_value(column_name: str, column_spec: Dict[str, Any]) -> A
     # Datetime type
     elif col_type == 'datetime' or col_type == 'date':
         start_date = column_spec.get('start_date', '2020-01-01')
-        end_date = column_spec.get('end_date', '2024-12-31')
+        end_date = column_spec.get('end_date', '2025-12-31')
         
         # Parse dates
         if isinstance(start_date, str):

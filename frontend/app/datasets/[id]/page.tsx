@@ -15,17 +15,7 @@ import { api } from "@/lib/api"
 import type { Dataset, Generator } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { useToast } from "@/hooks/use-toast"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 
 export default function DatasetDetailPage() {
   const params = useParams()
@@ -38,6 +28,8 @@ export default function DatasetDetailPage() {
   const [generators, setGenerators] = React.useState<Generator[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const { toast } = useToast()
 
   // Load data
@@ -100,19 +92,55 @@ export default function DatasetDetailPage() {
 
   const handleDelete = async () => {
     try {
-      await api.deleteDataset(id)
+      setIsDeleting(true)
+      
+      // Show deleting toast
       toast({
-        title: "Deleted",
-        description: "Dataset has been deleted successfully.",
+        title: `Deleting ${dataset?.name}...`,
+        description: "Please wait while the dataset is being removed.",
       })
+      
+      await api.deleteDataset(id)
+      
+      toast({
+        title: "Dataset deleted",
+        description: `${dataset?.name} has been permanently removed.`,
+      })
+      
       // Navigate back to listing page
       router.push("/datasets")
     } catch (err) {
       toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to delete dataset",
+        title: `Could not delete ${dataset?.name}`,
+        description: "Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+    }
+  }
+
+  const [isReprofiling, setIsReprofiling] = React.useState(false)
+
+  const handleReprofile = async () => {
+    try {
+      setIsReprofiling(true)
+      await api.profileDataset(id)
+      toast({
+        title: "Profiling started",
+        description: "Dataset is being profiled. Results will appear shortly.",
+      })
+      // Reload data to get updated profile
+      await loadDatasetDetails()
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to start profiling",
+        variant: "destructive",
+      })
+    } finally {
+      setIsReprofiling(false)
     }
   }
 
@@ -168,9 +196,9 @@ export default function DatasetDetailPage() {
               <Download className="mr-2 h-4 w-4" />
               Download
             </Button>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Re-profile
+            <Button variant="outline" size="sm" onClick={handleReprofile} disabled={isReprofiling}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isReprofiling ? 'animate-spin' : ''}`} />
+              {isReprofiling ? 'Profiling...' : 'Re-profile'}
             </Button>
             <Button asChild>
               <Link href={`/generators/new?dataset=${dataset.id}`}>
@@ -225,7 +253,7 @@ export default function DatasetDetailPage() {
               <div className="space-y-2">
                 {dataset.schema_data?.dtypes && Object.entries(dataset.schema_data.dtypes).map(([col, dtype]) => (
                   <div key={col} className="flex items-center justify-between text-sm">
-                    <span className="font-mono truncate max-w-[140px]">{col}</span>
+                    <span className="font-mono truncate max-w-[140px]" title={col}>{col}</span>
                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{dtype}</code>
                   </div>
                 ))}
@@ -238,31 +266,24 @@ export default function DatasetDetailPage() {
               <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
             </CardHeader>
             <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="w-full">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Dataset
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Dataset</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this dataset? This will also delete all associated generators and synthetic datasets. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="w-full"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Dataset
+              </Button>
+              
+              <DeleteConfirmationDialog
+                entityType="Dataset"
+                entityName={dataset.name}
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                onConfirm={handleDelete}
+                isDeleting={isDeleting}
+              />
             </CardContent>
           </Card>
         </div>

@@ -1,9 +1,12 @@
 """Alembic migration environment configuration.
 
-This file configures Alembic to work with SQLModel and all application models.
+Keep this file safe to import in CI/local environments:
+- Do not import application runtime settings that may call sys.exit.
+- Prefer DATABASE_URL when present; otherwise fall back to alembic.ini.
 """
 
 from logging.config import fileConfig
+import os
 import sys
 from pathlib import Path
 
@@ -12,34 +15,44 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Add the parent directory to the path so we can import app modules
+# Signal to app modules (config/database) that we're running migrations.
+os.environ.setdefault("ALEMBIC_RUNNING", "1")
+
+# Add backend/ to sys.path so we can import `app.*`
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-# Import settings for database URL
-from app.core.config import settings
-
-# Import SQLModel
 from sqlmodel import SQLModel
 
-# Import ALL models so Alembic can detect them
-from app.database.database import Base
-
-# Import all SQLModel models
-from app.auth.models import User
-from app.projects.models import Project
-from app.datasets.models import Dataset
-from app.generators.models import Generator
-from app.evaluations.models import Evaluation
-from app.compliance.models import ComplianceReport
-from app.jobs.models import Job
-from app.audit.models import AuditLog
-from app.exports.models import Export
+# Import model modules so SQLModel.metadata is populated.
+# (We intentionally import the modules, not symbols, to avoid unused imports.)
+# Wrap in try-except to handle cases where linter runs without ALEMBIC_RUNNING set.
+try:
+    import app.auth.models  # noqa: F401
+    import app.projects.models  # noqa: F401
+    import app.datasets.models  # noqa: F401
+    import app.generators.models  # noqa: F401
+    import app.evaluations.models  # noqa: F401
+    import app.compliance.models  # noqa: F401
+    import app.jobs.models  # noqa: F401
+    import app.audit.models  # noqa: F401
+    import app.exports.models  # noqa: F401
+except ImportError:
+    # If imports fail (e.g., during linting), skip them.
+    # SQLModel.metadata will be empty, but that's ok for some operations.
+    pass
 
 # this is the Alembic Config object
 config = context.config
 
-# Set the sqlalchemy.url from our settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Prefer DATABASE_URL (set by deploy/CI). Fall back to alembic.ini placeholder.
+db_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
+# If alembic.ini still has the template placeholder, use a safe local default
+# so `alembic revision --autogenerate` works out of the box.
+if not db_url or db_url.startswith("driver://"):
+    db_url = "sqlite:///./test.db"
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
