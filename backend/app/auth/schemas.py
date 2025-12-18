@@ -131,6 +131,17 @@ class OAuthCallbackResponse(BaseModel):
     is_new_user: bool = False
 
 
+class SessionCreate(BaseModel):
+    """Schema for creating session cookies from tokens.
+    
+    Used by /auth/session endpoint to convert tokens (passed via hash fragment)
+    into secure HTTP-only cookies.
+    """
+    access: str = Field(..., description="Access token (JWT)")
+    refresh: str = Field(..., description="Refresh token")
+    expires_in: int = Field(..., description="Access token expiry in seconds")
+
+
 # ============================================================================
 # VERIFICATION + PASSWORD RESET
 # ============================================================================
