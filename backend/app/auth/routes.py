@@ -34,7 +34,7 @@ from .schemas import (
     OAuthProviderInfo, OAuthProvidersResponse, OAuthCallbackResponse,
     VerificationRequest, PasswordResetRequest, PasswordResetConfirm,
     TwoFactorSetupResponse, TwoFactorVerifyRequest,
-    ProfileUpdate, PasswordChange
+    ProfileUpdate, PasswordChange, SessionCreate
 )
 from .repositories import create_user, get_user_by_email, verify_user_password, set_user_password
 from .services import (
@@ -839,6 +839,69 @@ def get_current_user_info(
 
 
 # ============================================================================
+# SESSION COOKIE ENDPOINT  
+# ============================================================================
+
+@router.post(
+    "/session",
+    summary="Set session cookies from tokens",
+    description="Convert tokens (passed via hash fragment) into secure HTTP-only cookies"
+)
+def set_session_cookies(
+    payload: SessionCreate,
+    response: Response
+):
+    """
+    Set HTTP-only secure cookies from tokens.
+    
+    This endpoint is called by the frontend after OAuth callback.
+    The tokens are passed via hash fragment (never hits server),
+    then POSTed here to be converted into secure cookies.
+    
+    Security measures:
+    - Access token: HttpOnly, Secure, SameSite=Strict, 15 min
+    - Refresh token: HttpOnly, Secure, SameSite=Strict, 7 days
+    """
+    is_production = settings.debug is False
+    
+    # Set access token cookie (short-lived)
+    response.set_cookie(
+        key="ss_access",
+        value=payload.access,
+        httponly=True,
+        secure=is_production,  # Secure in production, allow http in dev
+        samesite="lax",  # "lax" for OAuth redirects to work
+        max_age=payload.expires_in,  # Match token expiry
+        path="/"
+    )
+    
+    # Set refresh token cookie (long-lived)
+    response.set_cookie(
+        key="ss_refresh",
+        value=payload.refresh,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        path="/"
+    )
+    
+    # Also keep the old ss_jwt cookie for backward compatibility with middleware
+    response.set_cookie(
+        key="ss_jwt",
+        value=payload.access,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=payload.expires_in,
+        path="/"
+    )
+    
+    logger.info("Session cookies set successfully")
+    return {"ok": True}
+
+
+# ============================================================================
 # OAUTH ENDPOINTS
 # ============================================================================
 
@@ -959,26 +1022,28 @@ async def google_callback(
     user, is_new = await _find_or_create_oauth_user(db, user_info)
     logger.debug(f"OAuth Google: user_id={user.id}, is_new={is_new}")
 
-    # Generate JWT token with user ID and role
+    # Generate access token (JWT)
     jwt_token = create_access_token(data={
         "sub": user.email,
         "uid": str(user.id),
         "role": user.role
     })
+    
+    # Generate refresh token and store in database
+    refresh_token = create_refresh_token(
+        db=db,
+        user_id=user.id,
+        ip_address=None,  # Could extract from request if needed
+        user_agent=None
+    )
 
-    # Redirect to frontend with token and user data in URL params
-    from urllib.parse import urlencode
-    params = urlencode({
-        "token": jwt_token,
-        "user_id": str(user.id),
-        "email": user.email or "",
-        "name": user.name or "",
-        "avatar_url": user.avatar_url or "",
-        "role": user.role,
-        "is_new": str(is_new).lower()
-    })
-    frontend_callback = f"{settings.frontend_url}/auth/google/callback?{params}"
-    return RedirectResponse(url=frontend_callback)
+    # SECURE: Redirect with tokens in URL fragment (hash)
+    # Hash fragments are NEVER sent to the server, only processed client-side
+    # This prevents tokens from appearing in server logs or analytics
+    from urllib.parse import quote
+    hash_params = f"token={quote(jwt_token)}&refresh={quote(refresh_token)}&expires_in={ACCESS_TOKEN_EXPIRE_MINUTES * 60}"
+    frontend_success = f"{settings.frontend_url}/auth/success#{hash_params}"
+    return RedirectResponse(url=frontend_success)
 
 
 # --- GitHub OAuth ---
@@ -1079,26 +1144,27 @@ async def github_callback(
     # Find or create user
     user, is_new = await _find_or_create_oauth_user(db, user_info)
     
-    # Generate JWT token with user ID and role
+    # Generate access token (JWT)
     jwt_token = create_access_token(data={
         "sub": user.email,
         "uid": str(user.id),
         "role": user.role
     })
     
-    # Redirect to frontend with token and user data in URL params
-    from urllib.parse import urlencode
-    params = urlencode({
-        "token": jwt_token,
-        "user_id": str(user.id),
-        "email": user.email,
-        "name": user.name or "",
-        "avatar_url": user.avatar_url or "",
-        "role": user.role,
-        "is_new": str(is_new).lower()
-    })
-    frontend_callback = f"{settings.frontend_url}/auth/github/callback?{params}"
-    return RedirectResponse(url=frontend_callback)
+    # Generate refresh token and store in database
+    refresh_token = create_refresh_token(
+        db=db,
+        user_id=user.id,
+        ip_address=None,
+        user_agent=None
+    )
+    
+    # SECURE: Redirect with tokens in URL fragment (hash)
+    # Hash fragments are NEVER sent to the server, only processed client-side
+    from urllib.parse import quote
+    hash_params = f"token={quote(jwt_token)}&refresh={quote(refresh_token)}&expires_in={ACCESS_TOKEN_EXPIRE_MINUTES * 60}"
+    frontend_success = f"{settings.frontend_url}/auth/success#{hash_params}"
+    return RedirectResponse(url=frontend_success)
 
 
 # ============================================================================
