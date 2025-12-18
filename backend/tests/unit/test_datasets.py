@@ -476,7 +476,7 @@ class TestDatasetEdgeCases:
         """Test dataset names with special characters."""
         special_names = [
             "Dataset #1",
-            "My-Dataset_2024",
+            "My-Dataset_2025",
             "Dataset (Test)",
             "Dataset@123",
         ]

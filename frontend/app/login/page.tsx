@@ -129,8 +129,7 @@ export default async function LoginPage({
                 <PasswordInput id="password" name="password" placeholder="••••••••" autoComplete="current-password" required />
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">2FA enabled?</span>
+              <div className="flex items-center justify-end">
                 <Link
                   href="/forgot-password"
                   className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
@@ -139,9 +138,13 @@ export default async function LoginPage({
                 </Link>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="otp">One-time code (optional)</Label>
-                <Input id="otp" name="otp" type="text" inputMode="numeric" placeholder="123456" autoComplete="one-time-code" />
+              {/* OTP field - hidden by default, revealed when 2FA is required */}
+              <div id="otp-field-container" className="space-y-2 hidden" data-otp-field="true">
+                <Label htmlFor="otp">
+                  Authentication Code
+                  <span className="text-xs text-muted-foreground ml-2">(from your authenticator app)</span>
+                </Label>
+                <Input id="otp" name="otp" type="text" inputMode="numeric" maxLength={6} placeholder="123456" autoComplete="one-time-code" />
               </div>
 
               <Button type="submit" variant="secondary" className="w-full min-h-[44px] cursor-pointer">

@@ -1,0 +1,490 @@
+{
+  "info": {
+    "name": "Synthetic Data Studio API",
+    "description": "Complete API collection for Synthetic Data Studio - Generate high-quality synthetic data with differential privacy guarantees",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate and get access token. Use the returned token in Authorization header for subsequent requests."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Datasets",
+      "item": [
+        {
+          "name": "List Datasets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datasets/",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", ""]
+            },
+            "description": "Get all datasets for the authenticated user"
+          }
+        },
+        {
+          "name": "Upload Dataset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "project_id",
+                  "value": "00000000-0000-0000-0000-000000000001",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/datasets/upload",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", "upload"]
+            },
+            "description": "Upload a CSV or JSON file to create a dataset. Supports project assignment."
+          }
+        },
+        {
+          "name": "Get Dataset Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datasets/{{dataset_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", "{{dataset_id}}"]
+            },
+            "description": "Get detailed information about a specific dataset"
+          }
+        },
+        {
+          "name": "Profile Dataset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datasets/{{dataset_id}}/profile",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", "{{dataset_id}}", "profile"]
+            },
+            "description": "Generate comprehensive statistical profile including column statistics, correlations, and data quality metrics"
+          }
+        },
+        {
+          "name": "Detect PII",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datasets/{{dataset_id}}/pii-detection",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", "{{dataset_id}}", "pii-detection"]
+            },
+            "description": "Detect personally identifiable information using pattern matching (emails, phone numbers, SSNs, etc.)"
+          }
+        },
+        {
+          "name": "Enhanced PII Detection (AI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datasets/{{dataset_id}}/pii-detection-enhanced",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", "{{dataset_id}}", "pii-detection-enhanced"]
+            },
+            "description": "AI-powered contextual PII detection that identifies encoded, obfuscated, and indirect identifiers"
+          }
+        },
+        {
+          "name": "Download Dataset",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/datasets/{{dataset_id}}/download",
+              "host": ["{{base_url}}"],
+              "path": ["datasets", "{{dataset_id}}", "download"]
+            },
+            "description": "Download the original dataset file"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Generators",
+      "item": [
+        {
+          "name": "List Generators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generators/",
+              "host": ["{{base_url}}"],
+              "path": ["generators", ""]
+            },
+            "description": "Get all synthetic data generators"
+          }
+        },
+        {
+          "name": "Create Generator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Synthetic Dataset Generator\",\n  \"description\": \"Generator for customer transaction data\",\n  \"dataset_id\": \"{{dataset_id}}\",\n  \"method\": \"CTGAN\",\n  \"privacy_level\": {\n    \"epsilon\": 1.0,\n    \"delta\": 1e-5\n  },\n  \"configuration\": {\n    \"epochs\": 100,\n    \"batch_size\": 500\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/generators/",
+              "host": ["{{base_url}}"],
+              "path": ["generators", ""]
+            },
+            "description": "Create a new synthetic data generator with differential privacy configuration"
+          }
+        },
+        {
+          "name": "Generate Synthetic Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generators/{{generator_id}}/generate",
+              "host": ["{{base_url}}"],
+              "path": ["generators", "{{generator_id}}", "generate"]
+            },
+            "description": "Start asynchronous synthetic data generation job"
+          }
+        },
+        {
+          "name": "Get Generator Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generators/{{generator_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["generators", "{{generator_id}}"]
+            },
+            "description": "Get generator details and current status"
+          }
+        },
+        {
+          "name": "Generate Model Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generators/{{generator_id}}/model-card",
+              "host": ["{{base_url}}"],
+              "path": ["generators", "{{generator_id}}", "model-card"]
+            },
+            "description": "Generate comprehensive ML model card with privacy and compliance information"
+          }
+        },
+        {
+          "name": "Generate Compliance Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generators/{{generator_id}}/compliance-report?framework=GDPR",
+              "host": ["{{base_url}}"],
+              "path": ["generators", "{{generator_id}}", "compliance-report"],
+              "query": [
+                {
+                  "key": "framework",
+                  "value": "GDPR"
+                }
+              ]
+            },
+            "description": "Generate compliance report for GDPR, HIPAA, CCPA, or SOC2 frameworks"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Evaluations",
+      "item": [
+        {
+          "name": "Run Evaluation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"original_dataset_id\": \"{{original_dataset_id}}\",\n  \"synthetic_dataset_id\": \"{{synthetic_dataset_id}}\",\n  \"evaluation_types\": [\"statistical\", \"privacy\", \"utility\"],\n  \"configuration\": {\n    \"privacy_tests\": {\n      \"membership_inference\": true,\n      \"attribute_inference\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/evaluations/",
+              "host": ["{{base_url}}"],
+              "path": ["evaluations", ""]
+            },
+            "description": "Run comprehensive evaluation comparing original and synthetic datasets"
+          }
+        },
+        {
+          "name": "Get Evaluation Results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/evaluations/{{evaluation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["evaluations", "{{evaluation_id}}"]
+            },
+            "description": "Get detailed evaluation results and metrics"
+          }
+        },
+        {
+            "name": "Explain Evaluation (AI)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/evaluations/{{evaluation_id}}/explain",
+                "host": ["{{base_url}}"],
+                "path": ["evaluations", "{{evaluation_id}}", "explain"]
+              },
+              "description": "Get AI-powered natural language explanation of evaluation results"
+            }
+          }
+      ]
+    },
+    {
+      "name": "AI Features",
+      "item": [
+        {
+          "name": "Chat About Evaluation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What's the overall quality of this synthetic data?\",\n  \"evaluation_id\": \"{{evaluation_id}}\",\n  \"history\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/llm/chat",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "chat"]
+            },
+            "description": "Interactive chat about evaluation results with conversation history"
+          }
+        },
+        {
+          "name": "Get Improvement Suggestions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/llm/suggest-improvements/{{evaluation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "suggest-improvements", "{{evaluation_id}}"]
+            },
+            "description": "Get AI-powered suggestions for improving synthetic data quality"
+          }
+        },
+        {
+          "name": "Explain Metric",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/llm/explain-metric?metric_name=ks_statistic&metric_value=0.087",
+              "host": ["{{base_url}}"],
+              "path": ["llm", "explain-metric"],
+              "query": [
+                {
+                  "key": "metric_name",
+                  "value": "ks_statistic"
+                },
+                {
+                  "key": "metric_value",
+                  "value": "0.087"
+                }
+              ]
+            },
+            "description": "Get plain English explanation of technical evaluation metrics"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dataset_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "generator_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "evaluation_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "original_dataset_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "synthetic_dataset_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

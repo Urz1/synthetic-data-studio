@@ -7,6 +7,7 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
+  is_2fa_enabled?: boolean;
   created_at: string;
   role?: string;
   avatar_url?: string | null;
@@ -158,6 +159,7 @@ export interface SchemaGeneratorConfig {
   >;
   project_id?: string;
   dataset_name?: string;
+  use_llm_seed?: boolean; // Use LLM for realistic seed data generation
 }
 
 export interface PrivacyConfig {

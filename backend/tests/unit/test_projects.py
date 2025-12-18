@@ -398,7 +398,7 @@ class TestProjectEdgeCases:
         special_names = [
             "Project #1",
             "Project @ Test",
-            "Project-2024",
+            "Project-2025",
             "Project_Test",
             "Project (v2)",
         ]

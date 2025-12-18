@@ -57,6 +57,9 @@ from .schemas import (
 )
 from .services import generate_synthetic_data, _generate_from_schema
 
+# Audit logging
+from app.core.audit_middleware import create_manual_audit_log
+
 # Jobs integration
 from app.jobs.models import Job
 from app.jobs.repositories import create_job, update_job_status
@@ -184,6 +187,21 @@ def delete_generator_endpoint(
     if not deleted:
         raise HTTPException(status_code=404, detail="Generator not found")
     
+    # Audit trail: Log the deletion
+    create_manual_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="generator_deleted",
+        resource_type="generator",
+        resource_id=uuid.UUID(generator_id),
+        resource_name=generator.name,
+        metadata={
+            "type": generator.type,
+            "had_model": bool(generator.model_path or generator.s3_model_key),
+            "output_dataset_id": str(generator.output_dataset_id) if generator.output_dataset_id else None
+        }
+    )
+    
     return GeneratorDeleteResponse(
         message="Generator deleted successfully",
         id=generator_id
@@ -233,6 +251,21 @@ def download_generator_model(
                 filename=f"{generator.name}_{generator.type}.pkl",
                 expires_in=3600
             )
+            
+            # Audit trail: Log the download
+            create_manual_audit_log(
+                db=db,
+                user_id=current_user.id,
+                action="generator_model_download",
+                resource_type="generator",
+                resource_id=uuid.UUID(generator_id),
+                resource_name=generator.name,
+                metadata={
+                    "storage": "s3",
+                    "filename": f"{generator.name}_{generator.type}.pkl"
+                }
+            )
+            
             return {
                 "download_url": download_url,
                 "expires_in": 3600,
@@ -288,6 +321,21 @@ def download_generator_model_file(
     model_path = Path(generator.model_path)
     if not model_path.exists():
         raise HTTPException(status_code=404, detail="Model file not found on disk")
+    
+    # Audit trail: Log the download
+    create_manual_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="generator_model_download",
+        resource_type="generator",
+        resource_id=uuid.UUID(generator_id),
+        resource_name=generator.name,
+        metadata={
+            "storage": "local",
+            "filename": f"{generator.name}_{generator.type}.pkl",
+            "size_bytes": model_path.stat().st_size
+        }
+    )
     
     return FileResponse(
         path=model_path,
@@ -371,7 +419,8 @@ def generate_from_schema(
         parameters_json={
             "num_rows": num_rows,
             "project_id": str(schema_input.project_id) if schema_input.project_id else None,
-            "dataset_name": dataset_name
+            "dataset_name": dataset_name,
+            "use_llm_seed": schema_input.use_llm_seed  # Enhanced mode with LLM seeding
         },
         name=f"Schema: {dataset_name}",
         created_by=current_user.id,
@@ -436,7 +485,78 @@ def generate_from_dataset(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     
-    # Validate num_rows
+    # =========================================================================
+    # STRICT VALIDATION - Safety Gates (return 400 if frontend validation bypassed)
+    # =========================================================================
+    
+    # --- Epochs Validation ---
+    if epochs < 1:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid training parameters. epochs must be at least 1."
+        )
+    if epochs > 500:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid training parameters. epochs must be ≤ 500."
+        )
+    
+    # --- Batch Size Validation ---
+    if batch_size < 32:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid training parameters. batch_size must be at least 32."
+        )
+    if batch_size > 8192:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid training parameters. batch_size must be ≤ 8192."
+        )
+    
+    # --- Product Rule: epochs × batch_size ≤ 2,000,000 ---
+    product = epochs * batch_size
+    if product > 2_000_000:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid training parameters. Adjust epochs, batch size or privacy budget. "
+                   f"(epochs × batch_size = {product:,} exceeds limit of 2,000,000)"
+        )
+    
+    # --- DP Parameter Validation (when enabled) ---
+    if config.use_differential_privacy:
+        # Epsilon validation
+        if config.target_epsilon is None or config.target_epsilon <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid privacy parameters. epsilon must be > 0."
+            )
+        if config.target_epsilon > 10:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid privacy parameters. epsilon must be ≤ 10."
+            )
+        
+        # Delta validation
+        if config.target_delta is not None:
+            if config.target_delta < 1e-6:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Invalid privacy parameters. delta must be ≥ 1e-6."
+                )
+            if config.target_delta > 1e-3:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Invalid privacy parameters. delta must be ≤ 1e-3."
+                )
+        
+        # Max grad norm validation
+        if config.max_grad_norm is None or config.max_grad_norm <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid privacy parameters. max_grad_norm must be > 0."
+            )
+    
+    # --- Num Rows Validation ---
     if num_rows is not None:
         if num_rows < 100:
             raise HTTPException(status_code=400, detail="num_rows must be at least 100")

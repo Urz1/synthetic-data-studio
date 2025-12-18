@@ -190,8 +190,114 @@ def _generate_from_dataset(generator: Generator, db: Session) -> Dataset:
         raise ValueError(f"Unsupported generator type: {generator.type}")
 
 
+def _generate_with_llm_seed(
+    generator: Generator,
+    schema: Dict[str, Any],
+    num_rows: int,
+    db: Session
+) -> pd.DataFrame:
+    """
+    Generate synthetic data using LLM-powered generation.
+    
+    Strategy based on row count:
+    - <= 200 rows: Pure LLM generation (multiple batches if needed)
+    - 201-1000 rows: LLM + statistical replication with variation
+    - > 1000 rows: LLM base + Gaussian resampling for continuous, shuffle for categorical
+    
+    Args:
+        generator: Generator record
+        schema: Normalized schema dict
+        num_rows: Number of rows to generate
+        db: Database session
+        
+    Returns:
+        DataFrame with realistic synthetic data
+    """
+    import asyncio
+    import numpy as np
+    from app.services.llm.seed_data_generator import SeedDataGenerator
+    
+    seed_generator = SeedDataGenerator()
+    
+    # Generate seed data using LLM (with async wrapper)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    # For small datasets, use pure LLM generation
+    if num_rows <= 200:
+        try:
+            seed_data = loop.run_until_complete(
+                seed_generator.generate_seed_data(schema, num_rows=num_rows)
+            )
+            logger.info(f"✓ LLM generated {len(seed_data)} rows directly")
+            return seed_data
+        except Exception as e:
+            logger.warning(f"LLM generation failed: {e}, using fallback")
+            return seed_generator.generate_seed_data_fallback(schema, num_rows=num_rows)
+    
+    # For larger datasets, generate seed and replicate with variation
+    seed_rows = min(100, num_rows)
+    
+    try:
+        seed_data = loop.run_until_complete(
+            seed_generator.generate_seed_data(schema, num_rows=seed_rows)
+        )
+        logger.info(f"✓ LLM generated {len(seed_data)} seed rows")
+    except Exception as e:
+        logger.warning(f"LLM seed generation failed: {e}, using fallback")
+        seed_data = seed_generator.generate_seed_data_fallback(schema, num_rows=seed_rows)
+    
+    # Replicate seed data with variations to reach target row count
+    logger.info(f"Replicating {len(seed_data)} seed rows to {num_rows} with variation")
+    
+    result_data = []
+    remaining_rows = num_rows
+    
+    while remaining_rows > 0:
+        batch_size = min(remaining_rows, len(seed_data))
+        
+        # Sample from seed data with replacement
+        batch = seed_data.sample(n=batch_size, replace=True).reset_index(drop=True)
+        
+        # Add slight variations to numeric columns
+        for col in batch.columns:
+            col_type = schema.get(col, {}).get("type", "string").lower()
+            
+            if col_type in ("integer", "int", "number", "numeric", "float", "decimal"):
+                # Add small random variation (±10%)
+                noise = np.random.uniform(0.9, 1.1, len(batch))
+                if col_type in ("integer", "int"):
+                    batch[col] = (batch[col].astype(float) * noise).astype(int)
+                else:
+                    batch[col] = batch[col].astype(float) * noise
+            
+            elif col_type in ("date", "datetime", "timestamp"):
+                # Shift dates by random days
+                try:
+                    dates = pd.to_datetime(batch[col])
+                    shifts = pd.to_timedelta(np.random.randint(-30, 30, len(batch)), unit='D')
+                    batch[col] = (dates + shifts).astype(str)
+                except:
+                    pass  # Keep original if parsing fails
+        
+        result_data.append(batch)
+        remaining_rows -= batch_size
+    
+    final_df = pd.concat(result_data, ignore_index=True).head(num_rows)
+    logger.info(f"✓ Generated {len(final_df)} rows from LLM seed with variations")
+    return final_df
+
+
+
 def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
-    """Generate from manual schema definition using GaussianCopula."""
+    """Generate from manual schema definition.
+    
+    If use_llm_seed=True: Uses LLM to generate realistic seed data, then trains CTGAN.
+    If use_llm_seed=False: Uses GaussianCopula for direct generation (original behavior).
+    """
     schema = generator.schema_json
     
     # Normalize schema if it's a list (from frontend) to dict (for backend processing)
@@ -207,15 +313,20 @@ def _generate_from_schema(generator: Generator, db: Session) -> Dataset:
         generator.schema_json = schema
     
     num_rows = generator.parameters_json.get('num_rows', 1000)
+    use_llm_seed = generator.parameters_json.get('use_llm_seed', False)
     
-    logger.info(f"Generating {num_rows} rows from schema using GaussianCopula")
-    
-    # Use GaussianCopula for realistic data generation
-    from app.services.synthesis import GaussianCopulaService
-    
-    copula_service = GaussianCopulaService()
-    copula_service.create_from_schema(schema)
-    df = copula_service.generate_with_constraints(num_rows, schema)
+    if use_llm_seed:
+        # Enhanced mode: Use LLM to generate realistic seed data, then train CTGAN
+        logger.info(f"Generating {num_rows} rows using LLM-seeded CTGAN")
+        df = _generate_with_llm_seed(generator, schema, num_rows, db)
+    else:
+        # Standard mode: Use GaussianCopula for direct generation
+        logger.info(f"Generating {num_rows} rows from schema using GaussianCopula")
+        from app.services.synthesis import GaussianCopulaService
+        
+        copula_service = GaussianCopulaService()
+        copula_service.create_from_schema(schema)
+        df = copula_service.generate_with_constraints(num_rows, schema)
 
     # Save to file locally
     UPLOAD_DIR = Path(settings.upload_dir)

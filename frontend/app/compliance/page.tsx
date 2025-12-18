@@ -31,7 +31,7 @@ const tempMockComplianceReports: ComplianceReport[] = [
       consent_mechanism: "explicit",
       right_to_erasure: true,
     },
-    generated_at: "2024-12-03T14:30:00Z",
+    generated_at: "2025-12-03T14:30:00Z",
   },
   {
     id: "comp-2",
@@ -47,7 +47,7 @@ const tempMockComplianceReports: ComplianceReport[] = [
       encryption_at_rest: true,
       encryption_in_transit: true,
     },
-    generated_at: "2024-12-02T10:15:00Z",
+    generated_at: "2025-12-02T10:15:00Z",
   },
   {
     id: "comp-3",
@@ -61,7 +61,7 @@ const tempMockComplianceReports: ComplianceReport[] = [
       non_discrimination: false,  // Warning trigger
       privacy_policy_updated: true,
     },
-    generated_at: "2024-12-01T08:00:00Z",
+    generated_at: "2025-12-01T08:00:00Z",
   },
   {
     id: "comp-4",
@@ -75,7 +75,7 @@ const tempMockComplianceReports: ComplianceReport[] = [
       confidentiality: true,
       privacy: false,  // Failure
     },
-    generated_at: "2024-11-28T16:45:00Z",
+    generated_at: "2025-11-28T16:45:00Z",
   },
 ]
 

@@ -23,6 +23,7 @@ class Dataset(SQLModel, table=True):
     s3_key: Optional[str] = None  # S3 object key (if stored in S3)
     size_bytes: Optional[int] = None
     row_count: Optional[int] = None
+    column_count: Optional[int] = None  # Number of columns in dataset
     # Renamed from 'schema_json' to 'schema_data' to avoid SQLModel reserved word warning
     schema_data: dict = Field(default_factory=dict, sa_column=Column(JSONType))
     status: str = Field(default="uploaded")

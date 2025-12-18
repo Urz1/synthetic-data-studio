@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 
-type AuthMode = "login" | "register" | "generic"
+type AuthMode = "login" | "register" | "generic" | "reset"
 
 function safeDecodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".")
@@ -30,6 +30,7 @@ const LOADING_TEXT: Record<AuthMode, string> = {
   login: "Signing in...",
   register: "Creating account...",
   generic: "Please wait...",
+  reset: "Sending reset link...",
 }
 
 export function AuthFormEnhancer({
@@ -150,6 +151,22 @@ export function AuthFormEnhancer({
             navigated = true
             return
           }
+          
+          // Check for OTP/2FA required error
+          const errorDetail = data.detail || data.message || ""
+          if (errorDetail.toLowerCase().includes("otp required") || errorDetail.toLowerCase().includes("2fa")) {
+            // Reveal the OTP field
+            const otpContainer = document.getElementById("otp-field-container")
+            if (otpContainer) {
+              otpContainer.classList.remove("hidden")
+              // Focus the OTP input
+              const otpInput = otpContainer.querySelector("input")
+              if (otpInput) {
+                setTimeout(() => otpInput.focus(), 100)
+              }
+            }
+          }
+          
           // Reset UI and show form again on error without redirect
           resetUI(formEl, submitButton)
           return

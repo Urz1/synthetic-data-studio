@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { TwoFactorSettings } from "@/components/settings/two-factor-settings"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -33,6 +34,14 @@ export default function SettingsPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  const initials = (user?.full_name || user?.email || "User")
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
   
   // Profile state
   const [fullName, setFullName] = useState(user?.full_name || "")
@@ -46,6 +55,13 @@ export default function SettingsPage() {
   
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  // 2FA state
+  const [is2FAEnabled, setIs2FAEnabled] = useState(user?.is_2fa_enabled ?? false)
+  
+  useEffect(() => {
+    setIs2FAEnabled(user?.is_2fa_enabled ?? false)
+  }, [user?.is_2fa_enabled])
 
   const handleProfileSave = async () => {
     setIsProfileSaving(true)
@@ -131,16 +147,18 @@ export default function SettingsPage() {
         />
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          </TabsList>
+          <div className="rounded-xl border bg-card/40 p-1 w-fit">
+            <TabsList className="bg-transparent">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="appearance">Appearance</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Profile Settings */}
           <TabsContent value="profile">
             <div className="grid gap-6">
-              <Card>
+              <Card className="bg-card/40">
                 <CardHeader>
                   <CardTitle>Profile Information</CardTitle>
                   <CardDescription>Update your public profile details</CardDescription>
@@ -149,9 +167,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-6">
                     <Avatar className="h-20 w-20">
                       <AvatarImage src="" />
-                      <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                        {user?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-lg bg-primary/10 text-primary">{initials}</AvatarFallback>
                     </Avatar>
                   </div>
 
@@ -186,7 +202,12 @@ export default function SettingsPage() {
           {/* Security Settings */}
           <TabsContent value="security">
             <div className="grid gap-6">
-              <Card>
+              {/* Two-Factor Authentication */}
+              <TwoFactorSettings
+                is2FAEnabled={is2FAEnabled}
+                onStatusChange={setIs2FAEnabled}
+              />
+              <Card className="bg-card/40">
                 <CardHeader>
                   <CardTitle>Change Password</CardTitle>
                   <CardDescription>Update your password to keep your account secure</CardDescription>
@@ -261,7 +282,7 @@ export default function SettingsPage() {
                 </CardFooter>
               </Card>
 
-              <Card className="border-destructive/20">
+              <Card className="border-destructive/20 bg-card/40">
                 <CardHeader>
                   <CardTitle className="text-destructive">Danger Zone</CardTitle>
                   <CardDescription>Irreversible actions for your account</CardDescription>
@@ -310,7 +331,7 @@ export default function SettingsPage() {
           {/* Appearance Settings */}
           <TabsContent value="appearance">
             <div className="grid gap-6">
-              <Card>
+              <Card className="bg-card/40">
                 <CardHeader>
                   <CardTitle>Appearance</CardTitle>
                   <CardDescription>

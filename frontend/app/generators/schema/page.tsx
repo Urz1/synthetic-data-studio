@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Code, Sparkles, Plus, Trash2, Download, Zap } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Code, Sparkles, Plus, Trash2, Download, Zap, BrainCircuit } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { api } from "@/lib/api"
@@ -91,6 +93,7 @@ export default function SchemaGeneratorPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [datasetName, setDatasetName] = useState<string>("")
+  const [useLLMSeed, setUseLLMSeed] = useState(false)  // Enhanced mode: LLM-powered seed data
   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
 
   // Load projects on mount
@@ -198,7 +201,8 @@ export default function SchemaGeneratorPage() {
         schemaConfig = { 
             columns: parsed.columns,
             project_id: selectedProjectId,
-            dataset_name: datasetName
+            dataset_name: datasetName,
+            use_llm_seed: useLLMSeed
         }
       } else {
         // Validate columns from builder
@@ -220,7 +224,8 @@ export default function SchemaGeneratorPage() {
             ])
           ),
           project_id: selectedProjectId,
-          dataset_name: datasetName
+          dataset_name: datasetName,
+          use_llm_seed: useLLMSeed
         }
       }
 
@@ -488,6 +493,42 @@ export default function SchemaGeneratorPage() {
                 <p className="text-xs text-muted-foreground">
                   Min: 1 | Max: 100,000 rows | Current: <span className="font-semibold">{numRows.toLocaleString()}</span>
                 </p>
+              </div>
+
+              {/* LLM Seed Toggle */}
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <BrainCircuit className={`h-5 w-5 ${useLLMSeed ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="llm-seed-toggle" className="font-medium cursor-pointer">
+                        AI-Enhanced Generation
+                      </Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs cursor-help">Beta</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">
+                              Uses AI to generate realistic seed data, then trains a CTGAN model on it 
+                              for higher quality output. Slower but produces more realistic correlations 
+                              between columns.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Generate semantically meaningful data using LLM
+                    </p>
+                  </div>
+                </div>
+                <Switch 
+                  id="llm-seed-toggle"
+                  checked={useLLMSeed} 
+                  onCheckedChange={setUseLLMSeed}
+                />
               </div>
               </div>
 

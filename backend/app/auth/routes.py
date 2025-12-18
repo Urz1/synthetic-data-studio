@@ -683,8 +683,10 @@ def verify_email(token: str = Query(..., min_length=10), db: Session = Depends(g
 def request_password_reset(payload: PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
     # Always respond ok to avoid email enumeration.
     user = get_user_by_email(db, payload.email)
-    if not user or not user.hashed_password:
+    if not user:
         return {"ok": True}
+    
+    # Allow OAuth users without password to set one via this flow
 
     raw = generate_raw_token()
     row = PasswordResetToken(

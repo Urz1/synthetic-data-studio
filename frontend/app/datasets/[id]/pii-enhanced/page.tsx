@@ -18,8 +18,8 @@ import { Input } from "@/components/ui/input"
 // Mock PII detection data
 const mockPIIData = {
   dataset_id: "ds-123",
-  dataset_name: "Customer_Support_Logs_2024.csv",
-  scan_date: "2024-12-03T16:45:00Z",
+  dataset_name: "Customer_Support_Logs_2025.csv",
+  scan_date: "2025-12-03T16:45:00Z",
   total_columns: 15,
   pii_columns_detected: 6,
   risk_score: 78, // High risk

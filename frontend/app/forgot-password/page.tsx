@@ -84,7 +84,7 @@ export default async function ForgotPasswordPage({
                 </Button>
               </form>
 
-              <AuthFormEnhancer formId="forgot-password-form" mode="generic" />
+              <AuthFormEnhancer formId="forgot-password-form" mode="reset" />
             </CardContent>
             <CardFooter className="flex justify-center border-t pt-6">
               <p className="text-sm text-muted-foreground">

@@ -14,17 +14,7 @@ import { api } from "@/lib/api"
 import type { SyntheticDataset, Generator } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { useToast } from "@/hooks/use-toast"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 
 export default function SyntheticDatasetDetailPage() {
   const params = useParams()
@@ -37,6 +27,8 @@ export default function SyntheticDatasetDetailPage() {
   const [generator, setGenerator] = React.useState<Generator | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const { toast } = useToast()
 
   // Load data
@@ -67,18 +59,30 @@ export default function SyntheticDatasetDetailPage() {
 
   const handleDelete = async () => {
     try {
-      await api.deleteSyntheticDataset(id)
+      setIsDeleting(true)
+      
       toast({
-        title: "Deleted",
-        description: "Synthetic dataset has been deleted successfully.",
+        title: `Deleting ${dataset?.name}...`,
+        description: "Please wait while the dataset is being removed.",
       })
+      
+      await api.deleteSyntheticDataset(id)
+      
+      toast({
+        title: "Synthetic Dataset deleted",
+        description: `${dataset?.name} has been permanently removed.`,
+      })
+      
       router.push("/synthetic-datasets")
     } catch (err) {
       toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to delete synthetic dataset",
+        title: `Could not delete ${dataset?.name}`,
+        description: "Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
     }
   }
 
@@ -257,31 +261,24 @@ export default function SyntheticDatasetDetailPage() {
                 <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
               </CardHeader>
               <CardContent>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="w-full">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Synthetic Dataset
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Synthetic Dataset</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this synthetic dataset? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Synthetic Dataset
+                </Button>
+                
+                <DeleteConfirmationDialog
+                  entityType="Synthetic Dataset"
+                  entityName={dataset.name}
+                  open={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                  onConfirm={handleDelete}
+                  isDeleting={isDeleting}
+                />
               </CardContent>
             </Card>
           </div>

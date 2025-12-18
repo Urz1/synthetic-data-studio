@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { Progress } from "@/components/ui/progress"
-import { Activity, CheckCircle, XCircle, Clock, Loader2, RotateCw } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Activity, CheckCircle, XCircle, Clock, Loader2, RotateCw, RefreshCw } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import type { Job } from "@/lib/types"
@@ -22,6 +23,8 @@ export default function JobsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>("")
 
+  const jobsRef = React.useRef<Job[]>([])
+
   const fetchJobs = async () => {
     try {
       let jobsData = await api.listJobs()
@@ -29,6 +32,7 @@ export default function JobsPage() {
       if (user?.role !== "admin" && user?.id) {
         jobsData = jobsData.filter(j => j.initiated_by === user.id)
       }
+      jobsRef.current = jobsData
       setJobs(jobsData)
       setError("")
     } catch (err) {
@@ -51,7 +55,7 @@ export default function JobsPage() {
     // Uses visibility API to pause polling when tab is hidden
     const interval = setInterval(() => {
       if (document.hidden) return // Don't poll when tab is not visible
-      if (jobs.some(j => j.status === "running" || j.status === "pending")) {
+      if (jobsRef.current.some(j => j.status === "running" || j.status === "pending")) {
         fetchJobs()
       }
     }, 5000)
@@ -189,23 +193,42 @@ export default function JobsPage() {
         />
 
         {isLoading && jobs.length === 0 ? (
-          <div className="text-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Loading jobs...</p>
-          </div>
+          <JobsSkeleton />
         ) : error && jobs.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-destructive mb-4">{error}</p>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RotateCw className="mr-2 h-4 w-4" />
-              Retry
-            </Button>
-          </div>
+          <Card className="border-destructive/20 bg-card/40">
+            <CardHeader>
+              <CardTitle className="text-base">Couldn’t load jobs</CardTitle>
+              <CardDescription>Try again in a moment.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between gap-3">
+              <p className="text-sm text-destructive break-words">{error}</p>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        ) : jobs.length === 0 ? (
+          <Card className="border-dashed bg-card/40">
+            <CardContent className="py-12">
+              <div className="mx-auto max-w-md text-center space-y-3">
+                <div className="mx-auto w-fit rounded-2xl bg-primary/10 p-3">
+                  <Activity className="h-6 w-6 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">No jobs yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Jobs appear here when you upload datasets, train generators, or run evaluations.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card aria-label="Total jobs">
+            <Card aria-label="Total jobs" className="bg-card/40">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
               </CardHeader>
@@ -213,7 +236,7 @@ export default function JobsPage() {
                 <div className="text-2xl font-bold" aria-live="polite">{stats.total}</div>
               </CardContent>
             </Card>
-          <Card>
+          <Card className="bg-card/40">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Loader2 className="h-4 w-4 text-primary animate-spin" />
@@ -224,7 +247,7 @@ export default function JobsPage() {
               <div className="text-2xl font-bold text-primary">{stats.running}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-card/40">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-success" />
@@ -235,7 +258,7 @@ export default function JobsPage() {
               <div className="text-2xl font-bold text-success">{stats.completed}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-card/40">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-risk" />
@@ -249,7 +272,7 @@ export default function JobsPage() {
         </div>
 
         {/* Jobs Table */}
-        <Card>
+        <Card className="bg-card/40">
           <CardHeader>
             <CardTitle>Job Queue</CardTitle>
             <CardDescription>All background jobs and their current status</CardDescription>
@@ -260,7 +283,7 @@ export default function JobsPage() {
               columns={jobColumns}
               keyExtractor={(row) => row.id}
               compact
-              emptyMessage="No jobs running"
+              emptyMessage="No jobs"
             />
           </CardContent>
         </Card>
@@ -300,5 +323,44 @@ export default function JobsPage() {
         )}
       </AppShell>
     </ProtectedRoute>
+  )
+}
+
+function JobsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <Card key={idx} className="bg-card/40">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-28" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="bg-card/40">
+        <CardHeader>
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="flex items-center justify-between rounded-xl border p-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   )
 }

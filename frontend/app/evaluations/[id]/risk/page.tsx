@@ -23,7 +23,7 @@ interface OldMockRiskData {
   dataset_name: "Synthetic Patient Data V1",
   overall_risk_score: 12, // 0-100, lower is better
   risk_level: "Low",
-  assessed_at: "2024-12-03T15:00:00Z",
+  assessed_at: "2025-12-03T15:00:00Z",
   vulnerabilities: [
     {
       id: "vuln-1",

@@ -45,11 +45,6 @@ def send_email(to_email: str, subject: str, text: str) -> bool:
     from_email = _get_env("SMTP_FROM") or user
     use_tls = _get_env("SMTP_TLS", "true").lower() == "true"
 
-    # ADD THESE DEBUG LINES:
-    print(f"DEBUG: SMTP_USER = '{user}'")
-    print(f"DEBUG: SMTP_PASSWORD length = {len(password) if password else 0}")
-    print(f"DEBUG: SMTP_PASSWORD first 3 chars = '{password[:3] if password else 'None'}'")
-    print(f"DEBUG: All env vars: {dict(os.environ)}")  # Be careful with this in production
     try:
         port = int((port_raw or "587").strip())
     except ValueError:

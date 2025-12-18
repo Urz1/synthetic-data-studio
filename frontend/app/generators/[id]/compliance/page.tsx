@@ -16,7 +16,7 @@ import Link from "next/link"
 const mockComplianceReport = {
   generator_id: "gen-123",
   generator_name: "Patient Records Generator",
-  generated_at: "2024-12-03T16:00:00Z",
+  generated_at: "2025-12-03T16:00:00Z",
   overall_status: "Compliant",
   frameworks: [
     {

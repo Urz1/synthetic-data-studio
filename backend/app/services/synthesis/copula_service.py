@@ -38,7 +38,7 @@ class GaussianCopulaService:
                 "min": 0, "max": 100,  # for numeric
                 "values": ["A", "B"],  # for categorical (will use actual values!)
                 "precision": 2,  # for float decimal places
-                "start_date": "2020-01-01", "end_date": "2024-12-31"  # for datetime
+                "start_date": "2020-01-01", "end_date": "2025-12-31"  # for datetime
             }
         }
         

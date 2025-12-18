@@ -1,0 +1,120 @@
+/**
+ * Synth Studio Documentation Theme
+ * Custom CSS to match the main app's purple/blue theme
+ */
+
+/* Light mode - Purple theme */
+:root {
+  --ifm-color-primary: #7c3aed;
+  --ifm-color-primary-dark: #6d28d9;
+  --ifm-color-primary-darker: #5b21b6;
+  --ifm-color-primary-darkest: #4c1d95;
+  --ifm-color-primary-light: #8b5cf6;
+  --ifm-color-primary-lighter: #a78bfa;
+  --ifm-color-primary-lightest: #c4b5fd;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(124, 58, 237, 0.1);
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --ifm-heading-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Dark mode - Purple/Cyan theme matching app */
+[data-theme='dark'] {
+  --ifm-color-primary: #a78bfa;
+  --ifm-color-primary-dark: #8b5cf6;
+  --ifm-color-primary-darker: #7c3aed;
+  --ifm-color-primary-darkest: #6d28d9;
+  --ifm-color-primary-light: #c4b5fd;
+  --ifm-color-primary-lighter: #ddd6fe;
+  --ifm-color-primary-lightest: #ede9fe;
+  --ifm-background-color: #0c0d0f;
+  --ifm-background-surface-color: #161618;
+  --docusaurus-highlighted-code-line-bg: rgba(167, 139, 250, 0.2);
+}
+
+/* Navbar styling */
+.navbar {
+  backdrop-filter: blur(12px);
+}
+
+[data-theme='dark'] .navbar {
+  background-color: rgba(12, 13, 15, 0.85);
+}
+
+/* Sidebar styling */
+.menu__link--active {
+  font-weight: 600;
+}
+
+/* Code blocks */
+.prism-code {
+  border-radius: 8px;
+}
+
+/* Announcement bar */
+div[class*='announcementBar'] {
+  font-weight: 500;
+}
+
+/* Footer */
+.footer--dark {
+  background-color: #0c0d0f;
+}
+
+/* Logo sizing */
+.navbar__logo img {
+  height: 32px;
+}
+
+/* Better link hover effects */
+.menu__link:hover {
+  background-color: rgba(124, 58, 237, 0.1);
+}
+
+[data-theme='dark'] .menu__link:hover {
+  background-color: rgba(167, 139, 250, 0.1);
+}
+
+/* Mobile navbar sidebar fixes */
+.navbar-sidebar {
+  background-color: var(--ifm-background-color);
+}
+
+.navbar-sidebar__items {
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar-sidebar__item {
+  display: block !important;
+}
+
+.navbar-sidebar .menu {
+  padding: 1rem;
+}
+
+.navbar-sidebar .menu__list {
+  display: block !important;
+}
+
+.navbar-sidebar .menu__list-item {
+  display: block !important;
+  margin: 0.5rem 0;
+}
+
+.navbar-sidebar .menu__link {
+  display: flex !important;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+/* Ensure mobile menu items are visible */
+@media (max-width: 996px) {
+  .navbar-sidebar__items .menu__list {
+    display: block !important;
+  }
+
+  .navbar-sidebar__brand {
+    padding: 1rem;
+  }
+}

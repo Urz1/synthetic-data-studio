@@ -272,6 +272,25 @@ class ApiClient {
     return this.request("/auth/providers");
   }
 
+  // Two-Factor Authentication
+  async setup2FA(): Promise<{ secret: string; otpauth_url: string }> {
+    return this.request("/auth/2fa/setup", { method: "POST" });
+  }
+
+  async enable2FA(code: string): Promise<{ ok: boolean }> {
+    return this.request("/auth/2fa/enable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async disable2FA(code: string): Promise<{ ok: boolean }> {
+    return this.request("/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+
   async handleGoogleCallback(
     code: string,
     state: string
@@ -352,8 +371,13 @@ class ApiClient {
   }
 
   // Projects
-  async listProjects(skip = 0, limit = 50): Promise<Project[]> {
-    return this.request(`/projects?skip=${skip}&limit=${limit}`);
+  async listProjects(
+    skip = 0,
+    limit = 50,
+    forceRefresh = false
+  ): Promise<Project[]> {
+    const cacheBust = forceRefresh ? `&_t=${Date.now()}` : "";
+    return this.request(`/projects?skip=${skip}&limit=${limit}${cacheBust}`);
   }
 
   async getProject(id: string): Promise<Project> {
@@ -400,13 +424,15 @@ class ApiClient {
   async listDatasets(
     projectId?: string,
     skip = 0,
-    limit = 50
+    limit = 50,
+    forceRefresh = false
   ): Promise<{ datasets: Dataset[]; total: number }> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
     });
     if (projectId) params.append("project_id", projectId);
+    if (forceRefresh) params.append("_t", String(Date.now()));
     return this.request(`/datasets?${params}`);
   }
 
