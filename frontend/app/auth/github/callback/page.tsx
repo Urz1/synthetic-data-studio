@@ -51,9 +51,14 @@ function CallbackContent() {
           role: role
         };
 
-        // Store token and user data
+        // Store token in localStorage for client-side auth context
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
+        
+        // CRITICAL: Also set the ss_jwt cookie for server-side middleware auth
+        // The middleware checks cookies, not localStorage, for protected routes
+        const isSecure = window.location.protocol === "https:";
+        document.cookie = `ss_jwt=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${isSecure ? "; Secure" : ""}`;
         
         if (cancelled) return;
         setStatus("success");
