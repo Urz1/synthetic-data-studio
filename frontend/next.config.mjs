@@ -34,22 +34,9 @@ const nextConfig = {
     minimumCacheTTL: 31536000,
   },
 
-  async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.synthdata.studio';
-    console.log('API URL for rewrites:', apiUrl);
-    // Important: keep Next.js App Router route handlers (e.g. /api/auth/*)
-    // working by only proxying as a fallback when no local route matches.
-    return {
-      beforeFiles: [],
-      afterFiles: [],
-      fallback: [
-        {
-          source: '/api/:path*',
-          destination: `${apiUrl}/:path*`,
-        },
-      ],
-    };
-  },
+  // Note: API proxying is now handled by /app/api/[...path]/route.ts
+  // which reads cookies and forwards them as Authorization headers.
+  // No rewrites needed - the catch-all route handles all /api/* requests.
 
   async headers() {
     return [

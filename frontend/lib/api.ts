@@ -27,34 +27,12 @@ import type {
   ModelCard,
 } from "./types";
 
-// API Base URL - uses environment variable
-// Development: Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local
-// Production: Defaults to production URL if not set
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
+// API Base URL - uses /api to route through Next.js proxy for same-origin cookies
+// The Next.js catch-all route at /app/api/[...path]/route.ts forwards cookies as Authorization headers
+const API_BASE = "/api";
 
 class ApiClient {
-  private token: string | null = null;
   private pendingRequests: Map<string, Promise<any>> = new Map();
-
-  setToken(token: string | null) {
-    this.token = token;
-    if (typeof window !== "undefined") {
-      if (token) {
-        localStorage.setItem("token", token);
-      } else {
-        localStorage.removeItem("token");
-      }
-    }
-  }
-
-  getToken(): string | null {
-    if (this.token) return this.token;
-    if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("token");
-    }
-    return this.token;
-  }
 
   private async request<T>(
     endpoint: string,
@@ -69,32 +47,23 @@ class ApiClient {
       return this.pendingRequests.get(cacheKey)!;
     }
 
-    const token = this.getToken();
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string>),
     };
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
 
     if (!(options.body instanceof FormData)) {
       headers["Content-Type"] = "application/json";
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("API Request:", url);
-    }
-
-    // Use default cache mode for GET requests (browser handles ETag/304)
+    // Use credentials: include to send cookies automatically
     const fetchOptions: RequestInit = {
       ...options,
       headers,
+      credentials: "include", // Send cookies with every request
     };
 
     // For GET requests, let browser handle caching with default mode
     if (!options.method || options.method === "GET") {
-      // Browser will automatically send If-None-Match and handle 304
       fetchOptions.cache = "default";
     }
 
@@ -104,7 +73,6 @@ class ApiClient {
         const response = await fetch(url, fetchOptions);
 
         if (response.status === 401) {
-          this.setToken(null);
           if (typeof window !== "undefined") {
             const next = encodeURIComponent(
               `${window.location.pathname}${window.location.search}`
@@ -163,6 +131,7 @@ class ApiClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: "include", // Require cookies to be set
     });
 
     if (!response.ok) {
@@ -181,8 +150,12 @@ class ApiClient {
     }
 
     const data = await response.json();
-    this.setToken(data.access_token);
+    // No setToken - cookies are set by server
     return data;
+  }
+
+  async refreshSession(): Promise<void> {
+    await this.request("/auth/refresh-session", { method: "POST" });
   }
 
   async register(
@@ -205,12 +178,10 @@ class ApiClient {
    */
   async logout(): Promise<void> {
     try {
-      // Call server to invalidate token
+      // Call server to invalidate session cookies
       await this.request("/auth/logout", { method: "POST" });
     } catch {
-      // Ignore errors - token may already be invalid
-    } finally {
-      this.setToken(null);
+      // Ignore errors - session may already be invalid
     }
   }
 
@@ -224,7 +195,6 @@ class ApiClient {
         method: "POST",
       }
     );
-    this.setToken(null);
     return result;
   }
 
@@ -299,6 +269,7 @@ class ApiClient {
     const response = await fetch(`${API_BASE}/auth/google/callback?${params}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // Ensure cookies are set
     });
 
     if (!response.ok) {
@@ -313,7 +284,6 @@ class ApiClient {
     }
 
     const data = await response.json();
-    this.setToken(data.access_token);
     return data;
   }
 
@@ -325,6 +295,7 @@ class ApiClient {
     const response = await fetch(`${API_BASE}/auth/github/callback?${params}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // Ensure cookies are set
     });
 
     if (!response.ok) {
@@ -339,7 +310,6 @@ class ApiClient {
     }
 
     const data = await response.json();
-    this.setToken(data.access_token);
     return data;
   }
 
@@ -504,12 +474,9 @@ class ApiClient {
   async downloadDataset(
     id: string
   ): Promise<{ download_url: string; filename?: string; expires_in?: number }> {
-    const token = this.getToken();
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     const response = await fetch(`${API_BASE}/datasets/${id}/download`, {
-      headers,
+      headers: {},
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -636,14 +603,11 @@ class ApiClient {
   }
 
   async downloadModelFile(id: string): Promise<Blob> {
-    const token = this.getToken();
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     const response = await fetch(
       `${API_BASE}/generators/${id}/download-model-file`,
       {
-        headers,
+        headers: {},
+        credentials: "include",
       }
     );
 
@@ -748,14 +712,11 @@ class ApiClient {
   async downloadSyntheticDataset(
     id: string
   ): Promise<{ download_url: string; filename?: string; expires_in?: number }> {
-    const token = this.getToken();
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     const response = await fetch(
       `${API_BASE}/synthetic-datasets/${id}/download`,
       {
-        headers,
+        headers: {},
+        credentials: "include",
       }
     );
 
@@ -918,8 +879,8 @@ class ApiClient {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
       },
+      credentials: "include",
       body: JSON.stringify({
         message,
         evaluation_id: context?.evaluation_id,

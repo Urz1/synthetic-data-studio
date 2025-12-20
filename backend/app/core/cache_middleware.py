@@ -231,20 +231,26 @@ class CookieOptimizationMiddleware(BaseHTTPMiddleware):
                 del response.headers["set-cookie"]
                 logger.debug(f"[Cookie] Stripped from static: {path}")
         
-        # Optimize Set-Cookie attributes for security and caching
+        # Optimize Set-Cookie headers for security and caching without squashing multiple cookies
         if "set-cookie" in response.headers:
-            # Parse and rewrite cookie with proper attributes
-            cookie_value = response.headers["set-cookie"]
-            if "HttpOnly" not in cookie_value:
-                cookie_value += "; HttpOnly"
-            if "SameSite" not in cookie_value:
-                cookie_value += "; SameSite=Lax"
-            if not request.url.hostname in ["localhost", "127.0.0.1"] and "Secure" not in cookie_value:
-                cookie_value += "; Secure"
-            if "Path" not in cookie_value:
-                cookie_value += "; Path=/"
-            
-            response.headers["set-cookie"] = cookie_value
+            # We must work with the raw headers because Starlette's .headers["set-cookie"]
+            # often only returns the last one set.
+            new_raw_headers = []
+            for name, value in response.raw_headers:
+                if name.lower() == b"set-cookie":
+                    cookie_value = value.decode("latin-1")
+                    if "HttpOnly" not in cookie_value:
+                        cookie_value += "; HttpOnly"
+                    if "SameSite" not in cookie_value:
+                        cookie_value += "; SameSite=Lax"
+                    if not request.url.hostname in ["localhost", "127.0.0.1"] and "Secure" not in cookie_value:
+                        cookie_value += "; Secure"
+                    if "Path" not in cookie_value:
+                        cookie_value += "; Path=/"
+                    new_raw_headers.append((b"set-cookie", cookie_value.encode("latin-1")))
+                else:
+                    new_raw_headers.append((name, value))
+            response.raw_headers = new_raw_headers
         
         return response
     

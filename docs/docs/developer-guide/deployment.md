@@ -1,4 +1,4 @@
----
+﻿---
 id: developer-guide-deployment
 title: "Deployment Guide"
 sidebar_label: "Deployment"
@@ -185,7 +185,7 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-## ? Cloud Platform Deployments
+## ☁ Cloud Platform Deployments
 
 ### AWS Deployment
 
@@ -293,7 +293,7 @@ az container create \
   --dns-name-label synth-studio
 ```
 
-## ? Production Configuration
+## ⚙️ Production Configuration
 
 ### Environment Variables
 
@@ -417,7 +417,7 @@ celery -A app.core.celery_app worker --loglevel=info --concurrency=4
 celery -A app.core.celery_app beat --loglevel=info
 ```
 
-## Reverse Proxy Setup
+## 🔄 Reverse Proxy Setup
 
 ### Nginx Configuration
 
@@ -484,7 +484,7 @@ certbot certonly --nginx -d your-domain.com
 openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
 ```
 
-## Monitoring & Observability
+## 📊 Monitoring & Observability
 
 ### Application Monitoring
 
@@ -564,7 +564,7 @@ def setup_logging():
     logger.addHandler(file_handler)
 ```
 
-## Scaling Strategies
+## 📈 Scaling Strategies
 
 ### Horizontal Scaling
 
@@ -643,7 +643,7 @@ spec:
           averageUtilization: 70
 ```
 
-## Security Hardening
+## 🔒 Security Hardening
 
 ### Production Security Checklist
 
@@ -678,7 +678,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 ```
 
-## Backup & Recovery
+## 💾 Backup & Recovery
 
 ### Database Backups
 
@@ -706,7 +706,7 @@ aws s3 sync uploads/ s3://synth-studio-backups/$(date +%Y%m%d)/
 aws s3 sync s3://synth-studio-backups/latest/ uploads/
 ```
 
-## Performance Optimization
+## ⚡ Performance Optimization
 
 ### Database Optimization
 
@@ -752,7 +752,7 @@ location /static/ {
 }
 ```
 
-## Maintenance Tasks
+## 🔧 Maintenance Tasks
 
 ### Regular Maintenance
 
@@ -795,7 +795,7 @@ if __name__ == "__main__":
     check_health()
 ```
 
-## Troubleshooting Production Issues
+## 🐛 Troubleshooting Production Issues
 
 ### Common Production Problems
 

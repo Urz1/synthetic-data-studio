@@ -186,9 +186,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not self.enabled:
             return await call_next(request)
         
-        # Skip rate limiting for health checks and metrics
+        # Skip rate limiting for health checks, metrics, and CORS preflights (OPTIONS)
         path = request.url.path
-        if path in ["/health", "/health/ready", "/health/live", "/metrics", "/docs", "/redoc", "/openapi.json"]:
+        if request.method == "OPTIONS" or path in ["/health", "/health/ready", "/health/live", "/metrics", "/docs", "/redoc", "/openapi.json"]:
             return await call_next(request)
         
         # Get client identifier and rate limit config

@@ -77,6 +77,7 @@ class UserResponse(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
     oauth_provider: Optional[str] = None
+    ok: bool = True
 
 
 # ============================================================================
@@ -87,6 +88,8 @@ class Token(BaseModel):
     """Schema for JWT token response."""
     access_token: str
     token_type: str
+    ok: bool = True
+    token: Optional[str] = None
 
 
 class TokenPair(BaseModel):

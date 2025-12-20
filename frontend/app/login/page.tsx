@@ -108,7 +108,7 @@ export default async function LoginPage({
               </Alert>
             )}
 
-            <form id="auth-login-form" action="/api/auth/login" method="post" className="space-y-4">
+            <form id="auth-login-form" data-action={`${apiUrl}/auth/login`} className="space-y-4">
               <input type="hidden" name="next" value={next} />
 
               <div className="space-y-2">
@@ -183,7 +183,8 @@ export default async function LoginPage({
               </div>
             </form>
 
-            <AuthFormEnhancer formId="auth-login-form" mode="login" />
+
+            <AuthFormEnhancer formId="auth-login-form" mode="login" apiUrl="/api/auth/login" />
           </CardContent>
           <CardFooter className="flex justify-center border-t pt-6">
             <p className="text-sm text-muted-foreground">

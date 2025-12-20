@@ -34,13 +34,33 @@ function getErrorMessage(payload: any): string {
 }
 
 export async function POST(request: Request) {
-  const form = await request.formData();
-  const email = String(form.get("email") || "")
-    .trim()
-    .toLowerCase();
-  const password = String(form.get("password") || "");
-  const otp = String(form.get("otp") || "").trim();
-  const nextValue = String(form.get("next") || "");
+  let email = "";
+  let password = "";
+  let otp = "";
+  let nextValue = "";
+
+  // Support both JSON and form data Content-Types
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    // JSON body from AuthFormEnhancer
+    const body = await request.json().catch(() => ({}));
+    email = String(body.email || "")
+      .trim()
+      .toLowerCase();
+    password = String(body.password || "");
+    otp = String(body.otp || "").trim();
+    nextValue = String(body.next || "");
+  } else {
+    // Form data (multipart/form-data or application/x-www-form-urlencoded)
+    const form = await request.formData();
+    email = String(form.get("email") || "")
+      .trim()
+      .toLowerCase();
+    password = String(form.get("password") || "");
+    otp = String(form.get("otp") || "").trim();
+    nextValue = String(form.get("next") || "");
+  }
 
   const nextPath = sanitizeNext(nextValue || null);
 

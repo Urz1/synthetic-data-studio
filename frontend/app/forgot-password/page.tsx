@@ -25,6 +25,7 @@ export default async function ForgotPasswordPage({
 }) {
   const sp = await Promise.resolve(searchParams)
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio"
   const error = getStringParam(sp.error)
   const sent = getStringParam(sp.sent) === "1"
 
@@ -73,7 +74,7 @@ export default async function ForgotPasswordPage({
                 </Alert>
               )}
 
-              <form id="forgot-password-form" action="/api/auth/password-reset/request" method="post" className="space-y-4">
+              <form id="forgot-password-form" data-action={`${apiUrl}/auth/password-reset/request`} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
@@ -84,7 +85,7 @@ export default async function ForgotPasswordPage({
                 </Button>
               </form>
 
-              <AuthFormEnhancer formId="forgot-password-form" mode="reset" />
+              <AuthFormEnhancer formId="forgot-password-form" mode="reset" apiUrl="/api/auth/password-reset/request" />
             </CardContent>
             <CardFooter className="flex justify-center border-t pt-6">
               <p className="text-sm text-muted-foreground">

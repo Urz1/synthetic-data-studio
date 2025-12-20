@@ -23,7 +23,7 @@ export function RegisterForm({ apiUrl, next }: RegisterFormProps) {
 
   return (
     <>
-      <form id="auth-register-form" action="/api/auth/register" method="post" className="space-y-4">
+      <form id="auth-register-form" data-action={`${apiUrl}/auth/register`} className="space-y-4">
         <input type="hidden" name="next" value={next || ""} />
 
         <div className="space-y-2">
@@ -108,7 +108,7 @@ export function RegisterForm({ apiUrl, next }: RegisterFormProps) {
         </div>
       </form>
 
-      <AuthFormEnhancer formId="auth-register-form" mode="register" />
+      <AuthFormEnhancer formId="auth-register-form" mode="register" apiUrl="/api/auth/register" />
     </>
   )
 }
