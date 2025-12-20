@@ -36,9 +36,11 @@ const LOADING_TEXT: Record<AuthMode, string> = {
 export function AuthFormEnhancer({
   formId,
   mode,
+  apiUrl,
 }: {
   formId: string
   mode: AuthMode
+  apiUrl?: string  // Direct API URL to bypass hydration issues
 }) {
   const isSubmittingRef = useRef(false)
   const originalTextRef = useRef<string>("")
@@ -116,69 +118,92 @@ export function AuthFormEnhancer({
 
       setSubmittingUI(formEl, submitButton)
 
-      const formData = new FormData(formEl)
-      const endpoint = formEl.getAttribute("action") || (mode === "login" ? "/api/auth/login" : "/api/auth/register")
+        const formData = new FormData(formEl)
+        
+        // Use apiUrl prop first, then fall back to data attributes, then defaults
+        const dataAction = formEl.dataset.action
+        const htmlAction = formEl.getAttribute("action")
+        const defaultEndpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register"
+        const endpoint = apiUrl || dataAction || htmlAction || defaultEndpoint
 
-      gtagEvent("auth_intent", {
-        method: "password",
-        location: "form",
-        mode,
-      })
-
-      let navigated = false
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          body: formData,
-          headers: {
-            Accept: "application/json",
-            "x-synth-xhr": "1",
-          },
-          credentials: "same-origin",
+        // Convert FormData to JSON for API compatibility
+        const bodyObject: Record<string, any> = {}
+        formData.forEach((value, key) => {
+          // Skip internal frontend fields that aren't part of the API models
+          if (key === "next" || key === "confirmPassword") return
+          
+          // Only include non-empty values for optional fields (like OTP)
+          if (value === "" && key !== "email" && key !== "password") return
+          
+          bodyObject[key] = value
         })
 
-        const data = await res.json().catch(() => null)
+        gtagEvent("auth_intent", {
+          method: "password",
+          location: "form",
+          mode,
+        })
 
-        if (!data || typeof data !== "object") {
-          formEl.submit()
-          navigated = true
-          return
-        }
+        let navigated = false
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            body: JSON.stringify(bodyObject),
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "x-synth-xhr": "1",
+            },
+            credentials: "include",
+          })
 
-        if (!data.ok) {
-          if (typeof data.redirect === "string") {
-            window.location.assign(data.redirect)
+          const data = await res.json().catch(() => null)
+          
+          if (!res.ok) {
+            console.error(`[AuthFormEnhancer] ${endpoint} failed with status ${res.status}:`, data)
+            
+            // Helpful error reporting for validation issues
+            if (res.status === 422 && data?.detail) {
+              console.warn("[AuthFormEnhancer] Validation Error (422):", JSON.stringify(data.detail, null, 2))
+            }
+          }
+
+          if (!data || typeof data !== "object") {
+            console.info("[AuthFormEnhancer] Non-JSON or empty response, falling back to standard submit")
+            formEl.submit()
             navigated = true
             return
           }
-          
-          // Check for OTP/2FA required error
-          const errorDetail = data.detail || data.message || ""
-          if (errorDetail.toLowerCase().includes("otp required") || errorDetail.toLowerCase().includes("2fa")) {
-            // Reveal the OTP field
-            const otpContainer = document.getElementById("otp-field-container")
-            if (otpContainer) {
-              otpContainer.classList.remove("hidden")
-              // Focus the OTP input
-              const otpInput = otpContainer.querySelector("input")
-              if (otpInput) {
-                setTimeout(() => otpInput.focus(), 100)
+
+          if (!data.ok) {
+            console.info("[AuthFormEnhancer] Response not OK, showing potential errors")
+            if (typeof data.redirect === "string") {
+              window.location.assign(data.redirect)
+              navigated = true
+              return
+            }
+            
+            // Check for OTP/2FA required error
+            const errorDetail = typeof data.detail === "string" ? data.detail : (data.message || "")
+            if (errorDetail.toLowerCase().includes("otp required") || errorDetail.toLowerCase().includes("2fa")) {
+              // Reveal the OTP field
+              const otpContainer = document.getElementById("otp-field-container")
+              if (otpContainer) {
+                otpContainer.classList.remove("hidden")
+                // Focus the OTP input
+                const otpInput = otpContainer.querySelector("input")
+                if (otpInput) {
+                  setTimeout(() => otpInput.focus(), 100)
+                }
               }
             }
-          }
           
-          // Reset UI and show form again on error without redirect
-          resetUI(formEl, submitButton)
-          return
-        }
+            // Reset UI and show form again on error without redirect
+            resetUI(formEl, submitButton)
+            return
+          }
 
         if (typeof data.token === "string" && data.token.length > 0) {
-          try {
-            localStorage.setItem("token", data.token)
-          } catch {
-            // Ignore storage failures
-          }
-
           const payload = safeDecodeJwtPayload(data.token)
           const uid =
             (payload && (payload.sub as string)) ||
@@ -228,7 +253,7 @@ export function AuthFormEnhancer({
         form.removeAttribute("aria-busy")
       }
     }
-  }, [formId, mode])
+  }, [formId, mode, apiUrl])
 
   return null
 }

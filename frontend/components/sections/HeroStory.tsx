@@ -132,7 +132,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
             className={`${styles.animationPane} relative order-2 lg:order-1`}
             onMouseEnter={handleReplay}
           >
-            <div className={`${styles.animationContainer} bg-card/50 border border-border rounded-2xl p-8 min-h-[320px] flex items-center justify-center`}>
+            <div className={`${styles.animationContainer} bg-card/50 border border-border rounded-2xl p-4 sm:p-6 md:p-8 min-h-[280px] sm:min-h-[320px] flex items-center justify-center overflow-hidden`}>
               {currentScene === 0 && <PrivacyAnimation animated={!prefersReducedMotion} />}
               {currentScene === 1 && <SchemaAnimation animated={!prefersReducedMotion} />}
               {currentScene === 2 && <ReportAnimation animated={!prefersReducedMotion} />}
@@ -225,10 +225,11 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
    ============================================ */
 function PrivacyAnimation({ animated }: { animated: boolean }) {
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-center gap-4">
+    <div className="w-full px-2">
+      {/* Stack vertically on mobile, horizontal on larger screens */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
         {/* Real data card */}
-        <div className={`${styles.dataCard} ${animated ? styles.fadeInLeft : ""} bg-background border border-border rounded-xl p-4 min-w-[140px]`}>
+        <div className={`${styles.dataCard} ${animated ? styles.fadeInLeft : ""} bg-background border border-border rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[130px]`}>
           <div className="text-xs font-medium text-muted-foreground mb-2">Your Data</div>
           <div className="space-y-1.5 font-mono text-xs">
             <div className="flex gap-2">
@@ -257,7 +258,7 @@ function PrivacyAnimation({ animated }: { animated: boolean }) {
         </div>
 
         {/* Synthetic data card */}
-        <div className={`${styles.dataCard} ${animated ? styles.fadeInRight : ""} bg-background border border-primary/50 rounded-xl p-4 min-w-[140px]`}
+        <div className={`${styles.dataCard} ${animated ? styles.fadeInRight : ""} bg-background border border-primary/50 rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[130px]`}
              style={{ animationDelay: animated ? "800ms" : undefined }}>
           <div className="text-xs font-medium text-primary mb-2 flex items-center gap-1">
             <Sparkles className="h-3 w-3" />
@@ -305,10 +306,11 @@ function SchemaAnimation({ animated }: { animated: boolean }) {
   ]
 
   return (
-    <div className="w-full">
-      <div className="flex items-start justify-center gap-6">
+    <div className="w-full px-2">
+      {/* Stack vertically on mobile, horizontal on larger screens */}
+      <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center gap-4 sm:gap-6">
         {/* Schema definition */}
-        <div className={`${styles.schemaCard} ${animated ? styles.fadeInLeft : ""} bg-background border border-border rounded-xl p-4 min-w-[160px]`}>
+        <div className={`${styles.schemaCard} ${animated ? styles.fadeInLeft : ""} bg-background border border-border rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[150px]`}>
           <div className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <FileJson className="h-4 w-4" />
             You describe
@@ -328,13 +330,13 @@ function SchemaAnimation({ animated }: { animated: boolean }) {
           </div>
         </div>
 
-        {/* Arrow */}
-        <div className={`${animated ? styles.arrowPulse : ""} flex items-center pt-12`}>
-          <ArrowRight className="h-6 w-6 text-primary" />
+        {/* Arrow - rotated on mobile */}
+        <div className={`${animated ? styles.arrowPulse : ""} flex items-center py-2 sm:pt-12`}>
+          <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 text-primary rotate-90 sm:rotate-0" />
         </div>
 
         {/* Generated rows */}
-        <div className={`${styles.rowsCard} ${animated ? styles.fadeInRight : ""} bg-background border border-primary/50 rounded-xl p-4 min-w-[200px]`}
+        <div className={`${styles.rowsCard} ${animated ? styles.fadeInRight : ""} bg-background border border-primary/50 rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[180px]`}
              style={{ animationDelay: animated ? "600ms" : undefined }}>
           <div className="text-xs font-medium text-primary mb-3 flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
@@ -372,10 +374,10 @@ function SchemaAnimation({ animated }: { animated: boolean }) {
    ============================================ */
 function ReportAnimation({ animated }: { animated: boolean }) {
   return (
-    <div className="w-full">
+    <div className="w-full px-2">
       <div className="flex justify-center">
         {/* PDF Report Card */}
-        <div className={`${styles.reportCard} ${animated ? styles.cardFlip : ""} bg-background border border-border rounded-xl p-6 min-w-[280px] shadow-lg`}>
+        <div className={`${styles.reportCard} ${animated ? styles.cardFlip : ""} bg-background border border-border rounded-xl p-4 sm:p-6 w-full sm:w-auto sm:min-w-[280px] max-w-[320px] shadow-lg`}>
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div>

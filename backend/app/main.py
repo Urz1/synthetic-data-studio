@@ -93,7 +93,7 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "x-synth-xhr"],
     expose_headers=["ETag", "Cache-Control"],
     max_age=3600,  # Cache preflight responses for 1 hour
 )
@@ -116,30 +116,23 @@ app.add_middleware(SecurityHeadersMiddleware, enable_hsts=not settings.debug)
 app.add_middleware(AuditMiddleware)
 
 # Add rate limiting middleware - ALWAYS enabled (higher limits in debug mode for easier testing)
-# Security: Even if DEBUG=true leaks to production, rate limiting still works
 app.add_middleware(RateLimitMiddleware, enabled=True)
-if settings.debug:
-    logger.info("✅ Rate limiting middleware enabled (debug mode - higher limits)")
-else:
-    logger.info("✅ Rate limiting middleware enabled")
 
-# Add metrics middleware for observability
+# Metrics
 if OBSERVABILITY_AVAILABLE and MetricsMiddleware:
     app.add_middleware(MetricsMiddleware)
-    logger.info("✅ Prometheus metrics middleware enabled")
+
+# Re-register CORS as the LAST middleware so it is the FIRST to handle incoming requests (including preflights)
+# In FastAPI/Starlette, middleware added LATER wraps middleware added EARLIER.
+# Note: We already added it at line 91, but re-adding it here ensures it wraps everything else (Audit, RateLimit, Metrics, etc.)
+app.user_middleware.append(app.user_middleware.pop(0)) 
 
 if settings.debug:
-    logger.warning("CORS: Allowing all origins (DEBUG mode)")
+    logger.warning("CORS: Allowing localhost origins (DEBUG mode)")
 else:
     logger.info(f"🔒 CORS: Allowing origins: {settings.allowed_origins}")
 
-logger.info("✅ HTTP caching middleware enabled (ETag/304)")
-logger.info("✅ Trailing slash middleware enabled (no 307s)")
-logger.info("✅ Cookie optimization middleware enabled")
-logger.info("✅ Security headers middleware enabled")
-logger.info("✅ Request ID tracing enabled")
-logger.info("✅ GZip compression enabled")
-logger.info("✅ Audit logging middleware enabled")
+logger.info("✅ Middlewares stabilized (CORS is outermost)")
 
 
 

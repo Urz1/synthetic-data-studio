@@ -11,7 +11,7 @@ import logging
 import os
 
 # Third-party
-from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 from sqlmodel import select
@@ -163,7 +163,7 @@ def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     summary="Login user",
     description="Authenticate user and return access token"
 )
-def login(user: UserLogin, request: Request, db: Session = Depends(get_db)):
+def login(user: UserLogin, request: Request, response: Response, db: Session = Depends(get_db)):
     """
     Login with email and password.
 
@@ -254,6 +254,7 @@ def login(user: UserLogin, request: Request, db: Session = Depends(get_db)):
     db.refresh(db_user)
 
     access_token = create_access_token(data={"sub": db_user.email, "uid": str(db_user.id), "role": db_user.role})
+    refresh_token = create_refresh_token(db=db, user_id=db_user.id, ip_address=request.client.host if request.client else None, user_agent=request.headers.get("user-agent"))
 
     # Explicit audit entry for successful login
     try:
@@ -275,7 +276,28 @@ def login(user: UserLogin, request: Request, db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Set cookies directly for a session
+    is_production = not settings.debug
+    response.set_cookie(
+        key="ss_jwt",
+        value=access_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+    response.set_cookie(
+        key="ss_refresh",
+        value=refresh_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        path="/"
+    )
+
+    return {"ok": True, "access_token": access_token, "token": access_token, "token_type": "bearer"}
 
 
 @router.post(
@@ -344,12 +366,69 @@ def refresh_token(payload: RefreshTokenRequest, request: Request, db: Session = 
         "role": user.role
     })
     
+    # Set cookies if this is called via cookie flow
+    # This supports both the legacy header flow and the new cookie flow
     return TokenPair(
         access_token=access_token,
         refresh_token=new_refresh_token,
         token_type="bearer",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
+
+
+@router.post(
+    "/refresh-session",
+    summary="Refresh session cookies",
+    description="Exchange refresh cookie for new access/refresh cookies"
+)
+def refresh_session(request: Request, response: Response, db: Session = Depends(get_db)):
+    """
+    Silent refresh endpoint using cookies.
+    Reads 'ss_refresh' cookie and sets new 'ss_jwt' and 'ss_refresh' cookies.
+    """
+    old_refresh_token = request.cookies.get("ss_refresh")
+    if not old_refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    result = rotate_refresh_token(
+        db,
+        old_refresh_token,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    if not result:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    
+    new_refresh_token, user_id = result
+    user = db.exec(select(User).where(User.id == user_id)).first()
+    
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User inactive")
+    
+    access_token = create_access_token(data={"sub": user.email, "uid": str(user.id), "role": user.role})
+    
+    is_production = not settings.debug
+    response.set_cookie(
+        key="ss_jwt",
+        value=access_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+    response.set_cookie(
+        key="ss_refresh",
+        value=new_refresh_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,
+        path="/"
+    )
+    
+    return {"ok": True}
 
 
 @router.post(
@@ -838,67 +917,39 @@ def get_current_user_info(
     return current_user
 
 
-# ============================================================================
-# SESSION COOKIE ENDPOINT  
-# ============================================================================
-
 @router.post(
-    "/session",
-    summary="Set session cookies from tokens",
-    description="Convert tokens (passed via hash fragment) into secure HTTP-only cookies"
+    "/logout",
+    summary="Logout user",
+    description="Clear all session cookies and redirect to login"
 )
-def set_session_cookies(
-    payload: SessionCreate,
-    response: Response
-):
+def logout(response: Response):
     """
-    Set HTTP-only secure cookies from tokens.
-    
-    This endpoint is called by the frontend after OAuth callback.
-    The tokens are passed via hash fragment (never hits server),
-    then POSTed here to be converted into secure cookies.
+    Logout user by clearing all cookies.
     
     Security measures:
-    - Access token: HttpOnly, Secure, SameSite=Strict, 15 min
-    - Refresh token: HttpOnly, Secure, SameSite=Strict, 7 days
+    - Delete all auth cookies (ss_access, ss_refresh, ss_jwt)
+    - Set Cache-Control to prevent back-button showing dashboard
+    - Redirect to /login
     """
     is_production = settings.debug is False
     
-    # Set access token cookie (short-lived)
-    response.set_cookie(
-        key="ss_access",
-        value=payload.access,
-        httponly=True,
-        secure=is_production,  # Secure in production, allow http in dev
-        samesite="lax",  # "lax" for OAuth redirects to work
-        max_age=payload.expires_in,  # Match token expiry
-        path="/"
-    )
+    # Delete all auth cookies with explicit path and same domain settings as when they were set
+    response.delete_cookie("ss_access", path="/")
+    response.delete_cookie("ss_refresh", path="/")
+    response.delete_cookie("ss_jwt", path="/")
     
-    # Set refresh token cookie (long-lived)
-    response.set_cookie(
-        key="ss_refresh",
-        value=payload.refresh,
-        httponly=True,
-        secure=is_production,
-        samesite="lax",
-        max_age=7 * 24 * 60 * 60,  # 7 days
-        path="/"
-    )
+    # Force immediate expiration of cookies as an extra measure
+    response.set_cookie("ss_access", "", max_age=0, path="/")
+    response.set_cookie("ss_refresh", "", max_age=0, path="/")
+    response.set_cookie("ss_jwt", "", max_age=0, path="/")
     
-    # Also keep the old ss_jwt cookie for backward compatibility with middleware
-    response.set_cookie(
-        key="ss_jwt",
-        value=payload.access,
-        httponly=True,
-        secure=is_production,
-        samesite="lax",
-        max_age=payload.expires_in,
-        path="/"
-    )
+    # Cache headers to prevent back-button showing cached dashboard
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     
-    logger.info("Session cookies set successfully")
-    return {"ok": True}
+    logger.info("User logged out, cookies cleared")
+    return {"ok": True, "redirect": "/login"}
 
 
 # ============================================================================
@@ -1022,7 +1073,7 @@ async def google_callback(
     user, is_new = await _find_or_create_oauth_user(db, user_info)
     logger.debug(f"OAuth Google: user_id={user.id}, is_new={is_new}")
 
-    # Generate access token (JWT)
+    # Generate access token (JWT) - 15 min expiry
     jwt_token = create_access_token(data={
         "sub": user.email,
         "uid": str(user.id),
@@ -1033,17 +1084,37 @@ async def google_callback(
     refresh_token = create_refresh_token(
         db=db,
         user_id=user.id,
-        ip_address=None,  # Could extract from request if needed
+        ip_address=None,
         user_agent=None
     )
 
-    # SECURE: Redirect with tokens in URL fragment (hash)
-    # Hash fragments are NEVER sent to the server, only processed client-side
-    # This prevents tokens from appearing in server logs or analytics
-    from urllib.parse import quote
-    hash_params = f"token={quote(jwt_token)}&refresh={quote(refresh_token)}&expires_in={ACCESS_TOKEN_EXPIRE_MINUTES * 60}"
-    frontend_success = f"{settings.frontend_url}/auth/success#{hash_params}"
-    return RedirectResponse(url=frontend_success)
+    # SET COOKIES AND REDIRECT DIRECTLY TO DASHBOARD
+    # This eliminates the need for /auth/success and hash fragments
+    is_production = not settings.debug
+    
+    response = RedirectResponse(url=f"{settings.frontend_url}/dashboard", status_code=302)
+    
+    response.set_cookie(
+        key="ss_jwt",
+        value=jwt_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+    response.set_cookie(
+        key="ss_refresh",
+        value=refresh_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,
+        path="/"
+    )
+    
+    logger.info(f"OAuth Google login successful: {user.email}, redirecting to /dashboard")
+    return response
 
 
 # --- GitHub OAuth ---
@@ -1144,7 +1215,7 @@ async def github_callback(
     # Find or create user
     user, is_new = await _find_or_create_oauth_user(db, user_info)
     
-    # Generate access token (JWT)
+    # Generate access token (JWT) - 15 min expiry
     jwt_token = create_access_token(data={
         "sub": user.email,
         "uid": str(user.id),
@@ -1159,12 +1230,31 @@ async def github_callback(
         user_agent=None
     )
     
-    # SECURE: Redirect with tokens in URL fragment (hash)
-    # Hash fragments are NEVER sent to the server, only processed client-side
-    from urllib.parse import quote
-    hash_params = f"token={quote(jwt_token)}&refresh={quote(refresh_token)}&expires_in={ACCESS_TOKEN_EXPIRE_MINUTES * 60}"
-    frontend_success = f"{settings.frontend_url}/auth/success#{hash_params}"
-    return RedirectResponse(url=frontend_success)
+    # SET COOKIES AND REDIRECT DIRECTLY TO DASHBOARD
+    is_production = not settings.debug
+    response = RedirectResponse(url=f"{settings.frontend_url}/dashboard", status_code=302)
+    
+    response.set_cookie(
+        key="ss_jwt",
+        value=jwt_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+    response.set_cookie(
+        key="ss_refresh",
+        value=refresh_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,
+        path="/"
+    )
+    
+    logger.info(f"OAuth GitHub login successful: {user.email}, redirecting to /dashboard")
+    return response
 
 
 # ============================================================================

@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
 import { api } from "./api"
 import type { User } from "./types"
 
@@ -10,8 +9,8 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
-  logout: () => Promise<void>
-  completeOAuthLogin: (token: string) => Promise<void>
+  logout: () => void
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,96 +18,96 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is authenticated via cookie
     const checkAuth = async () => {
-      console.log("[Auth] Starting checkAuth...")
-      let token = api.getToken()
-      console.log("[Auth] Token from api.getToken():", token ? "EXISTS" : "NULL")
-
-      // If we don't have a client token yet, try to recover it from the
-      // httpOnly session cookie via a server-validated endpoint.
-      if (!token) {
-        console.log("[Auth] No token, trying /api/auth/session...")
-        try {
-          const res = await fetch("/api/auth/session", {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            credentials: "include",
-          })
-
-          console.log("[Auth] /api/auth/session response:", res.status)
-          if (res.ok) {
-            const data = (await res.json()) as { ok: boolean; token?: string; user?: User }
-            if (data?.ok && data.token) {
-              api.setToken(data.token)
-              token = data.token
-              if (data.user) {
-                console.log("[Auth] User from session:", data.user.email)
-                setUser(data.user)
-                setLoading(false)
-                return
-              }
-            }
-          }
-        } catch (e) {
-          console.log("[Auth] Session fetch error:", e)
-          // ignore and fall back to unauthenticated
+      // Skip on auth pages - they handle their own flow
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname
+        if (path.startsWith("/auth/") || path === "/login" || path === "/register") {
+          setLoading(false)
+          return
         }
       }
 
-      if (token) {
-        console.log("[Auth] Token exists, calling getCurrentUser...")
-        try {
-          const currentUser = await api.getCurrentUser()
-          console.log("[Auth] getCurrentUser success:", currentUser?.email)
-          setUser(currentUser)
-        } catch (e) {
-          console.log("[Auth] getCurrentUser FAILED:", e)
-          // Token is invalid, clear it
-          api.setToken(null)
-        }
-      } else {
-        console.log("[Auth] No token found, user is unauthenticated")
+      try {
+        // Fetch current user - cookies are sent automatically
+        const currentUser = await api.getCurrentUser()
+        setUser(currentUser)
+      } catch {
+        // Not authenticated or error - that's fine
+        setUser(null)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     checkAuth()
   }, [])
 
+  // Background silent refresh for access token (rotates current session)
+  useEffect(() => {
+    if (!user) return
+
+    // Refresh every 10 minutes (token expires in 15)
+    // This allows for a "sliding session"
+    const interval = setInterval(async () => {
+      try {
+        await api.refreshSession()
+        console.log("Session refreshed silently")
+      } catch (err) {
+        console.error("Silent refresh failed", err)
+        // If refresh fails, we don't logout immediately 
+        // because the current access token might still be valid
+      }
+    }, 10 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [user])
+
   const login = async (email: string, password: string) => {
-    const { access_token } = await api.login(email, password)
-    api.setToken(access_token)
-    const currentUser = await api.getCurrentUser()
-    setUser(currentUser)
-    router.push("/dashboard")
+    await api.login(email, password)
+    // Cookies are set by backend - hard redirect to dashboard
+    window.location.replace("/dashboard")
   }
 
   const register = async (email: string, password: string) => {
-    // Register the user - don't auto-login because email verification is required
     await api.register(email, password, "")
-    // Registration successful - user needs to verify email before logging in
-    // The caller should redirect to login page with a success message
+    // Registration requires email verification
     throw new Error("REGISTRATION_REQUIRES_VERIFICATION")
   }
 
-  const completeOAuthLogin = async (token: string) => {
-    api.setToken(token)
-    const currentUser = await api.getCurrentUser()
-    setUser(currentUser)
+  const refreshUser = async () => {
+    try {
+      const currentUser = await api.getCurrentUser()
+      setUser(currentUser)
+    } catch {
+      setUser(null)
+    }
   }
 
   const logout = async () => {
-    await api.logout()
-    setUser(null)
-    router.push("/")
+    // Hard logout: evict cache, call backend, full page reload
+    try {
+      // Clear service worker caches
+      if ('caches' in window) {
+        const names = await caches.keys()
+        await Promise.all(names.map(n => caches.delete(n)))
+      }
+      
+      // Call api.logout (which calls /auth/logout)
+      await api.logout()
+    } catch (err) {
+      console.error("Logout error", err)
+    } finally {
+      // Full page reload to /login - wipes JS heap and prevents Back button issues
+      window.location.replace("/login")
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, completeOAuthLogin }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

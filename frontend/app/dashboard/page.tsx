@@ -375,9 +375,10 @@ export default function DashboardPage() {
 
       {/* Progressive Disclosure: Activity Feed and Quick Actions */}
       <ShowMore label="Show Activity Feed & Quick Actions" defaultOpen={false}>
-        <div className="grid gap-6 lg:grid-cols-3 mb-6">
-          {/* Activity Feed */}
-          <Card className="lg:col-span-2">
+        {/* Stack on mobile, 2-column on tablet, 3-column on desktop */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+          {/* Activity Feed - spans 2 columns on tablet/desktop */}
+          <Card className="md:col-span-2 lg:col-span-2">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-medium">Recent Activity</CardTitle>
@@ -401,8 +402,8 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Generator Actions */}
-          <Card>
+          {/* Generator Actions - full width on mobile, single column on tablet/desktop */}
+          <Card className="md:col-span-2 lg:col-span-1">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-medium">Generator Actions</CardTitle>
               <CardDescription>Quick actions for recent generators</CardDescription>
@@ -411,15 +412,15 @@ export default function DashboardPage() {
               {recentGenerators.length > 0 ? (
                 recentGenerators.slice(0, 3).map((gen) => (
                   <div key={gen.id} className="flex items-center justify-between p-3 rounded-xl border bg-card/50 hover:bg-muted/50 transition-colors">
-                    <span className="text-sm font-medium truncate">{gen.name}</span>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => router.push(`/generators/${gen.id}`)}>
+                    <span className="text-sm font-medium truncate max-w-[120px] sm:max-w-none">{gen.name}</span>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-11 sm:w-11" onClick={() => router.push(`/generators/${gen.id}`)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-11 w-11" disabled title="Coming soon">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-11 sm:w-11" disabled title="Coming soon">
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-11 w-11" disabled title="Coming soon">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-11 sm:w-11" disabled title="Coming soon">
                         <Play className="h-4 w-4" />
                       </Button>
                     </div>

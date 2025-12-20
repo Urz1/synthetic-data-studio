@@ -58,50 +58,23 @@ function isJwtNotExpired(token: string): boolean {
   return exp > now;
 }
 
-async function validateSessionWithBackend(token: string): Promise<boolean> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 2500);
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-      signal: controller.signal,
-    });
-    return res.ok;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Server-side protection for app routes. Never rely on client-only guards.
+  // Server-side protection for app routes
   if (!isPublicPath(pathname) && isProtectedPath(pathname)) {
     const token = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
 
-    const next = encodeURIComponent(
-      `${request.nextUrl.pathname}${request.nextUrl.search}`
-    );
-    const loginUrl = new URL(`/login?next=${next}`, request.url);
+    const loginUrl = new URL("/login", request.url);
 
     if (!token) {
       return NextResponse.redirect(loginUrl, 303);
     }
 
-    // In production: validate token against backend. In dev/test: default to
-    // a lightweight expiration check unless SS_AUTH_STRICT=1.
-    const strict =
-      process.env.NODE_ENV === "production" ||
-      process.env.SS_AUTH_STRICT === "1";
-
+    // OFFLINE JWT validation - no backend calls!
+    // This is faster and avoids race conditions
     if (!isJwtNotExpired(token)) {
+      // Token expired - clear cookies and redirect
       const res = NextResponse.redirect(loginUrl, 303);
       res.cookies.set({
         name: SESSION_COOKIE_NAME,
@@ -111,27 +84,61 @@ export async function middleware(request: NextRequest) {
         path: "/",
         maxAge: 0,
       });
+      res.cookies.set({
+        name: "ss_access",
+        value: "",
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+      res.cookies.set({
+        name: "ss_refresh",
+        value: "",
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
       return res;
-    }
-
-    if (strict) {
-      const ok = await validateSessionWithBackend(token);
-      if (!ok) {
-        const res = NextResponse.redirect(loginUrl, 303);
-        res.cookies.set({
-          name: SESSION_COOKIE_NAME,
-          value: "",
-          httpOnly: true,
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-        return res;
-      }
     }
   }
 
   const response = NextResponse.next();
+
+  // Content Security Policy
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' blob: data: https://www.google-analytics.com https://*.githubusercontent.com https://*.googleusercontent.com;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' ${API_BASE} https://www.google-analytics.com;
+    frame-ancestors 'none';
+    upgrade-insecure-requests;
+  `
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  response.headers.set("Content-Security-Policy", cspHeader);
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()"
+  );
+
+  // Add Cache-Control: no-store on protected pages to prevent back-button issues
+  if (isProtectedPath(pathname)) {
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+  }
 
   // 1-year immutable cache on static assets with content hashing
   if (
@@ -156,12 +163,6 @@ export async function middleware(request: NextRequest) {
   ) {
     response.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
   }
-
-  // Security headers for bfcache compatibility
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-XSS-Protection", "1; mode=block");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
   // Enable CORS for cookie-free asset domain
   if (

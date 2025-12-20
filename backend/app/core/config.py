@@ -69,8 +69,13 @@ class Settings:
         # CORS configuration
         if self.allowed_origins is None:
             if self.debug:
-                # Development: Allow all origins
-                self.allowed_origins = ["*"]
+                # Development: Allow localhost origins explicitly (required for credentials)
+                self.allowed_origins = [
+                    "http://localhost:3000",
+                    "http://localhost:8000",
+                    "http://127.0.0.1:3000",
+                    "http://127.0.0.1:8000"
+                ]
             else:
                 # Production: Require explicit configuration
                 origins_env = os.getenv("ALLOWED_ORIGINS", "")
