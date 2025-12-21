@@ -215,6 +215,15 @@ export function AuthFormEnhancer({
             mode,
             uid,
           })
+
+          // Store user data for instant hydration (avoid /me fetch)
+          if (data.user && typeof data.user === "object") {
+            try {
+              sessionStorage.setItem("ss_user_prefetch", JSON.stringify(data.user))
+            } catch {
+              // sessionStorage unavailable, continue anyway
+            }
+          }
         }
 
         // Validate redirect is a proper path (not empty, not external)

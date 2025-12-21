@@ -485,8 +485,8 @@ export function GeneratorConfigForm({
                 )}
 
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>🔒 Stronger Privacy</span>
-                  <span>📊 Better Utility</span>
+                  <span>Stronger Privacy</span>
+                  <span>Better Utility</span>
                 </div>
               </div>
 

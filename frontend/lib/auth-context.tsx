@@ -29,6 +29,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false)
           return
         }
+
+        // Check for prefetched user data (set during login via sessionStorage or OAuth via cookie)
+        try {
+          // First check sessionStorage (for normal login)
+          let prefetched = sessionStorage.getItem("ss_user_prefetch")
+          let fromCookie = false
+
+          // If not in sessionStorage, check cookie (for OAuth login)
+          if (!prefetched && typeof document !== "undefined") {
+            const cookieMatch = document.cookie.match(/ss_user_prefetch=([^;]+)/)
+            if (cookieMatch) {
+              prefetched = decodeURIComponent(cookieMatch[1])
+              fromCookie = true
+            }
+          }
+
+          if (prefetched) {
+            const userData = JSON.parse(prefetched)
+            if (userData && userData.id) {
+              setUser(userData as User)
+              setLoading(false)
+              // Clear prefetch
+              if (fromCookie) {
+                // Delete the cookie by setting expired date
+                document.cookie = "ss_user_prefetch=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+              } else {
+                sessionStorage.removeItem("ss_user_prefetch")
+              }
+              // Background validation (don't block)
+              api.getCurrentUser().then(validatedUser => {
+                setUser(validatedUser)
+              }).catch(() => {
+                // If validation fails, user cookie is invalid
+                setUser(null)
+              })
+              return
+            }
+          }
+        } catch {
+          // Ignore prefetch errors
+        }
       }
 
       try {
@@ -46,25 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth()
   }, [])
 
-  // Background silent refresh for access token (rotates current session)
-  useEffect(() => {
-    if (!user) return
-
-    // Refresh every 10 minutes (token expires in 15)
-    // This allows for a "sliding session"
-    const interval = setInterval(async () => {
-      try {
-        await api.refreshSession()
-        console.log("Session refreshed silently")
-      } catch (err) {
-        console.error("Silent refresh failed", err)
-        // If refresh fails, we don't logout immediately 
-        // because the current access token might still be valid
-      }
-    }, 10 * 60 * 1000)
-
-    return () => clearInterval(interval)
-  }, [user])
+  // Note: Silent refresh removed - the backend handles token refresh via httpOnly refresh cookies
+  // The access token is refreshed automatically when requests are made with valid refresh cookies
 
   const login = async (email: string, password: string) => {
     await api.login(email, password)

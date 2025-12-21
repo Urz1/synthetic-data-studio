@@ -127,42 +127,50 @@ export function DatasetProfileView({ dataset, className }: DatasetProfileViewPro
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-2 sm:pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Dataset Profile
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               {dataset.row_count?.toLocaleString()} rows, {dataset.schema_data?.columns?.length || 0} columns
             </CardDescription>
           </div>
           {piiColumns.length > 0 && (
-            <Badge variant="secondary" className="bg-warning/10 text-warning-foreground border-warning/20">
+            <Badge variant="secondary" className="bg-warning/10 text-warning-foreground border-warning/20 w-fit text-xs">
               <AlertTriangle className="h-3 w-3 mr-1" />
-              {piiColumns.length} PII column{piiColumns.length !== 1 ? "s" : ""} detected
+              {piiColumns.length} PII
             </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="columns">
-          <TabsList>
-            <TabsTrigger value="columns">Columns</TabsTrigger>
-            <TabsTrigger value="pii" disabled={piiColumns.length === 0}>
-              PII Detection
-              {piiColumns.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 px-1.5">
-                  {piiColumns.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="correlations">Correlations</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <TabsList className="w-max min-w-full">
+              <TabsTrigger value="columns" className="text-xs sm:text-sm">Columns</TabsTrigger>
+              <TabsTrigger value="pii" disabled={piiColumns.length === 0} className="text-xs sm:text-sm">
+                <span className="hidden sm:inline">PII Detection</span>
+                <span className="sm:hidden">PII</span>
+                {piiColumns.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 sm:h-5 px-1 sm:px-1.5 text-xs">
+                    {piiColumns.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="correlations" className="text-xs sm:text-sm">
+                <span className="hidden sm:inline">Correlations</span>
+                <span className="sm:hidden">Corr</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="columns" className="mt-4">
-            <DataTable data={columns} columns={tableColumns} keyExtractor={(row) => row.name} compact />
+            <div className="overflow-x-auto -mx-2 px-2">
+              <DataTable data={columns} columns={tableColumns} keyExtractor={(row) => row.name} compact />
+            </div>
           </TabsContent>
 
           <TabsContent value="pii" className="mt-4">

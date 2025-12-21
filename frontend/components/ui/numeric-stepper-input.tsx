@@ -306,7 +306,6 @@ export function TrainingStepsIndicator({
           isWithinLimit ? "text-success" : "text-destructive"
         )}>
           {totalSteps.toLocaleString()} / {maxSteps.toLocaleString()}
-          {isWithinLimit ? " ✅" : " ❌"}
         </span>
       </div>
       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">

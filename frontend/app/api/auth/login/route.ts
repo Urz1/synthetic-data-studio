@@ -118,8 +118,11 @@ export async function POST(request: Request) {
 
   const redirect = nextPath;
 
+  // Pass user data to avoid extra fetch after login
+  const userData = payload?.user || null;
+
   const res = wantsJson(request)
-    ? NextResponse.json({ ok: true, redirect, token })
+    ? NextResponse.json({ ok: true, redirect, token, user: userData })
     : NextResponse.redirect(new URL(redirect, request.url), 303);
 
   res.cookies.set({

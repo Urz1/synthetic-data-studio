@@ -47,6 +47,7 @@ export default function ProjectDetailPage() {
   const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState("datasets")
   const { toast } = useToast()
 
   // Load data
@@ -125,11 +126,7 @@ export default function ProjectDetailPage() {
               <Button 
                 variant="outline" 
                 size="icon"
-                onClick={() => {
-                  // Navigate to settings tab by setting URL hash or use tab state
-                  const tabsElement = document.querySelector('[value="settings"]') as HTMLButtonElement
-                  if (tabsElement) tabsElement.click()
-                }}
+                onClick={() => setActiveTab("settings")}
                 title="Project Settings"
               >
                 <Settings className="h-4 w-4" />
@@ -174,14 +171,34 @@ export default function ProjectDetailPage() {
           </Card>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="datasets" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="datasets">Datasets ({datasets.length})</TabsTrigger>
-            <TabsTrigger value="generators">Generators ({generators.length})</TabsTrigger>
-            <TabsTrigger value="evaluations">Evaluations ({evaluations.length})</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+        {/* Tabs - scrollable on mobile */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="w-full overflow-x-auto pb-2">
+            <TabsList className="inline-flex min-w-max">
+              <TabsTrigger value="datasets" className="gap-2">
+                <Database className="h-4 w-4" />
+                <span className="hidden sm:inline">Datasets</span>
+                <span className="sm:hidden">({datasets.length})</span>
+                <span className="hidden sm:inline">({datasets.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="generators" className="gap-2">
+                <Zap className="h-4 w-4" />
+                <span className="hidden sm:inline">Generators</span>
+                <span className="sm:hidden">({generators.length})</span>
+                <span className="hidden sm:inline">({generators.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="evaluations" className="gap-2">
+                <FileBarChart className="h-4 w-4" />
+                <span className="hidden sm:inline">Evaluations</span>
+                <span className="sm:hidden">({evaluations.length})</span>
+                <span className="hidden sm:inline">({evaluations.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-2">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Datasets Tab */}
           <TabsContent value="datasets">

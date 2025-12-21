@@ -161,7 +161,7 @@ export function GeneratorCard({ generator, onDeleted, className }: GeneratorCard
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                 disabled={isDeleting || isDownloading}
               >
                 {isDownloading || isDeleting ? (

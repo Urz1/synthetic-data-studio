@@ -190,8 +190,8 @@ export default function EvaluationDetailPage() {
         <div className="mb-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/evaluations">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Evaluations
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Back to Evaluations</span>
             </Link>
           </Button>
         </div>
@@ -200,7 +200,7 @@ export default function EvaluationDetailPage() {
           title={`Evaluation ${evaluation.id.slice(0, 8)}`}
           description={`Quality assessment • Created ${evaluation.created_at ? new Date(evaluation.created_at).toLocaleDateString() : 'Unknown'}`}
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -210,22 +210,22 @@ export default function EvaluationDetailPage() {
                 aria-busy={loadingImprovements}
               >
                 {loadingImprovements ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
                 ) : (
-                  <Brain className="mr-2 h-4 w-4" />
+                  <Brain className="h-4 w-4 sm:mr-2" />
                 )}
-                AI Improvements
+                <span className="hidden sm:inline">AI Improvements</span>
               </Button>
               <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="mr-2 h-4 w-4" />
-                Export Report
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export Report</span>
               </Button>
             </div>
           }
         />
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-4 lg:space-y-0 lg:grid lg:gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Overall Quality Score */}
             <Card>
               <CardHeader>
@@ -248,7 +248,7 @@ export default function EvaluationDetailPage() {
 
              {/* Metrics Breakdown */}
              {report?.evaluations ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {/* Statistical */}
                     {report.evaluations.statistical_similarity && (
                         <Card>

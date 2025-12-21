@@ -14,7 +14,8 @@ const SESSION_COOKIE_NAME = "ss_jwt";
 
 async function proxyRequest(request: NextRequest, path: string) {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const refreshToken = cookieStore.get("ss_refresh")?.value;
 
   // Build backend URL
   const backendUrl = `${API_BASE}/${path}`;
@@ -25,9 +26,17 @@ async function proxyRequest(request: NextRequest, path: string) {
     Accept: request.headers.get("Accept") || "application/json",
   };
 
-  // Add Authorization header if we have a token
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  // Add Authorization header if we have an access token
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  // For refresh-session endpoint, forward cookies directly since it reads from cookies
+  if (path === "auth/refresh-session" && refreshToken) {
+    const cookieParts: string[] = [];
+    if (accessToken) cookieParts.push(`ss_jwt=${accessToken}`);
+    if (refreshToken) cookieParts.push(`ss_refresh=${refreshToken}`);
+    headers["Cookie"] = cookieParts.join("; ");
   }
 
   // Forward the request to backend
@@ -63,10 +72,10 @@ async function proxyRequest(request: NextRequest, path: string) {
       },
     });
 
-    // Forward any Set-Cookie headers from backend
-    const setCookie = backendResponse.headers.get("Set-Cookie");
-    if (setCookie) {
-      response.headers.set("Set-Cookie", setCookie);
+    // Forward all Set-Cookie headers from backend (may be multiple)
+    const setCookieHeaders = backendResponse.headers.getSetCookie?.() || [];
+    for (const cookie of setCookieHeaders) {
+      response.headers.append("Set-Cookie", cookie);
     }
 
     return response;

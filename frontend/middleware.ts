@@ -5,7 +5,17 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 const SESSION_COOKIE_NAME = "ss_jwt";
 
-const PUBLIC_PATH_PREFIXES = ["/", "/login", "/register", "/auth/"];
+const PUBLIC_PATH_PREFIXES = [
+  "/",
+  "/login",
+  "/register",
+  "/auth/",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/help",
+  "/docs",
+];
 
 const PROTECTED_PATH_PREFIXES = [
   "/dashboard",
@@ -61,8 +71,13 @@ function isJwtNotExpired(token: string): boolean {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Server-side protection for app routes
-  if (!isPublicPath(pathname) && isProtectedPath(pathname)) {
+  // EXPLICIT: Never redirect landing page - it's always public
+  if (pathname === "/") {
+    // Continue to the landing page, apply security headers below
+    // Fall through to the response handler
+  }
+  // Server-side protection for app routes (only for non-public protected paths)
+  else if (!isPublicPath(pathname) && isProtectedPath(pathname)) {
     const token = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
 
     const loginUrl = new URL("/login", request.url);
@@ -111,7 +126,7 @@ export async function middleware(request: NextRequest) {
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' blob: data: https://www.google-analytics.com https://*.githubusercontent.com https://*.googleusercontent.com;
+    img-src 'self' blob: data: https://www.google-analytics.com https://*.githubusercontent.com https://*.googleusercontent.com https://api.qrserver.com;
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' ${API_BASE} https://www.google-analytics.com;
     frame-ancestors 'none';

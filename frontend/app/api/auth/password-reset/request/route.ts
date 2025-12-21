@@ -14,8 +14,18 @@ function sanitizeEmail(v: string): string {
 }
 
 export async function POST(request: Request) {
-  const form = await request.formData();
-  const email = sanitizeEmail(String(form.get("email") || ""));
+  let email = "";
+
+  // Support both JSON and form data Content-Types
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    const body = await request.json().catch(() => ({}));
+    email = sanitizeEmail(String(body.email || ""));
+  } else {
+    const form = await request.formData();
+    email = sanitizeEmail(String(form.get("email") || ""));
+  }
 
   if (!email) {
     const redirect = `/forgot-password?error=${encodeURIComponent(

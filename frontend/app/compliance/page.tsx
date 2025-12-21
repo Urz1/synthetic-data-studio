@@ -83,22 +83,22 @@ const frameworkInfo = {
   GDPR: {
     name: "General Data Protection Regulation",
     description: "EU data protection and privacy regulation",
-    icon: "🇪🇺",
+    icon: "EU",
   },
   HIPAA: {
     name: "Health Insurance Portability and Accountability Act",
     description: "US healthcare data protection",
-    icon: "🏥",
+    icon: "HC",
   },
   CCPA: {
     name: "California Consumer Privacy Act", 
     description: "California consumer privacy law",
-    icon: "🇺🇸",
+    icon: "CA",
   },
   SOC2: {
     name: "Service Organization Control 2",
     description: "Security, availability, and confidentiality controls",
-    icon: "🔒",
+    icon: "S2",
   },
 }
 

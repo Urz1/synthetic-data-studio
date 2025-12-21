@@ -51,12 +51,12 @@ export function PageHeader({ title, description, actions, breadcrumbs, badge, cl
 
       {/* Header content */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-balance">{title}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight break-words line-clamp-2" title={title}>{title}</h1>
             {badge}
           </div>
-          {description && <p className="text-muted-foreground text-pretty max-w-2xl leading-relaxed">{description}</p>}
+          {description && <p className="text-muted-foreground text-pretty max-w-2xl leading-relaxed text-sm sm:text-base">{description}</p>}
         </div>
         {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
       </div>

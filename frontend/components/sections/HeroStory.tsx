@@ -406,15 +406,15 @@ function ReportAnimation({ animated }: { animated: boolean }) {
           <div className="flex flex-wrap gap-2">
             <span className={`${animated ? styles.badgeDrop : ""} text-xs font-bold px-3 py-1.5 rounded-full bg-success/20 text-success border border-success/30`}
                   style={{ animationDelay: "600ms" }}>
-              ✓ HIPAA Ready
+              HIPAA Ready
             </span>
             <span className={`${animated ? styles.badgeDrop : ""} text-xs font-bold px-3 py-1.5 rounded-full bg-primary/20 text-primary border border-primary/30`}
                   style={{ animationDelay: "800ms" }}>
-              ✓ GDPR Compliant
+              GDPR Compliant
             </span>
             <span className={`${animated ? styles.badgeDrop : ""} text-xs font-bold px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30`}
                   style={{ animationDelay: "1000ms" }}>
-              ✓ SOC 2
+              SOC 2
             </span>
           </div>
         </div>

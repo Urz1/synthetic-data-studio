@@ -189,6 +189,10 @@ export default function EvaluationsPage() {
                   link.click()
                   document.body.removeChild(link)
                   URL.revokeObjectURL(url)
+                  toast({
+                    title: "Export Complete",
+                    description: "Evaluation report has been downloaded",
+                  })
                 }
               }}
             />

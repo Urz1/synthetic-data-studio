@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,10 +27,19 @@ interface DatasetCardProps {
 
 export function DatasetCard({ dataset, onDelete, onDownload, className }: DatasetCardProps) {
   const { toast } = useToast()
+  const [isDownloading, setIsDownloading] = React.useState(false)
   const hasPii = dataset.pii_flags && Object.keys(dataset.pii_flags).length > 0
   const piiCount = hasPii ? Object.keys(dataset.pii_flags!).length : 0
 
   const handleDownload = async () => {
+    if (isDownloading) return
+    
+    setIsDownloading(true)
+    toast({
+      title: "Preparing download...",
+      description: `Getting ${dataset.name} ready`,
+    })
+    
     try {
       const result = await api.downloadDataset(dataset.id)
       if (result.download_url) {
@@ -46,6 +56,8 @@ export function DatasetCard({ dataset, onDelete, onDownload, className }: Datase
         description: err instanceof Error ? err.message : "Failed to download dataset",
         variant: "destructive",
       })
+    } finally {
+      setIsDownloading(false)
     }
   }
 
@@ -83,7 +95,8 @@ export function DatasetCard({ dataset, onDelete, onDownload, className }: Datase
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Dataset options"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -95,9 +108,9 @@ export function DatasetCard({ dataset, onDelete, onDownload, className }: Datase
                 View details
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownload}>
-              <Download className="mr-2 h-4 w-4" />
-              Download
+            <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
+              <Download className={`mr-2 h-4 w-4 ${isDownloading ? 'animate-pulse' : ''}`} />
+              {isDownloading ? 'Downloading...' : 'Download'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={onDelete}>

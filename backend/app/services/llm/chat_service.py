@@ -349,17 +349,21 @@ Explain:
         system_prompt = """You are an expert data scientist specializing in feature engineering.
 Suggest meaningful derived features that could improve model performance."""
         
+        # Build user prompt - use string formatting to avoid f-string conflicts with JSON braces
+        context_line = f"Context: {context}" if context else ""
+        schema_json = json.dumps(schema, indent=2)
+        
         user_prompt = f"""Based on this schema, suggest 3-5 new features to generate:
 
-Schema: {json.dumps(schema, indent=2)}
-{f"Context: {context}" if context else ""}
+Schema: {schema_json}
+{context_line}
 
 Provide a JSON array of feature objects. Each object should have:
 - "name": Name of the new feature
 - "expression": Mathematical or logical expression to calculate it (e.g., "col1 / col2")
 - "description": Why this feature is useful
 
-Format: [{"name": "...", "expression": "...", "description": "..."}]"""
+Format: [{{"name": "...", "expression": "...", "description": "..."}}]"""
         
         request = LLMRequest(
             system_prompt=system_prompt,
