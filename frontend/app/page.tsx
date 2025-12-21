@@ -31,7 +31,33 @@ import {
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useState, useEffect } from "react"
 import { AuthIntentLink } from "@/components/auth/auth-intent-link"
-import { HeroStory } from "@/components/sections/HeroStory"
+import dynamic from "next/dynamic"
+
+// Dynamic import with SSR disabled - prevents ALL hydration mismatches
+// HeroStory uses window.matchMedia, animations, and browser-only state
+const HeroStory = dynamic(
+  () => import("@/components/sections/HeroStory").then(m => m.HeroStory),
+  { 
+    ssr: false,
+    loading: () => (
+      <section className="relative pt-24 md:pt-32 pb-16 md:pb-24 min-h-[600px] bg-background">
+        <div className="container mx-auto px-6">
+          <div className="animate-pulse space-y-8">
+            <div className="h-8 w-48 bg-muted rounded mx-auto" />
+            <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
+              <div className="h-[320px] bg-muted/50 rounded-2xl" />
+              <div className="space-y-4">
+                <div className="h-12 bg-muted rounded w-3/4" />
+                <div className="h-6 bg-muted/70 rounded w-full" />
+                <div className="h-6 bg-muted/70 rounded w-2/3" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+)
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700", "800"] })
 
