@@ -50,17 +50,24 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
   const [loopCount, setLoopCount] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Check for reduced motion preference
+  // Mark as mounted after hydration to prevent mismatch
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Check for reduced motion preference (only after mount)
+  useEffect(() => {
+    if (!mounted) return
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
     setPrefersReducedMotion(mediaQuery.matches)
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
     mediaQuery.addEventListener("change", handler)
     return () => mediaQuery.removeEventListener("change", handler)
-  }, [])
+  }, [mounted])
 
   // Scene rotation logic - 5 seconds per scene
   useEffect(() => {
@@ -133,9 +140,9 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
             onMouseEnter={handleReplay}
           >
             <div className={`${styles.animationContainer} bg-card/50 border border-border rounded-2xl p-4 sm:p-6 md:p-8 min-h-[280px] sm:min-h-[320px] flex items-center justify-center overflow-hidden`}>
-              {currentScene === 0 && <PrivacyAnimation animated={!prefersReducedMotion} />}
-              {currentScene === 1 && <SchemaAnimation animated={!prefersReducedMotion} />}
-              {currentScene === 2 && <ReportAnimation animated={!prefersReducedMotion} />}
+              {currentScene === 0 && <PrivacyAnimation animated={mounted && !prefersReducedMotion} />}
+              {currentScene === 1 && <SchemaAnimation animated={mounted && !prefersReducedMotion} />}
+              {currentScene === 2 && <ReportAnimation animated={mounted && !prefersReducedMotion} />}
             </div>
 
             {/* Scene indicators */}
@@ -163,7 +170,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
             {/* Headline */}
             <h1
               key={`h-${currentScene}`}
-              className={`${prefersReducedMotion ? "" : styles.slideIn} text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6`}
+              className={`${mounted && !prefersReducedMotion ? styles.slideIn : ""} text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6`}
             >
               {scene.headline}
             </h1>
@@ -171,7 +178,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
             {/* Subtext */}
             <p
               key={`p-${currentScene}`}
-              className={`${prefersReducedMotion ? "" : styles.slideIn} text-lg md:text-xl text-muted-foreground mb-8`}
+              className={`${mounted && !prefersReducedMotion ? styles.slideIn : ""} text-lg md:text-xl text-muted-foreground mb-8`}
               style={{ animationDelay: "100ms" }}
             >
               {scene.subtext}
@@ -182,7 +189,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
               {scene.benefits.map((benefit, i) => (
                 <li
                   key={benefit}
-                  className={`${prefersReducedMotion ? "" : styles.slideIn} flex items-center gap-3 justify-center lg:justify-start text-sm`}
+                  className={`${mounted && !prefersReducedMotion ? styles.slideIn : ""} flex items-center gap-3 justify-center lg:justify-start text-sm`}
                   style={{ animationDelay: `${200 + i * 100}ms` }}
                 >
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
@@ -193,7 +200,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
 
             {/* CTAs */}
             <div
-              className={`${prefersReducedMotion ? "" : styles.slideIn} flex flex-col sm:flex-row gap-3 justify-center lg:justify-start`}
+              className={`${mounted && !prefersReducedMotion ? styles.slideIn : ""} flex flex-col sm:flex-row gap-3 justify-center lg:justify-start`}
               style={{ animationDelay: "500ms" }}
             >
               <Button size="lg" className="h-12 rounded-full px-6" asChild>

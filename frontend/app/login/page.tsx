@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AuthFormEnhancer } from "@/components/auth/auth-form-enhancer"
+import { DashboardPrefetcher } from "@/components/auth/dashboard-prefetcher"
 
 // Purposeful display face for the marketing/auth pages
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700", "800"] })
@@ -39,6 +40,8 @@ export default async function LoginPage({
 
   return (
     <div className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 ${jakarta.variable}`}>
+      {/* Prefetch dashboard while user types - zero visible impact */}
+      <DashboardPrefetcher />
       <nav className="fixed top-0 w-full z-50 bg-background/85 backdrop-blur-xl border-b border-border/70">
         <div className="container mx-auto px-6 h-16 md:h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-semibold text-lg tracking-tight">

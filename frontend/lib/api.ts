@@ -73,11 +73,30 @@ class ApiClient {
         const response = await fetch(url, fetchOptions);
 
         if (response.status === 401) {
-          if (typeof window !== "undefined") {
-            const next = encodeURIComponent(
-              `${window.location.pathname}${window.location.search}`
+          // Only redirect to login if:
+          // 1. We're in the browser
+          // 2. This is NOT an auth/me check (which is expected to fail if not logged in)
+          // 3. We're on a protected page (not public pages like /, /login, /register, etc.)
+          if (typeof window !== "undefined" && !endpoint.includes("/auth/me")) {
+            const publicPaths = [
+              "/",
+              "/login",
+              "/register",
+              "/reset-password",
+              "/forgot-password",
+              "/verify",
+            ];
+            const currentPath = window.location.pathname;
+            const isPublicPage = publicPaths.some(
+              (p) => currentPath === p || currentPath.startsWith(p + "/")
             );
-            window.location.href = `/login?next=${next}`;
+
+            if (!isPublicPage) {
+              const next = encodeURIComponent(
+                `${window.location.pathname}${window.location.search}`
+              );
+              window.location.href = `/login?next=${next}`;
+            }
           }
           throw new Error("Unauthorized");
         }
