@@ -154,9 +154,7 @@ class ApiClient {
     return data;
   }
 
-  async refreshSession(): Promise<void> {
-    await this.request("/auth/refresh-session", { method: "POST" });
-  }
+  // Note: refreshSession removed - backend handles token refresh via httpOnly cookies
 
   async register(
     email: string,

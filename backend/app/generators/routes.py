@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any
 
 # Third-party
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from sqlmodel import Session
 from sqlmodel import select
 
@@ -399,7 +399,7 @@ def create_new_generator(
 @router.post("/schema/generate")
 def generate_from_schema(
     schema_input: SchemaInput,
-    num_rows: int = 1000,
+    num_rows: int = Query(default=1000, ge=10, le=1_000_000, description="Number of rows to generate"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -409,20 +409,8 @@ def generate_from_schema(
     Creates a 'schema' type Generator record to track the lineage/source 
     of this synthetic dataset, ensuring it appears in listing endpoints.
     """
-    # VALIDATION: Row limits for schema-based generation
-    MIN_ROWS = 10
-    MAX_ROWS = 100_000  # 100K max for schema-based (LLM seeding is expensive)
-    
-    if num_rows < MIN_ROWS:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"num_rows must be at least {MIN_ROWS}"
-        )
-    if num_rows > MAX_ROWS:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"num_rows cannot exceed {MAX_ROWS:,} for schema-based generation"
-        )
+    # Debug log the received num_rows
+    logger.info(f"Schema generation requested: num_rows={num_rows}")
     
     # Create persistent generator record
     dataset_name = schema_input.dataset_name or "schema_generated"

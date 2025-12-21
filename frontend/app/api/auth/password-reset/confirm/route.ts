@@ -24,9 +24,21 @@ function getErrorMessage(payload: any): string {
 }
 
 export async function POST(request: Request) {
-  const form = await request.formData();
-  const token = String(form.get("token") || "").trim();
-  const newPassword = String(form.get("new_password") || "");
+  let token = "";
+  let newPassword = "";
+
+  // Support both JSON and form data Content-Types
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    const body = await request.json().catch(() => ({}));
+    token = String(body.token || "").trim();
+    newPassword = String(body.new_password || "");
+  } else {
+    const form = await request.formData();
+    token = String(form.get("token") || "").trim();
+    newPassword = String(form.get("new_password") || "");
+  }
 
   if (!token || !newPassword) {
     const redirect = `/reset-password?error=${encodeURIComponent(

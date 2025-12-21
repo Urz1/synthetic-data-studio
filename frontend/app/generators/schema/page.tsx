@@ -186,8 +186,8 @@ export default function SchemaGeneratorPage() {
           throw new Error("Please provide a name for the dataset")
       }
 
-      if (numRows < 1 || numRows > 100000) {
-        throw new Error("Number of rows must be between 1 and 100,000")
+      if (numRows < 1 || numRows > 1000000) {
+        throw new Error("Number of rows must be between 1 and 1,000,000")
       }
 
       // Use JSON schema if on JSON tab, otherwise use builder
@@ -421,7 +421,8 @@ export default function SchemaGeneratorPage() {
               </Tabs>
 
               <div className="space-y-4 pt-4 border-t">
-                 <div className="grid grid-cols-2 gap-4">
+                 {/* Responsive: stack on mobile, grid on sm+ */}
+                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                         <Label htmlFor="project-select">Target Project</Label>
                         <Select value={selectedProjectId} onValueChange={setSelectedProjectId} disabled={isLoadingProjects}>
@@ -451,7 +452,7 @@ export default function SchemaGeneratorPage() {
                     Number of Rows to Generate
                   </Label>
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {[100, 1000, 10000, 50000, 100000].map((preset) => (
+                    {[100, 1000, 10000, 100000, 500000, 1000000].map((preset) => (
                       <Button
                         key={preset}
                         type="button"
@@ -468,7 +469,7 @@ export default function SchemaGeneratorPage() {
                   id="num-rows"
                   type="number"
                   min={1}
-                  max={100000}
+                  max={1000000}
                   step={100}
                   value={numRows}
                   onChange={(e) => {
@@ -478,19 +479,19 @@ export default function SchemaGeneratorPage() {
                     } else {
                       const num = parseInt(value)
                       if (!isNaN(num)) {
-                        setNumRows(Math.max(1, Math.min(100000, num)))
+                        setNumRows(Math.max(1, Math.min(1000000, num)))
                       }
                     }
                   }}
                   onBlur={() => {
                     if (numRows < 1) setNumRows(1)
-                    if (numRows > 100000) setNumRows(100000)
+                    if (numRows > 1000000) setNumRows(1000000)
                   }}
                   className="text-lg font-semibold"
                   placeholder="Custom"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Min: 1 | Max: 100,000 rows | Current: <span className="font-semibold">{numRows.toLocaleString()}</span>
+                  Min: 1 | Max: 1,000,000 rows | Current: <span className="font-semibold">{numRows.toLocaleString()}</span>
                 </p>
               </div>
 
@@ -575,7 +576,7 @@ export default function SchemaGeneratorPage() {
             {generatedData && (
               <Card className="border-green-500/50">
                 <CardHeader>
-                  <CardTitle className="text-green-500">✓ Generation Complete</CardTitle>
+                  <CardTitle className="text-green-500">Generation Complete</CardTitle>
                   <CardDescription>Your synthetic data is ready</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -683,10 +684,10 @@ export default function SchemaGeneratorPage() {
               <strong>Type-aware:</strong> Realistic data based on column types (emails, phones, dates, etc.)
             </p>
             <p>
-              <strong>Scalable:</strong> Generate from 1 to 100,000 rows in seconds
+              <strong>Scalable:</strong> Generate from 1 to 1,000,000 rows
             </p>
             <p className="pt-2 text-muted-foreground/80">
-              💡 Tip: For production use cases with statistical fidelity to real data, use model-based generators instead
+              Tip: For production use cases with statistical fidelity to real data, use model-based generators instead
             </p>
           </CardContent>
         </Card>

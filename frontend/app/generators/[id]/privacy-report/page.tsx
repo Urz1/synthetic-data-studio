@@ -425,7 +425,7 @@ export default function PrivacyReportPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold text-green-500">
-                        {report.privacy_metrics.differential_privacy_guarantee ? "✓" : "✗"}
+                        {report.privacy_metrics.differential_privacy_guarantee ? "Yes" : "No"}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         Differential privacy maintained

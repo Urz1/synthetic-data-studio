@@ -267,28 +267,31 @@ export default function AssistantPage() {
         />
 
         <Tabs defaultValue="chat" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="chat">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Chat
-            </TabsTrigger>
-            <TabsTrigger value="metrics">
-              <Search className="mr-2 h-4 w-4" />
-              Metric Explainer
-            </TabsTrigger>
-            <TabsTrigger value="pii">
-              <Lightbulb className="mr-2 h-4 w-4" />
-              PII Detection
-            </TabsTrigger>
-            <TabsTrigger value="features">
-              <Code className="mr-2 h-4 w-4" />
-              Feature Generator
-            </TabsTrigger>
-          </TabsList>
+          {/* Scrollable tabs on mobile */}
+          <div className="w-full overflow-x-auto pb-2">
+            <TabsList className="inline-flex min-w-max">
+              <TabsTrigger value="chat" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Chat</span>
+              </TabsTrigger>
+              <TabsTrigger value="metrics" className="gap-2">
+                <Search className="h-4 w-4" />
+                <span className="hidden sm:inline">Metrics</span>
+              </TabsTrigger>
+              <TabsTrigger value="pii" className="gap-2">
+                <Lightbulb className="h-4 w-4" />
+                <span className="hidden sm:inline">PII</span>
+              </TabsTrigger>
+              <TabsTrigger value="features" className="gap-2">
+                <Code className="h-4 w-4" />
+                <span className="hidden sm:inline">Features</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Chat Interface */}
           <TabsContent value="chat" className="space-y-4">
-            <Card className="flex flex-col h-[calc(100vh-280px)] min-h-[500px] max-h-[700px]">
+            <Card className="flex flex-col h-[calc(100vh-320px)] min-h-[400px] sm:min-h-[500px] max-h-[700px]">
               <CardHeader className="border-b flex-shrink-0">
                 <div className="flex items-start justify-between">
                   <div>

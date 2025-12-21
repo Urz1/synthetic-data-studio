@@ -75,7 +75,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             <p className="text-xs text-destructive">Passwords do not match</p>
           )}
           {confirmPassword.length > 0 && passwordsMatch && (
-            <p className="text-xs text-green-500">✓ Passwords match</p>
+            <p className="text-xs text-green-500">Passwords match</p>
           )}
         </div>
 

@@ -305,15 +305,7 @@ export default function JobsPage() {
                   {job.error_message && (
                     <p className="text-sm text-destructive font-mono">{job.error_message}</p>
                   )}
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    disabled
-                    title="Job retry coming soon"
-                  >
-                    <RotateCw className="mr-2 h-3 w-3" />
-                    Retry Job
-                  </Button>
+                  {/* Retry button removed - will be implemented in future version */}
                 </div>
               ))}
             </CardContent>

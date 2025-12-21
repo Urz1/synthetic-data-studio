@@ -297,7 +297,20 @@ def login(user: UserLogin, request: Request, response: Response, db: Session = D
         path="/"
     )
 
-    return {"ok": True, "access_token": access_token, "token": access_token, "token_type": "bearer"}
+    return {
+        "ok": True, 
+        "access_token": access_token, 
+        "token": access_token, 
+        "token_type": "bearer",
+        # Include user data to avoid extra fetch after login
+        "user": {
+            "id": str(db_user.id),
+            "email": db_user.email,
+            "full_name": db_user.name or "",  # 'name' field in User model
+            "role": db_user.role,
+            "is_2fa_enabled": db_user.is_2fa_enabled,
+        }
+    }
 
 
 @router.post(
@@ -1113,6 +1126,27 @@ async def google_callback(
         path="/"
     )
     
+    # User data prefetch cookie - not httpOnly so frontend can read it
+    # This allows instant dashboard load without /me API call
+    import json
+    import urllib.parse
+    user_prefetch = json.dumps({
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.name or "",  # 'name' field in User model
+        "role": user.role,
+        "is_2fa_enabled": user.is_2fa_enabled,
+    })
+    response.set_cookie(
+        key="ss_user_prefetch",
+        value=urllib.parse.quote(user_prefetch),
+        httponly=False,  # Frontend can read this
+        secure=is_production,
+        samesite="lax",
+        max_age=60,  # Short-lived: 1 minute
+        path="/"
+    )
+    
     logger.info(f"OAuth Google login successful: {user.email}, redirecting to /dashboard")
     return response
 
@@ -1250,6 +1284,27 @@ async def github_callback(
         secure=is_production,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
+        path="/"
+    )
+    
+    # User data prefetch cookie - not httpOnly so frontend can read it
+    # This allows instant dashboard load without /me API call
+    import json
+    import urllib.parse
+    user_prefetch = json.dumps({
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.name or "",  # 'name' field in User model
+        "role": user.role,
+        "is_2fa_enabled": user.is_2fa_enabled,
+    })
+    response.set_cookie(
+        key="ss_user_prefetch",
+        value=urllib.parse.quote(user_prefetch),
+        httponly=False,  # Frontend can read this
+        secure=is_production,
+        samesite="lax",
+        max_age=60,  # Short-lived: 1 minute
         path="/"
     )
     

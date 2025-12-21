@@ -181,8 +181,8 @@ export default function DatasetDetailPage() {
         <div className="mb-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/datasets">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Datasets
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Back to Datasets</span>
             </Link>
           </Button>
         </div>
@@ -191,27 +191,27 @@ export default function DatasetDetailPage() {
           title={dataset.name}
           description={`Uploaded on ${dataset.uploaded_at ? new Date(dataset.uploaded_at).toLocaleDateString() : 'Unknown'}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" />
-              Download
+              <span className="hidden sm:inline">Download</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handleReprofile} disabled={isReprofiling}>
               <RefreshCw className={`mr-2 h-4 w-4 ${isReprofiling ? 'animate-spin' : ''}`} />
-              {isReprofiling ? 'Profiling...' : 'Re-profile'}
+              <span className="hidden sm:inline">{isReprofiling ? 'Profiling...' : 'Re-profile'}</span>
             </Button>
-            <Button asChild>
+            <Button asChild size="sm">
               <Link href={`/generators/new?dataset=${dataset.id}`}>
                 <Zap className="mr-2 h-4 w-4" />
-                Create Generator
+                <span className="hidden sm:inline">Create Generator</span>
               </Link>
             </Button>
           </div>
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
           <DatasetProfileView dataset={dataset} />
         </div>
 
@@ -252,9 +252,9 @@ export default function DatasetDetailPage() {
             <CardContent>
               <div className="space-y-2">
                 {dataset.schema_data?.dtypes && Object.entries(dataset.schema_data.dtypes).map(([col, dtype]) => (
-                  <div key={col} className="flex items-center justify-between text-sm">
-                    <span className="font-mono truncate max-w-[140px]" title={col}>{col}</span>
-                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{dtype}</code>
+                  <div key={col} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-mono truncate flex-1 min-w-0" title={col}>{col}</span>
+                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded shrink-0">{dtype}</code>
                   </div>
                 ))}
               </div>

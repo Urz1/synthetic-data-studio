@@ -58,7 +58,7 @@ export function PasswordRequirements({ password, className }: PasswordRequiremen
       ))}
       {allMet && password.length > 0 && (
         <p className="text-xs text-green-500 font-medium mt-2">
-          ✓ Password meets all requirements
+          Password meets all requirements
         </p>
       )}
     </div>
