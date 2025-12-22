@@ -947,14 +947,18 @@ def logout(response: Response):
     is_production = settings.debug is False
     
     # Delete all auth cookies with explicit path and same domain settings as when they were set
-    response.delete_cookie("ss_access", path="/")
-    response.delete_cookie("ss_refresh", path="/")
-    response.delete_cookie("ss_jwt", path="/")
+    # Compute domain for cross-subdomain cookie clearing
+    is_production = not settings.debug
+    cookie_domain = settings.cookie_domain if is_production else None
+    
+    response.delete_cookie("ss_access", path="/", domain=cookie_domain)
+    response.delete_cookie("ss_refresh", path="/", domain=cookie_domain)
+    response.delete_cookie("ss_jwt", path="/", domain=cookie_domain)
     
     # Force immediate expiration of cookies as an extra measure
-    response.set_cookie("ss_access", "", max_age=0, path="/")
-    response.set_cookie("ss_refresh", "", max_age=0, path="/")
-    response.set_cookie("ss_jwt", "", max_age=0, path="/")
+    response.set_cookie("ss_access", "", max_age=0, path="/", domain=cookie_domain)
+    response.set_cookie("ss_refresh", "", max_age=0, path="/", domain=cookie_domain)
+    response.set_cookie("ss_jwt", "", max_age=0, path="/", domain=cookie_domain)
     
     # Cache headers to prevent back-button showing cached dashboard
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate"
@@ -1114,7 +1118,8 @@ async def google_callback(
         secure=is_production,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/"
+        path="/",
+        domain=settings.cookie_domain if is_production else None
     )
     response.set_cookie(
         key="ss_refresh",
@@ -1123,7 +1128,8 @@ async def google_callback(
         secure=is_production,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
-        path="/"
+        path="/",
+        domain=settings.cookie_domain if is_production else None
     )
     
     # User data prefetch cookie - not httpOnly so frontend can read it
@@ -1144,7 +1150,8 @@ async def google_callback(
         secure=is_production,
         samesite="lax",
         max_age=60,  # Short-lived: 1 minute
-        path="/"
+        path="/",
+        domain=settings.cookie_domain if is_production else None
     )
     
     logger.info(f"OAuth Google login successful: {user.email}, redirecting to /dashboard")
@@ -1275,7 +1282,8 @@ async def github_callback(
         secure=is_production,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/"
+        path="/",
+        domain=settings.cookie_domain if is_production else None
     )
     response.set_cookie(
         key="ss_refresh",
@@ -1284,7 +1292,8 @@ async def github_callback(
         secure=is_production,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
-        path="/"
+        path="/",
+        domain=settings.cookie_domain if is_production else None
     )
     
     # User data prefetch cookie - not httpOnly so frontend can read it
@@ -1305,7 +1314,8 @@ async def github_callback(
         secure=is_production,
         samesite="lax",
         max_age=60,  # Short-lived: 1 minute
-        path="/"
+        path="/",
+        domain=settings.cookie_domain if is_production else None
     )
     
     logger.info(f"OAuth GitHub login successful: {user.email}, redirecting to /dashboard")

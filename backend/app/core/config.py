@@ -34,6 +34,10 @@ class Settings:
     # Frontend URL (for OAuth redirects)
     frontend_url: str = os.getenv("FRONTEND_URL", "https://www.synthdata.studio")
     
+    # Cookie domain for cross-subdomain sharing (api.synthdata.studio → www.synthdata.studio)
+    # Must start with a dot for subdomain sharing
+    cookie_domain: str = os.getenv("COOKIE_DOMAIN", ".synthdata.studio")
+    
     def __post_init__(self):
         """Validate critical settings after initialization."""
         import logging
