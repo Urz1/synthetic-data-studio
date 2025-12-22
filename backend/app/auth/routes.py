@@ -1045,7 +1045,10 @@ async def google_callback(
     
     Returns JWT token for API authentication.
     """
+    logger.info(f"OAuth Google callback received: state={state[:20] if state else 'None'}..., code_len={len(code) if code else 0}")
+    
     if error:
+        logger.error(f"OAuth Google error from Google: {error}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Google OAuth error: {error}"

@@ -4,23 +4,43 @@ import { cookies } from "next/headers";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 const SESSION_COOKIE_NAME = "ss_jwt";
+const REFRESH_COOKIE_NAME = "ss_refresh";
 
 /**
- * Catch-all API proxy that forwards requests to the backend with proper authentication.
- * This is necessary because Next.js rewrites don't forward cookies.
+ * Production-ready API proxy for Next.js App Router.
  *
- * This route handles all /api/[...path] requests that don't have their own route handler.
+ * Forwards requests from the frontend to the backend API with proper
+ * authentication handling, cookie forwarding, and redirect support.
+ *
+ * Features:
+ * - Automatic Authorization header injection from cookies
+ * - Cookie forwarding to backend for session management
+ * - Proper redirect handling for OAuth and other flows
+ * - Cookie domain normalization for cross-subdomain access
  */
+
+/**
+ * Normalizes cookie domain for cross-subdomain access.
+ * Ensures cookies set by api.synthdata.studio work on www.synthdata.studio
+ */
+function normalizeCookieForFrontend(cookie: string): string {
+  // If cookie has a domain that's the API subdomain, replace with parent domain
+  // This handles cases where backend might set domain=api.synthdata.studio
+  if (cookie.match(/Domain=api\./i)) {
+    return cookie.replace(/Domain=api\.[^;]+/i, "Domain=.synthdata.studio");
+  }
+  return cookie;
+}
 
 async function proxyRequest(request: NextRequest, path: string) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const refreshToken = cookieStore.get("ss_refresh")?.value;
+  const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value;
 
   // Build backend URL
   const backendUrl = `${API_BASE}/${path}`;
 
-  // Build headers - forward most original headers
+  // Build headers - forward essential headers
   const headers: HeadersInit = {
     "Content-Type": request.headers.get("Content-Type") || "application/json",
     Accept: request.headers.get("Accept") || "application/json",
@@ -31,21 +51,25 @@ async function proxyRequest(request: NextRequest, path: string) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  // For refresh-session endpoint, forward cookies directly since it reads from cookies
-  if (path === "auth/refresh-session" && refreshToken) {
+  // Forward cookies to backend for auth-related endpoints
+  // This ensures session cookies are available for all auth operations
+  if (accessToken || refreshToken) {
     const cookieParts: string[] = [];
-    if (accessToken) cookieParts.push(`ss_jwt=${accessToken}`);
-    if (refreshToken) cookieParts.push(`ss_refresh=${refreshToken}`);
+    if (accessToken) cookieParts.push(`${SESSION_COOKIE_NAME}=${accessToken}`);
+    if (refreshToken)
+      cookieParts.push(`${REFRESH_COOKIE_NAME}=${refreshToken}`);
     headers["Cookie"] = cookieParts.join("; ");
   }
 
-  // Forward the request to backend
+  // Build fetch options
   const fetchOptions: RequestInit = {
     method: request.method,
     headers,
+    // Use manual redirect to properly forward cookies with redirects
+    redirect: "manual",
   };
 
-  // Include body for non-GET requests
+  // Include body for requests that have one
   if (request.method !== "GET" && request.method !== "HEAD") {
     try {
       const body = await request.text();
@@ -60,10 +84,32 @@ async function proxyRequest(request: NextRequest, path: string) {
   try {
     const backendResponse = await fetch(backendUrl, fetchOptions);
 
-    // Get response body
+    // Handle redirect responses (3xx)
+    // Important for OAuth and other redirect-based flows
+    if (backendResponse.status >= 300 && backendResponse.status < 400) {
+      const location = backendResponse.headers.get("Location");
+      if (location) {
+        const response = NextResponse.redirect(
+          location,
+          backendResponse.status
+        );
+
+        // Forward and normalize Set-Cookie headers
+        const setCookieHeaders = backendResponse.headers.getSetCookie?.() || [];
+        for (const cookie of setCookieHeaders) {
+          response.headers.append(
+            "Set-Cookie",
+            normalizeCookieForFrontend(cookie)
+          );
+        }
+
+        return response;
+      }
+    }
+
+    // Handle normal responses
     const responseBody = await backendResponse.text();
 
-    // Create response with same status and headers
     const response = new NextResponse(responseBody, {
       status: backendResponse.status,
       headers: {
@@ -72,22 +118,25 @@ async function proxyRequest(request: NextRequest, path: string) {
       },
     });
 
-    // Forward all Set-Cookie headers from backend (may be multiple)
+    // Forward and normalize Set-Cookie headers
     const setCookieHeaders = backendResponse.headers.getSetCookie?.() || [];
     for (const cookie of setCookieHeaders) {
-      response.headers.append("Set-Cookie", cookie);
+      response.headers.append("Set-Cookie", normalizeCookieForFrontend(cookie));
     }
 
     return response;
   } catch (error) {
-    console.error("[API Proxy] Error proxying to backend:", error);
+    // Log error server-side only
+    console.error("[API Proxy] Backend connection error:", error);
+
     return NextResponse.json(
-      { error: "Failed to connect to backend" },
+      { error: "Service temporarily unavailable" },
       { status: 502 }
     );
   }
 }
 
+// HTTP method handlers
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
