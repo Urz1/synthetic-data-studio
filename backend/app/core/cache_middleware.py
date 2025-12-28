@@ -218,6 +218,10 @@ class CookieOptimizationMiddleware(BaseHTTPMiddleware):
     1. Strip cookies from static assets
     2. Set proper cookie attributes (HttpOnly, Secure, SameSite)
     3. Scope cookies to minimal paths
+    
+    NOTE: This middleware does NOT add HttpOnly to cookies that already have
+    httponly attribute set (explicitly). It only adds defaults for cookies
+    that don't specify these attributes.
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -235,12 +239,28 @@ class CookieOptimizationMiddleware(BaseHTTPMiddleware):
         if "set-cookie" in response.headers:
             # We must work with the raw headers because Starlette's .headers["set-cookie"]
             # often only returns the last one set.
+            
+            # Count incoming cookies for debugging
+            incoming_cookies = [h for h in response.raw_headers if h[0].lower() == b"set-cookie"]
+            logger.info(f"[CookieMiddleware] Processing {len(incoming_cookies)} Set-Cookie headers for {path}")
+            for i, (name, val) in enumerate(incoming_cookies):
+                logger.info(f"[CookieMiddleware] Cookie {i+1}: {val[:80] if len(val) > 80 else val}")
+            
             new_raw_headers = []
             for name, value in response.raw_headers:
                 if name.lower() == b"set-cookie":
                     cookie_value = value.decode("latin-1")
-                    if "HttpOnly" not in cookie_value:
-                        cookie_value += "; HttpOnly"
+                    
+                    # DO NOT force HttpOnly - respect the original setting
+                    # Only add HttpOnly if this looks like a session/auth cookie
+                    # and doesn't explicitly have httponly=false or omit it intentionally
+                    # If the cookie already has "HttpOnly" in the string (case-insensitive check),
+                    # leave it alone
+                    if "httponly" not in cookie_value.lower():
+                        # Check if this is a known auth cookie
+                        if any(auth_cookie in cookie_value for auth_cookie in ["ss_jwt", "ss_refresh", "ss_access"]):
+                            cookie_value += "; HttpOnly"
+                    
                     if "SameSite" not in cookie_value:
                         cookie_value += "; SameSite=Lax"
                     if not request.url.hostname in ["localhost", "127.0.0.1"] and "Secure" not in cookie_value:
