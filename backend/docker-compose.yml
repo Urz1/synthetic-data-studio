@@ -26,6 +26,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=false
+    volumes:
+      - uploads_data:/app/uploads  # Shared volume for uploaded files
     depends_on:
       redis:
         condition: service_healthy
@@ -38,6 +40,8 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - uploads_data:/app/uploads  # Same shared volume for file access
     depends_on:
       - redis
     restart: unless-stopped
@@ -48,3 +52,4 @@ services:
 
 volumes:
   redis_data:
+  uploads_data:  # Persistent volume for uploaded datasets

@@ -37,8 +37,10 @@ async function proxyRequest(request: NextRequest, path: string) {
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value;
 
-  // Build backend URL
-  const backendUrl = `${API_BASE}/${path}`;
+  // Build backend URL with query parameters from original request
+  const url = new URL(request.url);
+  const queryString = url.search; // Includes the leading '?' if params exist
+  const backendUrl = `${API_BASE}/${path}${queryString}`;
 
   // Build headers - forward essential headers
   const headers: HeadersInit = {
