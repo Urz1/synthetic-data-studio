@@ -1112,6 +1112,8 @@ async def google_callback(
     # This eliminates the need for /auth/success and hash fragments
     is_production = not settings.debug
     
+    logger.info(f"OAuth Google: Setting cookies. is_production={is_production}, cookie_domain={settings.cookie_domain}")
+    
     response = RedirectResponse(url=f"{settings.frontend_url}/dashboard", status_code=302)
     
     response.set_cookie(
@@ -1124,6 +1126,8 @@ async def google_callback(
         path="/",
         domain=settings.cookie_domain if is_production else None
     )
+    logger.info(f"OAuth Google: Set ss_jwt cookie (len={len(jwt_token)})")
+    
     response.set_cookie(
         key="ss_refresh",
         value=refresh_token,
@@ -1134,6 +1138,7 @@ async def google_callback(
         path="/",
         domain=settings.cookie_domain if is_production else None
     )
+    logger.info(f"OAuth Google: Set ss_refresh cookie (len={len(refresh_token)})")
     
     # User data prefetch cookie - not httpOnly so frontend can read it
     # This allows instant dashboard load without /me API call
@@ -1156,6 +1161,7 @@ async def google_callback(
         path="/",
         domain=settings.cookie_domain if is_production else None
     )
+    logger.info(f"OAuth Google: Set ss_user_prefetch cookie")
     
     logger.info(f"OAuth Google login successful: {user.email}, redirecting to /dashboard")
     return response
