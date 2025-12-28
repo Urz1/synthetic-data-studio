@@ -149,6 +149,45 @@ def generate_synthetic_data(generator: Generator, db: Session) -> Dataset:
         raise ValueError("Either dataset_id or schema_json must be provided")
 
 
+def _download_from_s3_if_needed(dataset: Dataset) -> Path:
+    """
+    Ensure dataset file is available locally, downloading from S3 if needed.
+    
+    This is critical for Celery workers that may not have local files.
+    
+    Args:
+        dataset: Dataset object with s3_key and original_filename
+        
+    Returns:
+        Path to local file (either existing or downloaded)
+    """
+    UPLOAD_DIR = Path(settings.upload_dir)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    
+    local_path = UPLOAD_DIR / f"{dataset.original_filename}"
+    
+    # If file exists locally, use it
+    if local_path.exists():
+        logger.info(f"Using local file: {local_path}")
+        return local_path
+    
+    # Try downloading from S3
+    if dataset.s3_key and _is_s3_available():
+        logger.info(f"Downloading from S3: {dataset.s3_key}")
+        try:
+            storage = get_storage_service()
+            with open(local_path, "wb") as f:
+                storage.download_file(dataset.s3_key, f)
+            logger.info(f"Downloaded to: {local_path}")
+            return local_path
+        except S3StorageError as e:
+            logger.error(f"S3 download failed: {e}")
+            raise FileNotFoundError(f"Failed to download from S3: {dataset.s3_key}")
+    
+    # No local file and no S3 key
+    raise FileNotFoundError(f"Data file not found locally or in S3: {local_path}")
+
+
 def _generate_from_dataset(generator: Generator, db: Session) -> Dataset:
     """Generate from uploaded dataset."""
     if not generator.dataset_id:
@@ -159,12 +198,8 @@ def _generate_from_dataset(generator: Generator, db: Session) -> Dataset:
     if not source_dataset:
         raise ValueError(f"Source dataset {generator.dataset_id} not found")
 
-    # Load the actual data
-    UPLOAD_DIR = Path(settings.upload_dir)
-    data_file = UPLOAD_DIR / f"{source_dataset.original_filename}"
-
-    if not data_file.exists():
-        raise FileNotFoundError(f"Data file not found: {data_file}")
+    # Download from S3 if needed (critical for Celery workers)
+    data_file = _download_from_s3_if_needed(source_dataset)
 
     # Load data based on file type
     if data_file.suffix == '.csv':
