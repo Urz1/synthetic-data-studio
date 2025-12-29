@@ -43,15 +43,16 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
+import { HelpButton } from "@/components/onboarding/help-button"
 import { cn } from "@/lib/utils"
 
 // Regular user navigation items
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Datasets", href: "/datasets", icon: Database },
-  { title: "Generators", href: "/generators", icon: Zap },
-  { title: "Evaluations", href: "/evaluations", icon: TestTube2 },
-  { title: "Projects", href: "/projects", icon: FolderOpen },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourId: "dashboard" },
+  { title: "Datasets", href: "/datasets", icon: Database, tourId: "sidebar-datasets" },
+  { title: "Generators", href: "/generators", icon: Zap, tourId: "sidebar-generators" },
+  { title: "Evaluations", href: "/evaluations", icon: TestTube2, tourId: "sidebar-evaluations" },
+  { title: "Projects", href: "/projects", icon: FolderOpen, tourId: "sidebar-projects" },
   { title: "Jobs", href: "/jobs", icon: Workflow },
   { title: "Assistant", href: "/assistant", icon: MessageSquare },
   { title: "Settings", href: "/settings", icon: Settings },
@@ -148,6 +149,7 @@ export function AppShell({ children, user }: AppShellProps) {
                           className="flex items-center gap-3"
                           target="_blank"
                           rel="noreferrer"
+                          data-tour={item.tourId}
                         >
                           <Icon className="h-4 w-4" />
                           <span className="truncate">{item.title}</span>
@@ -157,6 +159,7 @@ export function AppShell({ children, user }: AppShellProps) {
                           href={item.href}
                           className="flex items-center gap-3"
                           aria-current={isActive ? "page" : undefined}
+                          data-tour={item.tourId}
                         >
                           <Icon className="h-4 w-4" />
                           <span className="truncate">{item.title}</span>
@@ -244,6 +247,7 @@ export function AppShell({ children, user }: AppShellProps) {
               <span className="hidden sm:inline">Secure synthetic data platform</span>
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <HelpButton />
               <ThemeToggle />
               <div className="hidden md:flex items-center gap-3 rounded-full border bg-card/60 px-3 py-1.5">
                 <Avatar className="h-8 w-8">

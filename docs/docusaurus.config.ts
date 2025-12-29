@@ -55,8 +55,9 @@ const config: Config = {
           // Local docs folder (industry standard)
           path: "docs",
           sidebarPath: "./sidebars.ts",
+          // Edit URL: points to docs folder in repo, Docusaurus appends the file path
           editUrl:
-            "https://github.com/Urz1/synthetic-data-studio/tree/main/docs/docs/",
+            "https://github.com/Urz1/synthetic-data-studio/tree/main/docs/",
           showLastUpdateTime: false,
           showLastUpdateAuthor: false,
           routeBasePath: "docs",

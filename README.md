@@ -8,6 +8,24 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB)](backend/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6)](frontend/)
 
+---
+
+## 📑 Table of Contents
+
+- [🚀 Quick Start](#-quick-start)
+- [🎯 Overview](#-overview)
+- [✨ Key Features](#-key-features)
+- [💡 Value Proposition](#-value-proposition)
+- [🏗️ System Architecture](#️-system-architecture)
+- [📚 Documentation](#-documentation)
+- [📊 Features & Capabilities](#-features--capabilities)
+- [🧪 Testing](#-testing)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [👤 Developer Contact](#-developer-contact)
+
+---
+
 ## 🚀 Quick Start
 
 **No hardcoded URLs!** Everything is environment-based for easy local development.
@@ -40,6 +58,7 @@ uvicorn app.main:app --reload
 Synth Studio enables regulated startups to generate high-fidelity, privacy-safe synthetic data with differential privacy guarantees. Built for healthcare (HIPAA) and fintech (SOC-2/GDPR) compliance, it accelerates pilot approvals and security reviews without exposing sensitive PII/PHI.
 
 **Perfect for:**
+
 - Healthcare startups needing synthetic EHR/FHIR data
 - Fintech companies requiring transaction data for testing
 - Enterprises sharing data across departments safely
@@ -64,6 +83,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ## 💡 Value Proposition
 
 - **For Startups:** Accelerate pilot approvals by providing CISOs with a credible evidence pack that reduces security review cycles and proves product safety without exposing PII/PHI.
+
 ## 🏗️ System Architecture
 
 ### High-Level Architecture
@@ -108,6 +128,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### Technology Stack
 
 #### Frontend
+
 - **Framework**: Next.js 16.0.3 (App Router, React 19)
 - **Language**: TypeScript 5.x
 - **Styling**: Tailwind CSS 3.x, shadcn/ui components
@@ -120,6 +141,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **Authentication**: JWT tokens stored in localStorage
 
 #### Backend
+
 - **Framework**: FastAPI 0.100+ (async/await support)
 - **Language**: Python 3.9+
 - **ORM**: SQLAlchemy 2.x with async support
@@ -131,6 +153,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **API Docs**: OpenAPI/Swagger (auto-generated)
 
 #### ML & Privacy
+
 - **Synthetic Data**: SDV (Synthetic Data Vault) 1.x
 - **Generators**: CTGAN, TVAE, GaussianCopula
 - **Privacy**: Opacus (differential privacy for PyTorch)
@@ -139,6 +162,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **ML Evaluation**: Scikit-learn metrics
 
 #### Infrastructure
+
 - **Storage**: AWS S3 (dataset uploads, generated files)
 - **Frontend Hosting**: Vercel (edge deployment)
 - **Backend Hosting**: AWS EC2 / Railway / Heroku
@@ -149,6 +173,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### System Components in Detail
 
 #### 1. Authentication System
+
 - **JWT-based authentication** with access/refresh tokens
 - **OAuth 2.0 integration** with Google and GitHub
 - **Role-based access control** (RBAC): `user` and `admin` roles
@@ -156,6 +181,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **Session management** with secure token storage
 
 #### 2. Dataset Management
+
 - **Upload**: CSV file uploads with validation (max 100MB)
 - **Profiling**: Automatic schema detection, data type inference
 - **PII/PHI Detection**: Identifies sensitive columns
@@ -163,6 +189,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **Storage**: Files stored in S3, metadata in PostgreSQL
 
 #### 3. Synthetic Data Generation
+
 - **Multiple Algorithms**:
   - CTGAN (Conditional Tabular GAN)
   - TVAE (Tabular Variational Autoencoder)
@@ -173,6 +200,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **Result Storage**: Generated datasets stored in S3
 
 #### 4. Quality Evaluation
+
 - **Statistical Tests**:
   - Column shapes (distribution similarity)
   - Column pair trends (correlations)
@@ -185,6 +213,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
   - Membership inference risk
 
 #### 5. AI Assistant (LLM Integration)
+
 - **Interactive Chat**: Guide users through workflows
 - **Context-Aware**: Understands project and dataset context
 - **Action Suggestions**: Recommends next steps
@@ -192,6 +221,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **Error Help**: Explains errors and suggests fixes
 
 #### 6. Admin Features
+
 - **Audit Logs**: Immutable activity tracking (who, what, when)
 - **Compliance Reports**: HIPAA, GDPR, SOC-2 documentation
 - **Billing Dashboard**: Usage metrics, cost tracking
@@ -199,6 +229,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **User Management**: View users, assign roles
 
 #### 7. Job Processing System
+
 - **Celery Workers**: Distributed task execution
 - **Redis Queue**: Task broker and result backend
 - **Job States**: pending → running → completed/failed
@@ -208,6 +239,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### Data Flow
 
 #### Dataset Upload Flow
+
 ```
 1. User uploads CSV → Frontend validates
 2. File sent to Backend API → S3 storage
@@ -218,6 +250,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ```
 
 #### Synthetic Data Generation Flow
+
 ```
 1. User configures generator → Frontend sends request
 2. Backend creates job → Stores in PostgreSQL
@@ -230,6 +263,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ```
 
 #### Authentication Flow
+
 ```
 1. User logs in → Credentials sent to backend
 2. Backend validates → Generates JWT tokens
@@ -243,6 +277,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### Database Schema Overview
 
 #### Core Tables
+
 - **users**: User accounts, roles, OAuth data
 - **datasets**: Dataset metadata, S3 paths, schemas
 - **projects**: Project organization, user ownership
@@ -253,6 +288,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - **exports**: Export requests and file references
 
 #### Relationships
+
 - Users → Projects (1:many)
 - Projects → Datasets (1:many)
 - Datasets → Generators (1:many)
@@ -262,6 +298,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### Security Architecture
 
 #### Authentication & Authorization
+
 - JWT tokens with 1-hour expiry
 - Refresh tokens for silent renewal
 - Role-based access control (RBAC)
@@ -269,6 +306,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - CORS configured for allowed origins
 
 #### Data Security
+
 - Passwords hashed with bcrypt
 - Sensitive data encrypted at rest
 - S3 bucket access via IAM roles
@@ -276,6 +314,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - Input validation and sanitization
 
 #### Privacy Protection
+
 - Differential privacy for synthetic data
 - PII/PHI detection and masking
 - Audit logs for compliance
@@ -285,6 +324,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### Scalability & Performance
 
 #### Frontend Optimization
+
 - Next.js App Router with server components
 - Code splitting and lazy loading
 - Image optimization (next/image)
@@ -292,6 +332,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - <1s Time to Interactive (TTI)
 
 #### Backend Optimization
+
 - Async endpoints (FastAPI async)
 - Database connection pooling
 - Redis caching for frequent queries
@@ -299,6 +340,7 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 - Horizontal scaling capability
 
 #### Database Optimization
+
 - Indexed foreign keys
 - Partial indexes for common queries
 - Materialized views for dashboards
@@ -308,18 +350,21 @@ Synth Studio enables regulated startups to generate high-fidelity, privacy-safe 
 ### Monitoring & Observability
 
 #### Logging
+
 - Structured logging (JSON format)
 - Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - Log aggregation (CloudWatch, Papertrail)
 - Request/response logging with timing
 
 #### Error Tracking
+
 - Sentry integration for error reporting
 - Source maps for frontend debugging
 - Stack traces with context
 - User session replay (optional)
 
 #### Metrics
+
 - API response times
 - Job processing duration
 - Database query performance
@@ -398,40 +443,35 @@ Frontend runs at http://localhost:3000
 
 - **[Backend README](backend/README.md)** - Backend API, architecture, and deployment
 - **[Frontend README](frontend/README.md)** - Frontend setup, structure, and deployment
-- **[Deployment Guide](DEPLOYMENT.md)** - Complete production deployment guide
-- **[Pre-Deployment Checklist](PRE_DEPLOYMENT_CHECKLIST.md)** - 200+ item production checklist
-- **[Quick Reference](QUICK_REFERENCE.md)** - Common commands and operations
-- **[Project Summary](PROJECT_SUMMARY.md)** - Comprehensive project overview
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete production deployment guide
+- **[Production Checklist](PRODUCTION_CHECKLIST.md)** - Production readiness checklist
+- **[Local Development](LOCAL_DEVELOPMENT.md)** - Local dev environment setup
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community standards
+- **[Security Policy](SECURITY.md)** - Vulnerability reporting
 - **[Contact Guide](CONTACT.md)** - Get in touch, report issues, collaborate
 - **[Changelog](CHANGELOG.md)** - Version history and updates
 
-### Backend Docs
+### Docusaurus Documentation Site
 
-- **[API Specification](backend/API_SPECIFICATION.md)** - Complete API reference
-- **[Developer Guide](backend/docs/developer-guide/)** - Architecture and development
-- **[User Guide](backend/docs/user-guide/)** - Platform usage and features
-- **[Tutorials](backend/docs/tutorials/)** - Step-by-step guides
-- **[API Examples](backend/docs/examples/)** - Code samples and Postman collection
-
-### Additional Resources
-
-- **[Architecture Overview](docs/architecture.md)** - System design and components
-- **[API Spec (OpenAPI)](docs/api_spec.yaml)** - OpenAPI 3.0 specification
-- **[Compliance Pack](docs/compliance_pack_outline.md)** - Compliance reporting structure
-- **[Roadmap](docs/roadmap.md)** - Feature roadmap and milestones
+- **[Getting Started](docs/docs/getting-started/)** - Installation and quick start
+- **[User Guide](docs/docs/user-guide/)** - Platform usage and features
+- **[Developer Guide](docs/docs/developer-guide/)** - Architecture and development
+- **[Tutorials](docs/docs/tutorials/)** - Step-by-step guides
+- **[API Examples](docs/docs/examples/)** - Code samples and Postman collection
+- **[Reference](docs/docs/reference/)** - Troubleshooting and formats
 
 ## 📊 Features & Capabilities
 
 ### Core Features
 
 #### 1. Dataset Management
+
 - **Upload & Import**
   - CSV file support (up to 100MB)
   - Automatic schema detection
   - Data type inference (numeric, categorical, datetime)
   - Column metadata extraction
-  
 - **Data Profiling**
   - Statistical summaries (mean, median, std, quartiles)
   - Distribution analysis with histograms
@@ -439,7 +479,6 @@ Frontend runs at http://localhost:3000
   - Outlier identification
   - Correlation matrices
   - PII/PHI column detection
-  
 - **Data Validation**
   - Schema validation
   - Format checks
@@ -447,18 +486,18 @@ Frontend runs at http://localhost:3000
   - Data quality scoring
 
 #### 2. Synthetic Data Generation
+
 - **Algorithms Supported**
   - **CTGAN**: Best for mixed data types (numeric + categorical)
   - **TVAE**: Good for high-cardinality categorical data
   - **GaussianCopula**: Fast, works well for continuous data
-  
 - **Configuration Options**
   - Number of rows to generate (1 - 1,000,000)
   - Training epochs (100 - 1000)
   - Batch size (64 - 512)
   - Conditional generation (generate based on specific column values)
-  
 - **Differential Privacy**
+
   - Enable/disable DP protection
   - Configure privacy budget (ε: 0.1 - 10.0)
   - Set delta parameter (typically 1e-5)
@@ -473,21 +512,21 @@ Frontend runs at http://localhost:3000
   - Email notification on completion (optional)
 
 #### 3. Quality Evaluation
+
 - **Statistical Similarity**
   - **Column Shapes Score**: How well distributions match (0-1)
   - **Column Pair Trends Score**: Correlation preservation (0-1)
   - **Overall Quality Score**: Weighted average
   - Kolmogorov-Smirnov test for each column
   - Chi-square test for categorical columns
-  
 - **ML Utility Tests**
   - Train classifier on real data
   - Test on synthetic data
   - Compare accuracy, F1, precision, recall
   - Feature importance comparison
   - Predictive parity assessment
-  
 - **Privacy Tests**
+
   - Membership inference attacks
   - Attribute disclosure risk
   - Re-identification risk assessment
@@ -500,6 +539,7 @@ Frontend runs at http://localhost:3000
   - Box plots for outlier detection
 
 #### 4. AI-Powered Assistant
+
 - **Capabilities**
   - Natural language queries about your data
   - Generate synthetic data with conversational prompts
@@ -507,8 +547,8 @@ Frontend runs at http://localhost:3000
   - Recommend best generator for your dataset
   - Debug errors and issues
   - Generate code snippets for API usage
-  
 - **Context Awareness**
+
   - Understands your current project
   - Remembers conversation history
   - Accesses dataset metadata
@@ -521,12 +561,12 @@ Frontend runs at http://localhost:3000
   - Token usage tracking
 
 #### 5. Project Organization
+
 - **Projects**
   - Group related datasets and generators
   - Team collaboration (share with other users)
   - Project-level settings and configs
   - Tagging and categorization
-  
 - **Workspace Management**
   - Personal workspace per user
   - Shared workspaces for teams
@@ -534,30 +574,29 @@ Frontend runs at http://localhost:3000
   - Activity feed per project
 
 #### 6. Job Monitoring
+
 - **Real-Time Tracking**
   - Job status: Pending, Running, Completed, Failed
   - Progress percentage
   - Elapsed time and ETA
   - Resource usage (CPU, memory)
-  
 - **Job History**
   - View all past jobs
   - Filter by status, date, project
   - Re-run failed jobs
   - Download job logs
-  
 - **Notifications**
   - In-app notifications
   - Email alerts (optional)
   - Webhook integration for CI/CD
 
 #### 7. Exports & Downloads
+
 - **Export Formats**
   - CSV (with metadata)
   - JSON (with schema)
   - Parquet (for big data)
   - SQL dump (for databases)
-  
 - **Bulk Export**
   - Export multiple datasets at once
   - Zip archive creation
@@ -565,17 +604,16 @@ Frontend runs at http://localhost:3000
   - Expiring download URLs (24 hours)
 
 #### 8. User Settings
+
 - **Profile Management**
   - Update name, email
   - Change password
   - Upload profile picture
   - Set timezone preferences
-  
 - **Notification Preferences**
   - Email notifications on/off
   - Job completion alerts
   - Weekly summary reports
-  
 - **API Keys**
   - Generate personal API keys
   - Revoke/regenerate keys
@@ -584,13 +622,13 @@ Frontend runs at http://localhost:3000
 ### Admin-Only Features
 
 #### 1. Audit Logs
+
 - **Comprehensive Tracking**
   - User login/logout events
   - Dataset uploads and deletions
   - Generator creation and execution
   - Configuration changes
   - API access logs
-  
 - **Log Details**
   - Timestamp (precise to millisecond)
   - User ID and username
@@ -598,7 +636,6 @@ Frontend runs at http://localhost:3000
   - Resource affected
   - IP address and user agent
   - Request/response payloads (sanitized)
-  
 - **Search & Filter**
   - Filter by date range
   - Search by user, action, resource
@@ -606,24 +643,22 @@ Frontend runs at http://localhost:3000
   - Immutable records (tamper-proof)
 
 #### 2. Compliance Reporting
+
 - **HIPAA Compliance**
   - Access logs for PHI
   - Encryption at rest/transit verification
   - Business Associate Agreement (BAA) templates
   - Risk assessment reports
-  
 - **GDPR Compliance**
   - Data processing records
   - Right to erasure implementation
   - Data portability exports
   - Consent management logs
-  
 - **SOC 2 Compliance**
   - Security controls documentation
   - System availability metrics
   - Incident response logs
   - Change management records
-  
 - **Custom Reports**
   - Generate compliance reports on-demand
   - Schedule recurring reports (monthly/quarterly)
@@ -631,19 +666,18 @@ Frontend runs at http://localhost:3000
   - Share with auditors securely
 
 #### 3. Billing Management
+
 - **Usage Tracking**
   - Datasets uploaded (count, size)
   - Synthetic data generated (rows, volume)
   - API calls (count, rate)
   - Storage used (GB-months)
   - Compute hours (worker time)
-  
 - **Cost Analytics**
   - Cost per user
   - Cost per project
   - Monthly spending trends
   - Cost forecasting
-  
 - **Billing Integration**
   - Stripe integration for payments
   - Usage-based pricing tiers
@@ -651,12 +685,12 @@ Frontend runs at http://localhost:3000
   - Payment history
 
 #### 4. Export Management
+
 - **Admin Export Controls**
   - View all user exports
   - Approve/deny export requests
   - Set export quotas per user
   - Monitor export bandwidth
-  
 - **Data Loss Prevention**
   - Watermarking synthetic datasets
   - Export audit trails
@@ -664,13 +698,13 @@ Frontend runs at http://localhost:3000
   - Revoke export access
 
 #### 5. User Management
+
 - **User Administration**
   - View all users and their roles
   - Activate/deactivate accounts
   - Reset user passwords
   - Assign admin privileges
   - View user activity logs
-  
 - **Role Management**
   - Create custom roles
   - Define permissions per role
@@ -678,19 +712,18 @@ Frontend runs at http://localhost:3000
   - Bulk role assignment
 
 #### 6. System Monitoring
+
 - **Health Checks**
   - API endpoint health
   - Database connection status
   - Redis connectivity
   - S3 bucket access
   - Celery worker status
-  
 - **Performance Metrics**
   - API response times
   - Database query performance
   - Job processing times
   - Error rates
-  
 - **Alerts & Notifications**
   - System downtime alerts
   - Performance degradation warnings
@@ -723,6 +756,7 @@ This project is licensed under the MIT License - see the [`LICENSE`](LICENSE) fi
 ## 👤 Developer Contact
 
 **Sadam Husen**
+
 - 📧 **Email**: halisadam391@gmail.com
 - 💼 **LinkedIn**: [linkedin.com/in/sadam-husen-16s](https://www.linkedin.com/in/sadam-husen-16s/)
 - 🐙 **GitHub**: [github.com/Urz1](https://github.com/Urz1)

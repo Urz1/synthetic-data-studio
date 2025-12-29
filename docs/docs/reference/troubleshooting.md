@@ -6,11 +6,12 @@ sidebar_position: 4
 slug: /reference/troubleshooting
 tags: [reference, troubleshooting]
 ---
+
 # Troubleshooting Guide
 
 Comprehensive guide to diagnosing and resolving common issues with Synthetic Data Studio.
 
-##  Quick Diagnosis
+## Quick Diagnosis
 
 ### Health Check
 
@@ -47,16 +48,18 @@ nproc  # CPU cores
 ps aux | grep -E "(uvicorn|python)" | grep -v grep
 ```
 
-## � Critical Issues
+## Critical Issues
 
 ### Server Won't Start
 
 #### Symptoms
+
 - Uvicorn fails to start
 - Port 8000 already in use
 - Import errors on startup
 
 #### Diagnosis
+
 ```bash
 # Check for port conflicts
 netstat -tulpn | grep :8000
@@ -71,6 +74,7 @@ python -c "from app.core.config import settings; print('Config OK')"
 #### Solutions
 
 **Port Conflict:**
+
 ```bash
 # Kill process on port 8000
 lsof -ti:8000 | xargs kill -9
@@ -80,6 +84,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 **Import Errors:**
+
 ```bash
 # Reinstall dependencies
 pip install -r requirements.txt --force-reinstall
@@ -89,6 +94,7 @@ python -c "import sys; print(sys.path)"
 ```
 
 **Configuration Issues:**
+
 ```bash
 # Validate .env file
 cat .env
@@ -100,11 +106,13 @@ python -c "from app.database.database import engine; print('DB OK')"
 ### Database Connection Failed
 
 #### Symptoms
+
 - "Could not connect to database" errors
 - Application starts but API calls fail
 - Migration errors
 
 #### Diagnosis
+
 ```bash
 # Test database connection
 python -c "
@@ -128,6 +136,7 @@ ls -la *.db
 #### Solutions
 
 **SQLite Issues:**
+
 ```bash
 # Remove corrupted database
 rm synth_studio.db
@@ -137,6 +146,7 @@ python -m app.database.create_tables
 ```
 
 **PostgreSQL Issues:**
+
 ```bash
 # Check connection string
 echo $DATABASE_URL
@@ -151,6 +161,7 @@ python -m app.database.create_tables
 ```
 
 **Permission Issues:**
+
 ```bash
 # Check file permissions
 ls -la uploads/
@@ -160,16 +171,18 @@ chmod 755 uploads/
 chmod 644 *.db
 ```
 
-##  Data Upload Issues
+## Data Upload Issues
 
 ### File Upload Fails
 
 #### Symptoms
+
 - "File too large" errors
 - "Invalid file format" messages
 - Upload appears to succeed but no data
 
 #### Diagnosis
+
 ```bash
 # Check file size
 ls -lh your-file.csv
@@ -185,6 +198,7 @@ tail -f logs/app.log
 #### Solutions
 
 **File Size Issues:**
+
 ```bash
 # Check configured limits
 grep MAX_FILE_SIZE .env
@@ -199,6 +213,7 @@ done
 ```
 
 **Format Issues:**
+
 ```bash
 # Validate CSV
 python -c "
@@ -211,6 +226,7 @@ print('Dtypes:', df.dtypes)
 ```
 
 **Encoding Issues:**
+
 ```bash
 # Check file encoding
 file your-file.csv
@@ -222,11 +238,13 @@ iconv -f latin1 -t utf8 your-file.csv > your-file-utf8.csv
 ### Data Processing Errors
 
 #### Symptoms
+
 - Profiling fails
 - Type inference errors
 - Memory errors during processing
 
 #### Diagnosis
+
 ```bash
 # Check data quality
 python -c "
@@ -244,6 +262,7 @@ print(df.memory_usage(deep=True).sum() / 1024 / 1024, 'MB')
 #### Solutions
 
 **Memory Issues:**
+
 ```bash
 # Process in chunks
 python -c "
@@ -256,6 +275,7 @@ for chunk in pd.read_csv('large-file.csv', chunksize=chunk_size):
 ```
 
 **Type Inference Problems:**
+
 ```bash
 # Explicit type conversion
 python -c "
@@ -269,16 +289,18 @@ print(df.dtypes)
 "
 ```
 
-##  Synthesis Issues
+## Synthesis Issues
 
 ### Generation Fails
 
 #### Symptoms
+
 - "Training failed" errors
 - Out of memory during generation
 - Poor quality results
 
 #### Diagnosis
+
 ```bash
 # Check system resources
 free -h
@@ -307,6 +329,7 @@ except Exception as e:
 #### Solutions
 
 **Memory Issues:**
+
 ```bash
 # Reduce batch size
 curl -X POST "http://localhost:8000/generators/dataset/{id}/generate" \
@@ -319,6 +342,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{id}/generate" \
 ```
 
 **GPU Issues:**
+
 ```bash
 # Check GPU availability
 python -c "import torch; print(torch.cuda.is_available())"
@@ -331,6 +355,7 @@ nvidia-smi
 ```
 
 **Quality Issues:**
+
 ```bash
 # Increase training epochs
 curl -X POST "http://localhost:8000/generators/dataset/{id}/generate" \
@@ -346,11 +371,13 @@ curl -X POST "http://localhost:8000/generators/dataset/{id}/generate" \
 ### Differential Privacy Issues
 
 #### Symptoms
+
 - "Privacy budget exceeded" errors
 - "Invalid epsilon" messages
 - Poor utility with strong privacy
 
 #### Diagnosis
+
 ```bash
 # Validate DP configuration
 curl -X POST "http://localhost:8000/generators/dp/validate-config" \
@@ -366,6 +393,7 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 #### Solutions
 
 **Configuration Issues:**
+
 ```json
 {
   "solution": "Reduce epochs or increase batch size",
@@ -378,6 +406,7 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 ```
 
 **Utility-Privacy Trade-off:**
+
 ```json
 {
   "solution": "Balance privacy and utility",
@@ -404,16 +433,18 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 }
 ```
 
-##  Evaluation Issues
+## Evaluation Issues
 
 ### Statistical Tests Fail
 
 #### Symptoms
+
 - "Test failed" errors
 - Unexpected statistical results
 - Inconsistent metrics
 
 #### Diagnosis
+
 ```bash
 # Check evaluation data
 curl http://localhost:8000/evaluations/{evaluation_id}
@@ -432,6 +463,7 @@ print('Column match:', list(real.columns) == list(synth.columns))
 #### Solutions
 
 **Data Mismatch:**
+
 ```bash
 # Ensure datasets have same columns
 python -c "
@@ -449,6 +481,7 @@ print('Aligned columns:', len(common_cols))
 ```
 
 **Sample Size Issues:**
+
 ```bash
 # Use appropriate sample sizes
 curl -X POST "http://localhost:8000/evaluations/run" \
@@ -463,10 +496,12 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 ### ML Utility Problems
 
 #### Symptoms
+
 - Low classification/regression scores
 - Inconsistent results across runs
 
 #### Diagnosis
+
 ```bash
 # Check ML evaluation configuration
 curl http://localhost:8000/evaluations/{evaluation_id}
@@ -495,6 +530,7 @@ print('Accuracy:', accuracy_score(y_test, pred))
 #### Solutions
 
 **Model Configuration:**
+
 ```json
 {
   "ml_utility_config": {
@@ -507,6 +543,7 @@ print('Accuracy:', accuracy_score(y_test, pred))
 ```
 
 **Data Quality Issues:**
+
 ```json
 {
   "solutions": [
@@ -518,16 +555,18 @@ print('Accuracy:', accuracy_score(y_test, pred))
 }
 ```
 
-## � Security Issues
+## Security Issues
 
 ### Authentication Problems
 
 #### Symptoms
+
 - "Invalid token" errors
 - Login fails
 - API access denied
 
 #### Diagnosis
+
 ```bash
 # Check token format
 echo "your-jwt-token" | jq -R 'split(".") | .[0],.[1] | @base64d | fromjson'
@@ -547,6 +586,7 @@ except Exception as e:
 #### Solutions
 
 **Token Issues:**
+
 ```bash
 # Refresh token
 curl -X POST "http://localhost:8000/auth/refresh" \
@@ -559,6 +599,7 @@ curl -X POST "http://localhost:8000/auth/login" \
 ```
 
 **Permission Issues:**
+
 ```bash
 # Check user permissions
 curl http://localhost:8000/auth/me \
@@ -568,11 +609,13 @@ curl http://localhost:8000/auth/me \
 ### API Security Issues
 
 #### Symptoms
+
 - CORS errors
 - Rate limiting
 - Suspicious activity blocks
 
 #### Diagnosis
+
 ```bash
 # Check CORS configuration
 curl -H "Origin: http://localhost:3000" \
@@ -587,12 +630,14 @@ curl -H "X-Forwarded-For: 1.2.3.4" \
 #### Solutions
 
 **CORS Issues:**
+
 ```bash
 # Update ALLOWED_ORIGINS in .env
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
 **Rate Limiting:**
+
 ```bash
 # Check rate limit headers
 curl http://localhost:8000/datasets/ -I
@@ -601,16 +646,18 @@ curl http://localhost:8000/datasets/ -I
 sleep 60
 ```
 
-##  Performance Issues
+## Performance Issues
 
 ### Slow Response Times
 
 #### Symptoms
+
 - API calls take >5 seconds
 - Generation takes >30 minutes
 - UI becomes unresponsive
 
 #### Diagnosis
+
 ```bash
 # Profile API response time
 curl -w "@curl-format.txt" -o /dev/null -s \
@@ -638,6 +685,7 @@ print(f'Query took {end-start:.3f}s, returned {count} rows')
 #### Solutions
 
 **Database Optimization:**
+
 ```sql
 -- Add indexes
 CREATE INDEX idx_generators_status ON generators(status);
@@ -648,6 +696,7 @@ EXPLAIN ANALYZE SELECT * FROM generators WHERE status = 'completed';
 ```
 
 **API Optimization:**
+
 ```python
 # Add caching
 from functools import lru_cache
@@ -659,6 +708,7 @@ def get_dataset_profile(dataset_id: str):
 ```
 
 **Background Job Tuning:**
+
 ```bash
 # Monitor Celery
 celery -A app.core.celery_app inspect active
@@ -668,7 +718,7 @@ celery -A app.core.celery_app inspect stats
 celery -A app.core.celery_app worker --concurrency=4 --pool=prefork
 ```
 
-##  Logging and Monitoring
+## Logging and Monitoring
 
 ### Enable Debug Logging
 
@@ -711,7 +761,7 @@ print(f'Memory: {psutil.virtual_memory().percent}%')
 "
 ```
 
-##  Getting Help
+## Getting Help
 
 ### Diagnostic Information
 
@@ -764,7 +814,9 @@ What actually happens
 
 ## Logs
 ```
+
 2025-11-27 10:30:00,123 - ERROR - Detailed error message
+
 ```
 
 ## Additional Context
@@ -774,4 +826,3 @@ Any other relevant information
 ---
 
 **Still having issues?** Check our [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues) or create a new issue with the diagnostic information above.
-

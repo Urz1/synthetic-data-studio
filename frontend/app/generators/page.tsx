@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Search, Filter, Zap, RefreshCw, Code } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { api } from "@/lib/api"
+import { useGenerators } from "@/lib/hooks"
 import type { Generator } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 
@@ -21,27 +21,16 @@ export default function GeneratorsPage() {
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [modelFilter, setModelFilter] = React.useState<string>("all")
-  const [generators, setGenerators] = React.useState<Generator[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
   const { user } = useAuth()
 
-  React.useEffect(() => {
-    loadGenerators()
-  }, [])
-
-  async function loadGenerators() {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await api.listGenerators()
-      setGenerators(Array.isArray(data) ? data : [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load generators")
-    } finally {
-      setLoading(false)
-    }
-  }
+  // TanStack Query for data fetching with caching
+  const { data: generatorsData, isLoading: loading, error: queryError, refetch } = useGenerators()
+  const generators = React.useMemo(() => {
+    if (!generatorsData) return []
+    return Array.isArray(generatorsData) ? generatorsData : []
+  }, [generatorsData])
+  
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load generators") : null
 
   const filteredGenerators = generators.filter((gen) => {
     const matchesSearch = gen.name.toLowerCase().includes(search.toLowerCase())
@@ -78,7 +67,7 @@ export default function GeneratorsPage() {
         <Alert variant="destructive" className="mb-4">
           <AlertDescription className="flex items-center justify-between gap-3">
             <span className="break-words">{error}</span>
-            <Button variant="outline" size="sm" onClick={loadGenerators}>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry
             </Button>
@@ -147,9 +136,9 @@ export default function GeneratorsPage() {
             <GeneratorCard 
               key={generator.id} 
               generator={generator}
-              onDeleted={(id) => {
-                // Remove deleted generator from state
-                setGenerators((prev) => prev.filter((g) => g.id !== id))
+              onDeleted={() => {
+                // TanStack Query will refetch the list automatically
+                refetch()
               }}
             />
           ))}

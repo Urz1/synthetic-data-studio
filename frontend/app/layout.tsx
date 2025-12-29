@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/auth-context"
+import { QueryProvider } from "@/lib/query-provider"
 import { ErrorBoundary } from "@/components/error-boundary"
 import "./globals.css"
 
@@ -92,9 +93,11 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ErrorBoundary>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            <QueryProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </QueryProvider>
           </ThemeProvider>
         </ErrorBoundary>
         {/* <Analytics /> */}

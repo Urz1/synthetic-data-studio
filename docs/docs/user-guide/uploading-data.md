@@ -6,11 +6,12 @@ sidebar_position: 2
 slug: /user-guide/uploading-data
 tags: [user-guide, data-upload]
 ---
+
 # Uploading and Managing Data
 
 Learn how to upload datasets, understand data profiling, and manage your data within Synthetic Data Studio.
 
-##  Data Upload
+## Data Upload
 
 ### Supported Formats
 
@@ -73,7 +74,7 @@ print(response.json())
 }
 ```
 
-##  Data Profiling
+## Data Profiling
 
 After upload, Synthetic Data Studio automatically analyzes your data structure and characteristics.
 
@@ -157,7 +158,7 @@ curl -X POST "http://localhost:8000/datasets/{dataset_id}/profile" \
 curl http://localhost:8000/datasets/{dataset_id}/profile
 ```
 
-##  Sensitive Data Detection
+## Sensitive Data Detection
 
 ### Automatic PII/PHI Detection
 
@@ -233,7 +234,7 @@ curl -X POST "http://localhost:8000/datasets/{dataset_id}/pii-detection-enhanced
 curl http://localhost:8000/datasets/{dataset_id}/pii-flags
 ```
 
-##  Dataset Management
+## Dataset Management
 
 ### Listing Datasets
 
@@ -276,7 +277,7 @@ curl -O http://localhost:8000/datasets/{dataset_id}/download
 curl -X DELETE http://localhost:8000/datasets/{dataset_id}
 ```
 
-## � Data Quality Checks
+## Data Quality Checks
 
 ### Quality Metrics
 
@@ -296,7 +297,7 @@ The platform provides comprehensive quality assessment:
 | 0.5-0.7 | Fair          | May need cleaning or validation     |
 | < 0.5   | Poor          | Significant quality issues detected |
 
-##  Data Preprocessing
+## Data Preprocessing
 
 ### Automatic Preprocessing
 
@@ -316,7 +317,7 @@ For advanced preprocessing, you can:
 3. **Apply transformations** in your data pipeline
 4. **Handle outliers** based on profiling results
 
-##  Best Practices
+## Best Practices
 
 ### Data Preparation
 
@@ -342,7 +343,7 @@ For advanced preprocessing, you can:
 4. **Consider privacy-preserving methods** for sensitive data
 5. **Implement proper access controls** in production
 
-## � Troubleshooting
+## Troubleshooting
 
 ### Common Upload Issues
 
@@ -399,7 +400,7 @@ Issue: PII not detected
 Solution: Use enhanced detection or manual review
 ```
 
-##  Monitoring and Analytics
+## Monitoring and Analytics
 
 ### Dataset Analytics
 
@@ -417,7 +418,7 @@ Track dataset usage and performance:
 - **PII Detection**: Accuracy and processing time
 - **Storage Usage**: Monitor disk space consumption
 
-##  Next Steps
+## Next Steps
 
 After uploading and profiling your data:
 
@@ -429,5 +430,3 @@ After uploading and profiling your data:
 ---
 
 **Need help?** Check our [Troubleshooting Guide](../reference/troubleshooting.md) or create an issue on GitHub.
-
-

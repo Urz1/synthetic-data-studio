@@ -6,24 +6,28 @@ sidebar_position: 4
 slug: /user-guide/evaluating-quality
 tags: [user-guide, evaluation]
 ---
+
 # Evaluating Synthetic Data Quality
 
 Learn how to assess the quality of your synthetic datasets using comprehensive evaluation metrics and statistical tests.
 
-##  Quality Assessment Overview
+## Quality Assessment Overview
 
 Synthetic Data Studio provides multi-dimensional quality evaluation across three critical areas:
 
 ### 1. Statistical Similarity
+
 **Question**: How well does the synthetic data match the statistical properties of the real data?
 
 ### 2. Machine Learning Utility
+
 **Question**: Can you train effective ML models using the synthetic data?
 
 ### 3. Privacy Preservation
+
 **Question**: Are there unacceptable privacy leakage risks?
 
-##  Quick Quality Check
+## Quick Quality Check
 
 ### Statistical Evaluation (Fast)
 
@@ -35,6 +39,7 @@ curl -X POST "http://localhost:8000/evaluations/quick/{generator_id}" \
 ```
 
 **Response:**
+
 ```json
 {
   "generator_id": "gen-123",
@@ -68,13 +73,14 @@ curl -X POST "http://localhost:8000/evaluations/run" \
   }'
 ```
 
-##  Statistical Similarity Tests
+## Statistical Similarity Tests
 
 ### Kolmogorov-Smirnov Test
 
 **Purpose**: Tests if two continuous distributions are identical
 
 **How it works**:
+
 - Compares empirical distribution functions
 - Measures maximum difference between distributions
 - Returns p-value indicating statistical significance
@@ -92,8 +98,9 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 ```
 
 **Interpretation**:
--  **p > 0.05**: Distributions are similar (good)
--  **p = 0.01-0.05**: Marginally different
+
+- **p > 0.05**: Distributions are similar (good)
+- **p = 0.01-0.05**: Marginally different
 - ❌ **p < 0.01**: Distributions are different (needs improvement)
 
 ### Chi-Square Test
@@ -101,6 +108,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 **Purpose**: Tests independence for categorical/binned data
 
 **How it works**:
+
 - Compares observed vs expected frequencies
 - Works on categorical data or binned continuous data
 - Sensitive to sample size differences
@@ -123,6 +131,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 **Purpose**: Measures distribution difference (Earth Mover's Distance)
 
 **How it works**:
+
 - Calculates minimum "work" to transform one distribution into another
 - Normalized by data range for comparability
 - Lower values indicate better similarity
@@ -141,9 +150,10 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 ```
 
 **Distance Scale**:
--  **< 0.05**: Excellent match
--  **0.05-0.10**: Good match
--  **0.10-0.20**: Acceptable
+
+- **< 0.05**: Excellent match
+- **0.05-0.10**: Good match
+- **0.10-0.20**: Acceptable
 - ❌ **> 0.20**: Poor match
 
 ### Jensen-Shannon Divergence
@@ -151,6 +161,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 **Purpose**: Symmetric measure of distribution similarity
 
 **How it works**:
+
 - Based on Kullback-Leibler divergence
 - Symmetric (order doesn't matter)
 - Bounded between 0 and 1
@@ -167,13 +178,14 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 }
 ```
 
-##  Machine Learning Utility Tests
+## Machine Learning Utility Tests
 
 ### Classification Performance
 
 **Purpose**: Tests if synthetic data can train good classifiers
 
 **How it works**:
+
 1. Train classifier on synthetic data
 2. Test on real data (holdout set)
 3. Compare to baseline (real data training)
@@ -203,7 +215,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
   "ml_utility": {
     "regression": {
       "r_squared": 0.82,
-      "mean_absolute_error": 1250.50,
+      "mean_absolute_error": 1250.5,
       "root_mean_squared_error": 1850.75,
       "baseline_r_squared": 0.85,
       "utility_score": 0.96,
@@ -229,13 +241,14 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 }
 ```
 
-##  Privacy Leakage Tests
+## Privacy Leakage Tests
 
 ### Membership Inference Attack
 
 **Purpose**: Tests if synthetic data could reveal whether specific records were used in training
 
 **How it works**:
+
 - Trains attack model to distinguish training vs non-training records
 - Measures attack success rate
 - Lower success rates indicate better privacy
@@ -245,7 +258,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
   "privacy_tests": {
     "membership_inference": {
       "attack_success_rate": 0.52,
-      "baseline_accuracy": 0.50,
+      "baseline_accuracy": 0.5,
       "privacy_score": 0.96,
       "risk_level": "low",
       "interpretation": "No significant membership inference risk detected"
@@ -255,8 +268,9 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 ```
 
 **Risk Levels**:
--  **< 0.55**: Low risk (good privacy)
--  **0.55-0.60**: Moderate risk
+
+- **< 0.55**: Low risk (good privacy)
+- **0.55-0.60**: Moderate risk
 - ❌ **> 0.60**: High risk (privacy concerns)
 
 ### Attribute Inference Attack
@@ -269,7 +283,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
     "attribute_inference": {
       "target_attribute": "income",
       "attack_accuracy": 0.15,
-      "baseline_accuracy": 0.10,
+      "baseline_accuracy": 0.1,
       "privacy_score": 0.67,
       "risk_level": "moderate",
       "recommendations": [
@@ -281,7 +295,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 }
 ```
 
-##  Quality Report Structure
+## Quality Report Structure
 
 ### Overall Assessment
 
@@ -326,44 +340,48 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 }
 ```
 
-##  Quality Score Interpretation
+## Quality Score Interpretation
 
 ### Overall Quality Levels
 
-| Score Range | Quality Level | Description | Suitable For |
-|-------------|---------------|-------------|--------------|
-| 0.9-1.0 | Excellent | Exceptional quality | Production, critical applications |
-| 0.8-0.9 | Good | High quality | Most business applications |
-| 0.7-0.8 | Acceptable | Reasonable quality | Development, testing |
-| 0.6-0.7 | Marginal | Limited quality | Prototyping only |
-| < 0.6 | Poor | Significant issues | Not recommended |
+| Score Range | Quality Level | Description         | Suitable For                      |
+| ----------- | ------------- | ------------------- | --------------------------------- |
+| 0.9-1.0     | Excellent     | Exceptional quality | Production, critical applications |
+| 0.8-0.9     | Good          | High quality        | Most business applications        |
+| 0.7-0.8     | Acceptable    | Reasonable quality  | Development, testing              |
+| 0.6-0.7     | Marginal      | Limited quality     | Prototyping only                  |
+| < 0.6       | Poor          | Significant issues  | Not recommended                   |
 
 ### Component Scores
 
 **Statistical Similarity**:
--  **> 0.85**: Excellent distribution matching
--  **0.75-0.85**: Good statistical properties
--  **0.65-0.75**: Acceptable for some use cases
+
+- **> 0.85**: Excellent distribution matching
+- **0.75-0.85**: Good statistical properties
+- **0.65-0.75**: Acceptable for some use cases
 - ❌ **< 0.65**: Poor statistical fidelity
 
 **ML Utility**:
--  **> 0.90**: Near-baseline performance
--  **0.80-0.90**: Good predictive capability
--  **0.70-0.80**: Acceptable for training
+
+- **> 0.90**: Near-baseline performance
+- **0.80-0.90**: Good predictive capability
+- **0.70-0.80**: Acceptable for training
 - ❌ **< 0.70**: Limited utility
 
 **Privacy Preservation**:
--  **> 0.80**: Strong privacy protection
--  **0.70-0.80**: Good privacy guarantees
--  **0.60-0.70**: Moderate privacy concerns
+
+- **> 0.80**: Strong privacy protection
+- **0.70-0.80**: Good privacy guarantees
+- **0.60-0.70**: Moderate privacy concerns
 - ❌ **< 0.60**: Significant privacy risks
 
-##  Improving Quality
+## Improving Quality
 
 ### Statistical Similarity Issues
 
 **Problem**: Poor distribution matching
 **Solutions**:
+
 ```json
 {
   "increase_epochs": true,
@@ -375,6 +393,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 
 **Problem**: Categorical data mismatch
 **Solutions**:
+
 ```json
 {
   "use_mode_specific_loss": true,
@@ -387,6 +406,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 
 **Problem**: Poor predictive performance
 **Solutions**:
+
 ```json
 {
   "increase_training_data": true,
@@ -400,6 +420,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 
 **Problem**: Membership inference vulnerability
 **Solutions**:
+
 ```json
 {
   "use_differential_privacy": true,
@@ -408,7 +429,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 }
 ```
 
-##  Custom Evaluation Options
+## Custom Evaluation Options
 
 ### Selective Testing
 
@@ -464,7 +485,7 @@ Configure privacy evaluation:
 }
 ```
 
-##  Tracking Quality Over Time
+## Tracking Quality Over Time
 
 ### Evaluation History
 
@@ -488,7 +509,7 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
   }'
 ```
 
-##  AI-Powered Insights
+## AI-Powered Insights
 
 ### Natural Language Explanations
 
@@ -500,6 +521,7 @@ curl -X POST "http://localhost:8000/evaluations/{evaluation_id}/explain" \
 ```
 
 **Response:**
+
 ```json
 {
   "evaluation_id": "eval-123",
@@ -527,7 +549,7 @@ curl -X POST "http://localhost:8000/llm/suggest-improvements/{evaluation_id}" \
   -H "Content-Type: application/json"
 ```
 
-##  Best Practices
+## Best Practices
 
 ### Evaluation Workflow
 
@@ -540,16 +562,19 @@ curl -X POST "http://localhost:8000/llm/suggest-improvements/{evaluation_id}" \
 ### Quality Thresholds
 
 **Development/Testing**:
+
 - Statistical Similarity: > 0.75
 - ML Utility: > 0.80
 - Privacy Score: > 0.70
 
 **Production Use**:
+
 - Statistical Similarity: > 0.85
 - ML Utility: > 0.90
 - Privacy Score: > 0.80
 
 **Critical Applications**:
+
 - Statistical Similarity: > 0.95
 - ML Utility: > 0.95
 - Privacy Score: > 0.90
@@ -561,23 +586,26 @@ curl -X POST "http://localhost:8000/llm/suggest-improvements/{evaluation_id}" \
 - **Monthly**: Comprehensive privacy assessment
 - **Quarterly**: Cross-generator comparison and trend analysis
 
-## � Troubleshooting
+## Troubleshooting
 
 ### Common Quality Issues
 
 **Poor Statistical Similarity**:
+
 ```bash
 Causes: Insufficient training, wrong method, data preprocessing issues
 Solutions: Increase epochs, use CTGAN, check data quality
 ```
 
 **Low ML Utility**:
+
 ```bash
 Causes: Over-privacy, insufficient data, correlation loss
 Solutions: Reduce privacy parameters, increase dataset size, use better methods
 ```
 
 **Privacy Concerns**:
+
 ```bash
 Causes: Weak privacy parameters, membership inference risks
 Solutions: Use DP methods, adjust epsilon, implement output perturbation
@@ -586,18 +614,20 @@ Solutions: Use DP methods, adjust epsilon, implement output perturbation
 ### Performance Issues
 
 **Slow Evaluation**:
+
 ```bash
 Causes: Large datasets, complex ML models, full privacy tests
 Solutions: Use quick evaluation, sample data, selective testing
 ```
 
 **Memory Issues**:
+
 ```bash
 Causes: Large datasets, complex models
 Solutions: Reduce batch sizes, use sampling, optimize algorithms
 ```
 
-##  Integration with Compliance
+## Integration with Compliance
 
 ### Audit Trail Generation
 
@@ -619,15 +649,15 @@ Document quality standards met:
   "quality_certification": {
     "standard": "Enterprise Grade",
     "statistical_similarity_threshold": 0.85,
-    "ml_utility_threshold": 0.90,
-    "privacy_threshold": 0.80,
+    "ml_utility_threshold": 0.9,
+    "privacy_threshold": 0.8,
     "certified_date": "2025-11-27",
     "valid_until": "2026-11-27"
   }
 }
 ```
 
-##  Next Steps
+## Next Steps
 
 After evaluating quality:
 
@@ -638,5 +668,3 @@ After evaluating quality:
 ---
 
 **Need help interpreting results?** Use the `/llm/explain-metric` endpoint or check our [Reference Guide](../reference/troubleshooting.md).
-
-

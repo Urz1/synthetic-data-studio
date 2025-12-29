@@ -70,6 +70,96 @@ def ping():
 
 
 @router.post(
+    "/exchange-token",
+    summary="Exchange OAuth token for session cookies",
+    description="Completes OAuth flow by exchanging a short-lived token for session cookies"
+)
+def exchange_token(
+    request: Request,
+    response: Response,
+    token: str = Query(..., description="Exchange token from OAuth callback"),
+    db: Session = Depends(get_db)
+):
+    """
+    Exchange a short-lived OAuth token for session cookies.
+    
+    This endpoint is called by the frontend after OAuth redirect to establish
+    the session. The token is single-use and expires after 60 seconds.
+    
+    The cookies are set on this same-origin response, bypassing cross-domain
+    cookie restrictions that affect the OAuth callback redirect.
+    """
+    from .oauth import validate_exchange_token
+    from .services import ACCESS_TOKEN_EXPIRE_MINUTES
+    import urllib.parse
+    import json
+    
+    # Validate and consume the exchange token
+    token_data = validate_exchange_token(token)
+    
+    if not token_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired exchange token"
+        )
+    
+    # Extract data from the stored token
+    user_data = token_data.get("user", {})
+    jwt_token = token_data.get("jwt")
+    refresh_token = token_data.get("refresh")
+    
+    if not jwt_token or not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token data"
+        )
+    
+    # Set cookies - this works because it's a same-origin request!
+    is_production = not settings.debug
+    
+    response.set_cookie(
+        key="ss_jwt",
+        value=jwt_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+        domain=settings.cookie_domain if is_production else None
+    )
+    response.set_cookie(
+        key="ss_refresh",
+        value=refresh_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,
+        path="/",
+        domain=settings.cookie_domain if is_production else None
+    )
+    
+    # User data prefetch cookie - not httpOnly so frontend can read it
+    user_prefetch = json.dumps(user_data)
+    response.set_cookie(
+        key="ss_user_prefetch",
+        value=urllib.parse.quote(user_prefetch),
+        httponly=False,
+        secure=is_production,
+        samesite="lax",
+        max_age=60,
+        path="/",
+        domain=settings.cookie_domain if is_production else None
+    )
+    
+    logger.info(f"Token exchange successful for {user_data.get('email')}")
+    
+    return {
+        "success": True,
+        "user": user_data
+    }
+
+
+@router.post(
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
@@ -1108,63 +1198,31 @@ async def google_callback(
         user_agent=None
     )
 
-    # SET COOKIES AND REDIRECT DIRECTLY TO DASHBOARD
-    # This eliminates the need for /auth/success and hash fragments
-    is_production = not settings.debug
+    # =========================================================================
+    # TOKEN EXCHANGE PATTERN (Fixes cross-domain cookie issues)
+    # =========================================================================
+    # Instead of setting cookies in this cross-domain redirect (which fails in
+    # some browsers due to SameSite/ITP restrictions), we generate a short-lived
+    # exchange token. The frontend will exchange this token for cookies via a
+    # same-origin API call.
     
-    logger.info(f"OAuth Google: Setting cookies. is_production={is_production}, cookie_domain={settings.cookie_domain}")
+    from .oauth import generate_exchange_token
     
-    response = RedirectResponse(url=f"{settings.frontend_url}/dashboard", status_code=302)
-    
-    response.set_cookie(
-        key="ss_jwt",
-        value=jwt_token,
-        httponly=True,
-        secure=is_production,
-        samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/",
-        domain=settings.cookie_domain if is_production else None
-    )
-    logger.info(f"OAuth Google: Set ss_jwt cookie (len={len(jwt_token)})")
-    
-    response.set_cookie(
-        key="ss_refresh",
-        value=refresh_token,
-        httponly=True,
-        secure=is_production,
-        samesite="lax",
-        max_age=7 * 24 * 60 * 60,
-        path="/",
-        domain=settings.cookie_domain if is_production else None
-    )
-    logger.info(f"OAuth Google: Set ss_refresh cookie (len={len(refresh_token)})")
-    
-    # User data prefetch cookie - not httpOnly so frontend can read it
-    # This allows instant dashboard load without /me API call
-    import json
-    import urllib.parse
-    user_prefetch = json.dumps({
+    user_data = {
         "id": str(user.id),
         "email": user.email,
-        "full_name": user.name or "",  # 'name' field in User model
+        "full_name": user.name or "",
         "role": user.role,
         "is_2fa_enabled": user.is_2fa_enabled,
-    })
-    response.set_cookie(
-        key="ss_user_prefetch",
-        value=urllib.parse.quote(user_prefetch),
-        httponly=False,  # Frontend can read this
-        secure=is_production,
-        samesite="lax",
-        max_age=60,  # Short-lived: 1 minute
-        path="/",
-        domain=settings.cookie_domain if is_production else None
-    )
-    logger.info(f"OAuth Google: Set ss_user_prefetch cookie")
+    }
     
-    logger.info(f"OAuth Google login successful: {user.email}, redirecting to /dashboard")
-    return response
+    exchange_token = generate_exchange_token(user_data, jwt_token, refresh_token)
+    
+    # Redirect to frontend auth completion page with exchange token
+    redirect_url = f"{settings.frontend_url}/auth/complete?token={exchange_token}"
+    
+    logger.info(f"OAuth Google login successful: {user.email}, redirecting to /auth/complete")
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 
 # --- GitHub OAuth ---
@@ -1280,55 +1338,26 @@ async def github_callback(
         user_agent=None
     )
     
-    # SET COOKIES AND REDIRECT DIRECTLY TO DASHBOARD
-    is_production = not settings.debug
-    response = RedirectResponse(url=f"{settings.frontend_url}/dashboard", status_code=302)
+    # =========================================================================
+    # TOKEN EXCHANGE PATTERN (Fixes cross-domain cookie issues)
+    # =========================================================================
+    from .oauth import generate_exchange_token
     
-    response.set_cookie(
-        key="ss_jwt",
-        value=jwt_token,
-        httponly=True,
-        secure=is_production,
-        samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/",
-        domain=settings.cookie_domain if is_production else None
-    )
-    response.set_cookie(
-        key="ss_refresh",
-        value=refresh_token,
-        httponly=True,
-        secure=is_production,
-        samesite="lax",
-        max_age=7 * 24 * 60 * 60,
-        path="/",
-        domain=settings.cookie_domain if is_production else None
-    )
-    
-    # User data prefetch cookie - not httpOnly so frontend can read it
-    # This allows instant dashboard load without /me API call
-    import json
-    import urllib.parse
-    user_prefetch = json.dumps({
+    user_data = {
         "id": str(user.id),
         "email": user.email,
-        "full_name": user.name or "",  # 'name' field in User model
+        "full_name": user.name or "",
         "role": user.role,
         "is_2fa_enabled": user.is_2fa_enabled,
-    })
-    response.set_cookie(
-        key="ss_user_prefetch",
-        value=urllib.parse.quote(user_prefetch),
-        httponly=False,  # Frontend can read this
-        secure=is_production,
-        samesite="lax",
-        max_age=60,  # Short-lived: 1 minute
-        path="/",
-        domain=settings.cookie_domain if is_production else None
-    )
+    }
     
-    logger.info(f"OAuth GitHub login successful: {user.email}, redirecting to /dashboard")
-    return response
+    exchange_token = generate_exchange_token(user_data, jwt_token, refresh_token)
+    
+    # Redirect to frontend auth completion page with exchange token
+    redirect_url = f"{settings.frontend_url}/auth/complete?token={exchange_token}"
+    
+    logger.info(f"OAuth GitHub login successful: {user.email}, redirecting to /auth/complete")
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 
 # ============================================================================

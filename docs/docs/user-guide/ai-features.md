@@ -6,24 +6,25 @@ sidebar_position: 5
 slug: /user-guide/ai-features
 tags: [user-guide, ai]
 ---
+
 # AI-Powered Features
 
 Discover how Synthetic Data Studio leverages AI to enhance your synthetic data workflow with intelligent chat, automated insights, and smart recommendations.
 
-##  AI Feature Overview
+## AI Feature Overview
 
 Synthetic Data Studio integrates multiple AI capabilities to make synthetic data generation more intelligent and user-friendly:
 
 ### Core AI Capabilities
 
-- ** Interactive Chat**: Natural language conversations about your data quality
-- ** Smart Suggestions**: AI-powered recommendations for improvement
-- ** Metric Explanations**: Plain English interpretations of technical metrics
-- ** Auto-Documentation**: Automated generation of compliance documents
-- ** Enhanced Detection**: Context-aware PII identification
-- ** Guided Workflows**: Step-by-step AI assistance
+- **Interactive Chat**: Natural language conversations about your data quality
+- **Smart Suggestions**: AI-powered recommendations for improvement
+- **Metric Explanations**: Plain English interpretations of technical metrics
+- **Auto-Documentation**: Automated generation of compliance documents
+- **Enhanced Detection**: Context-aware PII identification
+- **Guided Workflows**: Step-by-step AI assistance
 
-##  Interactive Chat
+## Interactive Chat
 
 ### Chat Interface
 
@@ -40,6 +41,7 @@ curl -X POST "http://localhost:8000/llm/chat" \
 ```
 
 **Sample Conversation:**
+
 ```bash
 You: How good is my synthetic data quality?
 
@@ -97,7 +99,7 @@ The chat system understands your specific context:
 }
 ```
 
-##  Smart Suggestions
+## Smart Suggestions
 
 ### Improvement Recommendations
 
@@ -109,6 +111,7 @@ curl -X POST "http://localhost:8000/llm/suggest-improvements/eval-123" \
 ```
 
 **Response:**
+
 ```json
 {
   "evaluation_id": "eval-123",
@@ -148,7 +151,7 @@ curl -X POST "http://localhost:8000/llm/suggest-improvements/eval-123" \
 - **Method Selection**: Algorithm recommendations
 - **Parameter Tuning**: Hyperparameter optimization
 
-##  Metric Explanations
+## Metric Explanations
 
 ### Understanding Technical Metrics
 
@@ -159,6 +162,7 @@ curl "http://localhost:8000/llm/explain-metric?metric_name=wasserstein_distance&
 ```
 
 **Response:**
+
 ```json
 {
   "metric_name": "wasserstein_distance",
@@ -190,7 +194,7 @@ curl "http://localhost:8000/llm/explain-metric?metric_name=wasserstein_distance&
 - **epsilon**: Privacy budget
 - **delta**: Failure probability
 
-##  Auto-Documentation
+## Auto-Documentation
 
 ### Model Cards
 
@@ -203,6 +207,7 @@ curl -X POST "http://localhost:8000/generators/gen-123/model-card" \
 ```
 
 **Generated Model Card:**
+
 ```json
 {
   "model_card": {
@@ -248,6 +253,7 @@ curl http://localhost:8000/generators/gen-123/audit-narrative
 ```
 
 **Generated Narrative:**
+
 ```json
 {
   "generator_id": "gen-123",
@@ -279,7 +285,7 @@ curl -X POST "http://localhost:8000/generators/gen-123/compliance-report" \
   -d '{"framework": "GDPR"}'
 ```
 
-##  Enhanced PII Detection
+## Enhanced PII Detection
 
 ### AI-Powered Detection
 
@@ -291,6 +297,7 @@ curl -X POST "http://localhost:8000/datasets/dataset-123/pii-detection-enhanced"
 ```
 
 **Enhanced Detection Features:**
+
 - **Context Analysis**: Understands data relationships
 - **Pattern Recognition**: Identifies complex PII patterns
 - **Risk Assessment**: Provides confidence scores and risk levels
@@ -298,15 +305,15 @@ curl -X POST "http://localhost:8000/datasets/dataset-123/pii-detection-enhanced"
 
 ### Detection Comparison
 
-| Feature | Standard Detection | AI-Enhanced Detection |
-|---------|-------------------|----------------------|
-| **Accuracy** | 85% | 95% |
-| **Context Awareness** | Limited | Advanced |
-| **False Positives** | Higher | Lower |
-| **Complex Patterns** | Basic | Advanced |
-| **Recommendations** | Generic | Specific |
+| Feature               | Standard Detection | AI-Enhanced Detection |
+| --------------------- | ------------------ | --------------------- |
+| **Accuracy**          | 85%                | 95%                   |
+| **Context Awareness** | Limited            | Advanced              |
+| **False Positives**   | Higher             | Lower                 |
+| **Complex Patterns**  | Basic              | Advanced              |
+| **Recommendations**   | Generic            | Specific              |
 
-##  Guided Workflows
+## Guided Workflows
 
 ### Step-by-Step Assistance
 
@@ -328,6 +335,7 @@ curl -X POST "http://localhost:8000/llm/chat" \
 ```
 
 **AI Response:**
+
 ```json
 {
   "response": "I'll guide you through implementing HIPAA-compliant differential privacy for healthcare data. Here's your step-by-step plan:",
@@ -364,7 +372,7 @@ curl -X POST "http://localhost:8000/llm/chat" \
 }
 ```
 
-##  Feature Configuration
+## Feature Configuration
 
 ### AI Model Selection
 
@@ -407,7 +415,7 @@ ENABLE_COMPLIANCE_REPORTS=true
 ENABLE_ENHANCED_PII_DETECTION=true
 ```
 
-##  Usage Analytics
+## Usage Analytics
 
 ### AI Feature Usage Tracking
 
@@ -419,12 +427,13 @@ curl http://localhost:8000/admin/ai-usage-stats
 ```
 
 **Tracking Metrics:**
+
 - Chat conversation volume and satisfaction
 - Suggestion acceptance rates
 - Documentation generation frequency
 - PII detection accuracy improvements
 
-##  Privacy & Security
+## Privacy & Security
 
 ### AI Data Handling
 
@@ -439,29 +448,33 @@ curl http://localhost:8000/admin/ai-usage-stats
 - **No Raw Data**: Original datasets never leave your infrastructure
 - **Aggregated Insights**: AI works with statistical summaries
 
-## � Troubleshooting
+## Troubleshooting
 
 ### Common AI Issues
 
 **Slow Responses**
+
 ```bash
 Cause: High server load or network latency
 Solution: Use Groq for faster responses, implement caching
 ```
 
 **Inaccurate Suggestions**
+
 ```bash
 Cause: Limited context or outdated training data
 Solution: Provide more evaluation details, use latest AI models
 ```
 
 **API Rate Limits**
+
 ```bash
 Cause: Exceeded provider limits
 Solution: Implement request queuing, use multiple providers
 ```
 
 **Context Loss**
+
 ```bash
 Cause: Long conversations exceed token limits
 Solution: Start new conversations for different topics
@@ -470,21 +483,24 @@ Solution: Start new conversations for different topics
 ### Performance Optimization
 
 **Response Speed**
+
 - Use Groq for faster responses
 - Implement response caching
 - Optimize context window usage
 
 **Accuracy Improvement**
+
 - Provide detailed evaluation results
 - Include relevant metadata
 - Use specific, clear questions
 
 **Cost Management**
+
 - Monitor API usage
 - Implement response caching
 - Use appropriate model sizes
 
-##  Best Practices
+## Best Practices
 
 ### Effective AI Usage
 
@@ -507,7 +523,7 @@ Solution: Start new conversations for different topics
 3. **Regulatory Approval**: Get approval for AI-assisted workflows
 4. **Fallback Procedures**: Have manual processes for critical decisions
 
-##  Integration Examples
+## Integration Examples
 
 ### Development Workflow
 
@@ -553,7 +569,7 @@ class SynthStudioAI:
       -d '{"framework": "GDPR"}'
 ```
 
-##  Next Steps
+## Next Steps
 
 After exploring AI features:
 
@@ -564,5 +580,3 @@ After exploring AI features:
 ---
 
 **Want to learn more?** Try asking the AI chat: "What are the best practices for synthetic data generation?" or check our [API Examples](../examples/) for AI endpoint usage.
-
-

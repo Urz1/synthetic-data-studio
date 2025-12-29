@@ -48,7 +48,6 @@ const scenes = [
 export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
   const [currentScene, setCurrentScene] = useState(0)
   const [loopCount, setLoopCount] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
@@ -70,8 +69,11 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
   }, [mounted])
 
   // Scene rotation logic - 5 seconds per scene
+  // Adding sceneKey to dependency causes timer reset when scene changes manually
+  const [sceneKey, setSceneKey] = useState(0)
+  
   useEffect(() => {
-    if (prefersReducedMotion || isPaused || isComplete) return
+    if (prefersReducedMotion || isComplete) return
 
     intervalRef.current = setInterval(() => {
       setCurrentScene((prev) => {
@@ -93,17 +95,40 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [prefersReducedMotion, isPaused, isComplete])
+  }, [prefersReducedMotion, isComplete, sceneKey]) // sceneKey resets timer on manual nav
+
+  // Navigate to scene and reset timer (so it plays full duration)
+  const navigateToScene = useCallback((sceneIndex: number) => {
+    setCurrentScene(sceneIndex)
+    setSceneKey(k => k + 1) // Trigger timer reset
+    setIsComplete(false) // Allow continued auto-rotation
+  }, [])
+
+  // Allow scroll/wheel to advance scenes
+  const lastScrollTime = useRef(0)
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    const now = Date.now()
+    // Debounce: only advance once per 600ms for smoother feel
+    if (now - lastScrollTime.current < 600) return
+    
+    if (e.deltaY > 0 && currentScene < 2) {
+      // Scrolling down - go to next scene
+      lastScrollTime.current = now
+      navigateToScene(currentScene + 1)
+    } else if (e.deltaY < 0 && currentScene > 0) {
+      // Scrolling up - go to previous scene
+      lastScrollTime.current = now
+      navigateToScene(currentScene - 1)
+    }
+  }, [currentScene, navigateToScene])
 
   const handleReplay = useCallback(() => {
-    if (isComplete || isPaused) {
-      setIsComplete(false)
-      setLoopCount(0)
-      setCurrentScene(0)
-      setIsPaused(false)
-      onReplay?.()
-    }
-  }, [isComplete, isPaused, onReplay])
+    setIsComplete(false)
+    setLoopCount(0)
+    setCurrentScene(0)
+    setSceneKey(k => k + 1)
+    onReplay?.()
+  }, [onReplay])
 
   const scene = scenes[currentScene]
 
@@ -112,6 +137,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
       className={`${styles.heroStory} relative pt-24 md:pt-32 pb-16 md:pb-24 overflow-hidden`}
       role="region"
       aria-label="Synth Studio features showcase"
+      onWheel={handleWheel}
     >
       {/* Background gradients */}
       <div className="absolute inset-0 pointer-events-none">
@@ -150,10 +176,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
               {scenes.map((s, i) => (
                 <button
                   key={s.id}
-                  onClick={() => {
-                    setCurrentScene(i)
-                    setIsPaused(true)
-                  }}
+                  onClick={() => navigateToScene(i)}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     i === currentScene 
                       ? "w-8 bg-primary" 

@@ -231,7 +231,7 @@ export default function DatasetDetailPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Columns</span>
-                <span className="font-mono text-sm">{dataset.schema_data?.columns?.length || 0}</span>
+                <span className="font-mono text-sm">{dataset.column_count || Object.keys(dataset.schema_data || {}).length || 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Size</span>

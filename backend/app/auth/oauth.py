@@ -91,6 +91,91 @@ def validate_oauth_state(state: str) -> bool:
     return True
 
 
+# ============================================================================
+# EXCHANGE TOKEN MANAGEMENT (Cookie-less OAuth redirect)
+# ============================================================================
+
+# Key prefix for exchange tokens in Redis
+EXCHANGE_TOKEN_PREFIX = "oauth_exchange:"
+EXCHANGE_TOKEN_EXPIRY_SECONDS = 60  # 1 minute - very short-lived
+
+import json
+
+
+def generate_exchange_token(user_data: Dict[str, Any], jwt_token: str, refresh_token: str) -> str:
+    """
+    Generate a short-lived exchange token for OAuth completion.
+    
+    This token allows the frontend to exchange it for cookies via a same-origin
+    API call, bypassing cross-domain cookie restrictions.
+    
+    Args:
+        user_data: User info dict (id, email, name, role, is_2fa_enabled)
+        jwt_token: The access token to store
+        refresh_token: The refresh token to store
+        
+    Returns:
+        Exchange token string
+    """
+    token = secrets.token_urlsafe(32)
+    
+    # Store token data
+    data = {
+        "user": user_data,
+        "jwt": jwt_token,
+        "refresh": refresh_token,
+        "created_at": time.time()
+    }
+    
+    set_with_expiry(
+        f"{EXCHANGE_TOKEN_PREFIX}{token}",
+        json.dumps(data),
+        EXCHANGE_TOKEN_EXPIRY_SECONDS
+    )
+    
+    logger.info(f"Generated exchange token for user {user_data.get('email')}")
+    return token
+
+
+def validate_exchange_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Validate and consume an exchange token.
+    
+    Args:
+        token: The exchange token to validate
+        
+    Returns:
+        Dict with user, jwt, refresh keys if valid, None otherwise
+    """
+    if not token:
+        return None
+    
+    key = f"{EXCHANGE_TOKEN_PREFIX}{token}"
+    data_str = get_value(key)
+    
+    if not data_str:
+        logger.warning(f"Exchange token not found or expired")
+        return None
+    
+    # Delete after use (one-time token)
+    delete_key(key)
+    
+    try:
+        data = json.loads(data_str)
+        
+        # Check expiry (belt-and-suspenders with Redis TTL)
+        created_at = data.get("created_at", 0)
+        if time.time() - created_at > EXCHANGE_TOKEN_EXPIRY_SECONDS:
+            logger.warning(f"Exchange token expired")
+            return None
+        
+        logger.info(f"Exchange token validated for user {data.get('user', {}).get('email')}")
+        return data
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.error(f"Failed to parse exchange token data: {e}")
+        return None
+
+
 
 # ============================================================================
 # OAUTH CONFIGURATION

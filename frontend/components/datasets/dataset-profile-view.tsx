@@ -31,9 +31,11 @@ const typeIcons = {
 
 export function DatasetProfileView({ dataset, className }: DatasetProfileViewProps) {
   const columns: ColumnInfo[] = React.useMemo(() => {
-    return (dataset.schema_data?.columns || []).map((colName) => ({
+    // schema_data is Record<string, string> where keys are column names and values are types
+    const columnNames = dataset.schema_data ? Object.keys(dataset.schema_data) : []
+    return columnNames.map((colName: string) => ({
       name: colName,
-      dtype: dataset.schema_data?.dtypes?.[colName] || "unknown",
+      dtype: dataset.schema_data?.[colName] || "unknown",
       profile: dataset.profiling_data?.columns?.[colName],
       piiFlag: dataset.pii_flags?.[colName],
     }))
@@ -135,7 +137,7 @@ export function DatasetProfileView({ dataset, className }: DatasetProfileViewPro
               Dataset Profile
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm">
-              {dataset.row_count?.toLocaleString()} rows, {dataset.schema_data?.columns?.length || 0} columns
+              {dataset.row_count?.toLocaleString()} rows, {dataset.schema_data ? Object.keys(dataset.schema_data).length : 0} columns
             </CardDescription>
           </div>
           {piiColumns.length > 0 && (

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useMemo } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,60 +13,31 @@ import { Activity, CheckCircle, XCircle, Clock, Loader2, RotateCw, RefreshCw } f
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import type { Job } from "@/lib/types"
-import { api } from "@/lib/api"
+import { useJobs } from "@/lib/hooks"
 import { useToast } from "@/hooks/use-toast"
 
 export default function JobsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string>("")
 
-  const jobsRef = React.useRef<Job[]>([])
-
-  const fetchJobs = async () => {
-    try {
-      let jobsData = await api.listJobs()
-      // If not admin, filter jobs to only those initiated by current user
-      if (user?.role !== "admin" && user?.id) {
-        jobsData = jobsData.filter(j => j.initiated_by === user.id)
-      }
-      jobsRef.current = jobsData
-      setJobs(jobsData)
-      setError("")
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load jobs"
-      setError(message)
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+  // TanStack Query for data fetching with caching
+  // useJobs has built-in 30s stale time and auto-refresh for running jobs
+  const { data: jobsData, isLoading, error: queryError, refetch, isFetching } = useJobs()
+  
+  const jobs = useMemo(() => {
+    if (!jobsData) return []
+    let filtered = Array.isArray(jobsData) ? jobsData : []
+    // If not admin, filter jobs to only those initiated by current user
+    if (user?.role !== "admin" && user?.id) {
+      filtered = filtered.filter(j => j.initiated_by === user.id)
     }
-  }
+    return filtered
+  }, [jobsData, user?.role, user?.id])
 
-  useEffect(() => {
-    fetchJobs()
-    
-    // Auto-refresh every 5 seconds for running jobs
-    // Uses visibility API to pause polling when tab is hidden
-    const interval = setInterval(() => {
-      if (document.hidden) return // Don't poll when tab is not visible
-      if (jobsRef.current.some(j => j.status === "running" || j.status === "pending")) {
-        fetchJobs()
-      }
-    }, 5000)
-
-    return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load jobs") : ""
 
   const handleRefresh = () => {
-    setIsLoading(true)
-    fetchJobs()
+    refetch()
   }
 
   const getStatusIcon = (status: Job["status"]) => {

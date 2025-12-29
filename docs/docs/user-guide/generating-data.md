@@ -6,11 +6,12 @@ sidebar_position: 3
 slug: /user-guide/generating-data
 tags: [user-guide, generating]
 ---
+
 # Generating Synthetic Data
 
 Learn how to generate high-quality synthetic data using various synthesis methods available in Synthetic Data Studio.
 
-##  Synthesis Methods Overview
+## Synthesis Methods Overview
 
 ### Available Methods
 
@@ -48,7 +49,7 @@ Learn how to generate high-quality synthetic data using various synthesis method
 - Data contains sensitive information
 - Regulatory compliance is needed
 
-##  Basic Synthesis Workflow
+## Basic Synthesis Workflow
 
 ### Step 1: Prepare Your Dataset
 
@@ -121,7 +122,7 @@ curl http://localhost:8000/generators/{generator_id}
 curl -O http://localhost:8000/datasets/{output_dataset_id}/download
 ```
 
-##  Differential Privacy Synthesis
+## Differential Privacy Synthesis
 
 ### DP-CTGAN Generation
 
@@ -203,7 +204,7 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 curl "http://localhost:8000/generators/dp/recommended-config?dataset_id={id}&desired_quality=balanced"
 ```
 
-##  Advanced Synthesis Options
+## Advanced Synthesis Options
 
 ### Conditional Generation
 
@@ -257,7 +258,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
   }'
 ```
 
-##  Quality Optimization
+## Quality Optimization
 
 ### Parameter Tuning Guide
 
@@ -314,7 +315,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
   }'
 ```
 
-##  Background Processing
+## Background Processing
 
 ### Asynchronous Generation
 
@@ -340,7 +341,7 @@ curl http://localhost:8000/jobs/
 curl http://localhost:8000/jobs/{job_id}
 ```
 
-##  Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -395,7 +396,7 @@ Solution: Increase epsilon or reduce epochs/batch_size
 - Use TVAE over CTGAN
 - Clear cache between runs
 
-##  Best Practices
+## Best Practices
 
 ### Data Preparation
 
@@ -425,7 +426,7 @@ Solution: Increase epsilon or reduce epochs/batch_size
 3. **Version Control**: Track parameter sets and results
 4. **Audit Trail**: Maintain records for compliance
 
-##  Exporting Reports
+## Exporting Reports
 
 ### Export to S3
 
@@ -440,6 +441,7 @@ curl -X POST "http://localhost:8000/llm/evaluations/{evaluation_id}/export-docx?
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Report exported successfully",
@@ -466,13 +468,13 @@ curl http://localhost:8000/exports/{export_id}/download
 
 ### Export Types
 
-| Type | Format | Use Case |
-|------|--------|----------|
+| Type                  | Format   | Use Case                         |
+| --------------------- | -------- | -------------------------------- |
 | **evaluation_report** | PDF/DOCX | Quality assessment documentation |
-| **compliance_report** | PDF/DOCX | Regulatory audit trail |
-| **model_card** | PDF/DOCX | Model documentation |
+| **compliance_report** | PDF/DOCX | Regulatory audit trail           |
+| **model_card**        | PDF/DOCX | Model documentation              |
 
-##  Next Steps
+## Next Steps
 
 After generating synthetic data:
 
@@ -483,5 +485,3 @@ After generating synthetic data:
 ---
 
 **Need help choosing the right method?** Check our [Method Selection Guide](overview.md#synthesis-methods-overview) or create an issue on GitHub.
-
-

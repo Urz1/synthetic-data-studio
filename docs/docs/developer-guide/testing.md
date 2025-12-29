@@ -19,13 +19,13 @@ Synthetic Data Studio uses a multi-layered testing approach to ensure code quali
 
 ```
 +-------------+  Few (10-20%)
-¦   E2E Tests  ¦  End-to-end user workflows
-+-------------¦
-¦Integration  ¦  Component interactions (20-30%)
-¦   Tests     ¦  API endpoints, database operations
-+-------------¦
-¦ Unit Tests  ¦  Individual functions/classes (50-70%)
-¦             ¦  Business logic, utilities
+|   E2E Tests  |  End-to-end user workflows
++-------------|
+|Integration  |  Component interactions (20-30%)
+|   Tests     |  API endpoints, database operations
++-------------|
+| Unit Tests  |  Individual functions/classes (50-70%)
+|             |  Business logic, utilities
 +-------------+
 ```
 
@@ -89,17 +89,17 @@ pytest tests/security/
 tests/
 +-- conftest.py              # Shared test fixtures and configuration
 +-- unit/                    # Unit tests
-¦   +-- test_auth.py         # Authentication logic tests
-¦   +-- test_generators.py   # Generator service tests
-¦   +-- test_evaluations.py  # Evaluation logic tests
-¦   +-- test_utils.py        # Utility function tests
+|   +-- test_auth.py         # Authentication logic tests
+|   +-- test_generators.py   # Generator service tests
+|   +-- test_evaluations.py  # Evaluation logic tests
+|   +-- test_utils.py        # Utility function tests
 +-- integration/             # Integration tests
-¦   +-- test_api.py          # API endpoint tests
-¦   +-- test_database.py     # Database operation tests
-¦   +-- test_services.py     # Service integration tests
+|   +-- test_api.py          # API endpoint tests
+|   +-- test_database.py     # Database operation tests
+|   +-- test_services.py     # Service integration tests
 +-- e2e/                     # End-to-end tests
-¦   +-- test_workflows.py    # Complete user workflows
-¦   +-- test_data_pipeline.py # Data processing pipelines
+|   +-- test_workflows.py    # Complete user workflows
+|   +-- test_data_pipeline.py # Data processing pipelines
 +-- security/                # Security-specific tests
     +-- test_auth_security.py # Authentication security
     +-- test_dp_security.py  # Differential privacy validation
@@ -124,7 +124,7 @@ def test_complete_synthesis_workflow():
 def test_user_registration_to_generation():
 ```
 
-## ? Testing Tools & Frameworks
+## Testing Tools & Frameworks
 
 ### Core Testing Framework
 
@@ -217,7 +217,7 @@ async def auth_token(client, test_user):
     return response.json()["access_token"]
 ```
 
-## ? Writing Tests
+## Writing Tests
 
 ### Unit Test Example
 
@@ -490,7 +490,7 @@ isort --check-only --diff app/ tests/
 mypy app/ --ignore-missing-imports
 ```
 
-## ? Continuous Integration
+## Continuous Integration
 
 ### GitHub Actions Example
 

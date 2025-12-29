@@ -11,7 +11,7 @@ tags: [developer, architecture]
 
 This document provides a comprehensive overview of Synthetic Data Studio's system architecture, design principles, and technical implementation.
 
-## ? High-Level Architecture
+## High-Level Architecture
 
 ### System Overview
 
@@ -19,27 +19,27 @@ Synthetic Data Studio is built as a modern, scalable web application using FastA
 
 ```
 +-------------------------------------------------------------+
-¦                    SYNTHETIC DATA STUDIO                    ¦
-+-------------------------------------------------------------¦
-¦  +-------------+ +-------------+ +-------------+ +---------+ ¦
-¦  ¦   Web API   ¦ ¦ Background  ¦ ¦   AI/LLM   ¦ ¦ Storage ¦ ¦
-¦  ¦  (FastAPI)  ¦ ¦  Workers    ¦ ¦  Services  ¦ ¦ Service ¦ ¦
-¦  ¦             ¦ ¦ (Celery)    ¦ ¦ (Gemini)   ¦ ¦ (S3)    ¦ ¦
-¦  +-------------+ +-------------+ +-------------+ +---------+ ¦
-+-------------------------------------------------------------¦
-¦  +-------------+ +-------------+ +-------------+ +---------+ ¦
-¦  ¦  Business   ¦ ¦   Data      ¦ ¦ Repository ¦ ¦  Core   ¦ ¦
-¦  ¦  Services   ¦ ¦   Models    ¦ ¦   Layer    ¦ ¦ Services¦ ¦
-¦  ¦             ¦ ¦ (SQLModel)  ¦ ¦ (CRUD)     ¦ ¦         ¦ ¦
-¦  +-------------+ +-------------+ +-------------+ +---------+ ¦
-+-------------------------------------------------------------¦
-¦  +---------------------------------------------------------+ ¦
-¦  ¦                 DATABASE LAYER                          ¦ ¦
-¦  ¦  +-------------+ +-------------+ +-------------+        ¦ ¦
-¦  ¦  ¦ PostgreSQL  ¦ ¦  SQLite    ¦ ¦   Redis     ¦        ¦ ¦
-¦  ¦  ¦ (Primary)   ¦ ¦ (Dev/Test) ¦ ¦ (Caching)   ¦        ¦ ¦
-¦  ¦  +-------------+ +-------------+ +-------------+        ¦ ¦
-¦  +---------------------------------------------------------+ ¦
+|                    SYNTHETIC DATA STUDIO                    |
++-------------------------------------------------------------|
+|  +-------------+ +-------------+ +-------------+ +---------+ |
+|  |   Web API   | | Background  | |   AI/LLM   | | Storage | |
+|  |  (FastAPI)  | |  Workers    | |  Services  | | Service | |
+|  |             | | (Celery)    | | (Gemini)   | | (S3)    | |
+|  +-------------+ +-------------+ +-------------+ +---------+ |
++-------------------------------------------------------------|
+|  +-------------+ +-------------+ +-------------+ +---------+ |
+|  |  Business   | |   Data      | | Repository | |  Core   | |
+|  |  Services   | |   Models    | |   Layer    | | Services| |
+|  |             | | (SQLModel)  | | (CRUD)     | |         | |
+|  +-------------+ +-------------+ +-------------+ +---------+ |
++-------------------------------------------------------------|
+|  +---------------------------------------------------------+ |
+|  |                 DATABASE LAYER                          | |
+|  |  +-------------+ +-------------+ +-------------+        | |
+|  |  | PostgreSQL  | |  SQLite    | |   Redis     |        | |
+|  |  | (Primary)   | | (Dev/Test) | | (Caching)   |        | |
+|  |  +-------------+ +-------------+ +-------------+        | |
+|  +---------------------------------------------------------+ |
 +-------------------------------------------------------------+
 ```
 
@@ -92,18 +92,18 @@ app/
 +-- main.py                # FastAPI application entry point
 +-- api.py                 # API router aggregation
 +-- core/                  # Core functionality
-¦   +-- config.py          # Configuration management
-¦   +-- dependencies.py    # Dependency injection
-¦   +-- exceptions.py      # Custom exceptions
-¦   +-- security.py        # Authentication & authorization
-¦   +-- utils.py           # Utility functions
-¦   +-- validators.py      # Input validation
+|   +-- config.py          # Configuration management
+|   +-- dependencies.py    # Dependency injection
+|   +-- exceptions.py      # Custom exceptions
+|   +-- security.py        # Authentication & authorization
+|   +-- utils.py           # Utility functions
+|   +-- validators.py      # Input validation
 +-- auth/                  # Authentication module
-¦   +-- models.py          # User models
-¦   +-- repositories.py    # User data access
-¦   +-- routes.py          # Auth endpoints
-¦   +-- schemas.py         # Auth request/response models
-¦   +-- services.py        # Auth business logic
+|   +-- models.py          # User models
+|   +-- repositories.py    # User data access
+|   +-- routes.py          # Auth endpoints
+|   +-- schemas.py         # Auth request/response models
+|   +-- services.py        # Auth business logic
 +-- datasets/              # Dataset management
 +-- generators/            # Synthesis orchestration
 +-- evaluations/           # Quality assessment
@@ -113,17 +113,17 @@ app/
 +-- jobs/                  # Background job processing
 +-- projects/              # Project management
 +-- services/              # Business logic services
-¦   +-- synthesis/         # ML synthesis implementations
-¦   +-- privacy/           # Privacy validation & reporting
-¦   +-- llm/               # AI service integrations
+|   +-- synthesis/         # ML synthesis implementations
+|   +-- privacy/           # Privacy validation & reporting
+|   +-- llm/               # AI service integrations
 +-- database/              # Database layer
-¦   +-- database.py        # Connection management
-¦   +-- models/            # Base models
-¦   +-- migrations/        # Schema migrations
+|   +-- database.py        # Connection management
+|   +-- models/            # Base models
+|   +-- migrations/        # Schema migrations
 +-- storage/               # File storage abstraction
 ```
 
-## ? Core Components
+## Core Components
 
 ### FastAPI Application Layer
 
@@ -430,7 +430,7 @@ Response ? JSON Serialization ? Pydantic Models ? Business Logic ? Data Access
 API Request ? Job Submission ? Queue (Redis) ? Worker (Celery) ? Task Execution ? Result Storage ? Notification
 ```
 
-## ? Configuration Management
+## Configuration Management
 
 ### Environment-Based Config
 
@@ -520,13 +520,13 @@ def get_current_user(
 
 ```
 +-------------+  Few (Integration/E2E)
-¦   E2E Tests  ¦
-+-------------¦
-¦Integration  ¦  Some
-¦   Tests     ¦
-+-------------¦
-¦ Unit Tests  ¦  Many
-¦             ¦
+|   E2E Tests  |
++-------------|
+|Integration  |  Some
+|   Tests     |
++-------------|
+| Unit Tests  |  Many
+|             |
 +-------------+
 ```
 
@@ -535,14 +535,14 @@ def get_current_user(
 ```
 tests/
 +-- unit/              # Unit tests
-¦   +-- test_services/ # Service layer tests
-¦   +-- test_models/   # Model tests
-¦   +-- test_utils/    # Utility tests
+|   +-- test_services/ # Service layer tests
+|   +-- test_models/   # Model tests
+|   +-- test_utils/    # Utility tests
 +-- integration/       # Integration tests
-¦   +-- test_api/      # API endpoint tests
-¦   +-- test_db/       # Database integration
+|   +-- test_api/      # API endpoint tests
+|   +-- test_db/       # Database integration
 +-- e2e/               # End-to-end tests
-¦   +-- test_workflows/# Complete workflow tests
+|   +-- test_workflows/# Complete workflow tests
 +-- conftest.py        # Test configuration
 ```
 
@@ -580,14 +580,14 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ```
 +-----------------+    +-----------------+    +-----------------+
-¦   Load Balancer ¦    ¦   API Gateway   ¦    ¦   Application   ¦
-¦    (Nginx)      ¦----¦   (Kong/Traefik)¦----¦    (FastAPI)    ¦
+|   Load Balancer |    |   API Gateway   |    |   Application   |
+|    (Nginx)      |----|   (Kong/Traefik)|----|    (FastAPI)    |
 +-----------------+    +-----------------+    +-----------------+
-         ¦                        ¦                        ¦
-         ¦                        ¦                        ¦
+         |                        |                        |
+         |                        |                        |
 +-----------------+    +-----------------+    +-----------------+
-¦   Redis Cache   ¦    ¦   PostgreSQL    ¦    ¦   Background    ¦
-¦                 ¦    ¦   Database      ¦    ¦   Workers       ¦
+|   Redis Cache   |    |   PostgreSQL    |    |   Background    |
+|                 |    |   Database      |    |   Workers       |
 +-----------------+    +-----------------+    +-----------------+
 ```
 

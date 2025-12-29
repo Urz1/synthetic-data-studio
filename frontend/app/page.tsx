@@ -28,6 +28,12 @@ import {
   Sun,
   Moon,
 } from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useState, useEffect } from "react"
 import { AuthIntentLink } from "@/components/auth/auth-intent-link"
@@ -129,27 +135,71 @@ export default function LandingPage() {
     },
   ]
 
-  const flows = [
+  // Two distinct workflows
+  const dataFlow = [
     {
       label: "01",
-      title: "Upload & Profile",
-      detail: "Upload CSV/JSON. Schema detected automatically, PII flagged, data profiled.",
+      title: "Upload Data",
+      detail: "Upload CSV/JSON. Schema auto-detected, PII flagged.",
     },
     {
       label: "02",
-      title: "Generate Safely",
-      detail: "Choose your generator and privacy settings. DP budgets enforced with audit logging.",
+      title: "Train Generator",
+      detail: "Choose CTGAN, TVAE, or Copula. Configure privacy settings.",
     },
     {
       label: "03",
-      title: "Evaluate & Export",
-      detail: "Quality reports, privacy metrics, and compliance pack PDFs ready for download.",
+      title: "Generate & Evaluate",
+      detail: "Create synthetic data. View quality metrics and export.",
+    },
+  ]
+
+  const schemaFlow = [
+    {
+      label: "01",
+      title: "Define Schema",
+      detail: "Specify column names and data types. No upload needed.",
+    },
+    {
+      label: "02",
+      title: "Configure",
+      detail: "Set row count, add constraints, choose realistic patterns.",
+    },
+    {
+      label: "03",
+      title: "Instant Data",
+      detail: "Generate up to 1M rows in seconds. Download immediately.",
+    },
+  ]
+
+  const [activeFlow, setActiveFlow] = useState<"data" | "schema">("data")
+
+  const faqItems = [
+    {
+      question: "What is synthetic data?",
+      answer: "Synthetic data is artificially generated data that mimics the statistical properties of real data without containing actual records. It's useful for testing, development, and sharing when original data is sensitive."
+    },
+    {
+      question: "How does differential privacy work?",
+      answer: "Differential privacy adds calibrated noise during training to provide mathematical guarantees that individual records cannot be reverse-engineered from the synthetic output. You can configure the privacy budget (epsilon) based on your risk tolerance."
+    },
+    {
+      question: "What generators are available?",
+      answer: "Synth Studio offers CTGAN, TVAE, and Gaussian Copula for ML-based generation from existing data. For quick prototyping without training, use Schema-Based generation to define columns and get instant realistic data."
+    },
+    {
+      question: "Can I self-host Synth Studio?",
+      answer: "Yes. Synth Studio is fully open source under the MIT license. You can deploy it on your own infrastructure for complete data sovereignty."
+    },
+    {
+      question: "Is there an API for automation?",
+      answer: "Yes. All functionality is available via REST API, including dataset upload, generator training, synthetic data generation, and evaluation. See our API documentation for details."
     },
   ]
 
   return (
     <div
-      className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 ${jakarta.variable}`}
+      className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 textured-bg ${jakarta.variable}`}
     >
       {/* Navbar */}
       <nav
@@ -175,7 +225,10 @@ export default function LandingPage() {
             <Link href="#security" className="text-muted-foreground hover:text-foreground transition-colors">
               Security
             </Link>
-            <Link href="https://docs.synthdata.studio" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">
+              FAQ
+            </Link>
+            <Link href="https://docs.synthdata.studio" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
               Docs
             </Link>
             <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Toggle theme">
@@ -214,7 +267,10 @@ export default function LandingPage() {
             <Link href="#security" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
               Security
             </Link>
-            <Link href="https://docs.synthdata.studio" target="_blank" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="#faq" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
+              FAQ
+            </Link>
+            <Link href="https://docs.synthdata.studio" target="_blank" rel="noopener noreferrer" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
               Docs
             </Link>
             <AuthIntentLink href="/login" eventLocation="mobile_nav" mode="login" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
@@ -229,6 +285,31 @@ export default function LandingPage() {
 
       {/* Animated Hero Story */}
       <HeroStory theme={isDark ? "dark" : "light"} />
+
+      {/* Stats Banner - Factual Only */}
+      <section className="py-6 border-b border-border">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 text-center">
+            <a 
+              href="https://github.com/Urz1/synthetic-data-studio" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Github className="h-5 w-5" />
+              <span className="text-sm font-medium">Star on GitHub</span>
+            </a>
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              <span className="text-sm"><span className="font-semibold">Up to 1M Rows</span> — Per generation</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              <span className="text-sm"><span className="font-semibold">MIT License</span> — 100% Open Source</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* What it does - honest section */}
       <section className="py-12 border-y border-border bg-muted/30">
@@ -283,13 +364,52 @@ export default function LandingPage() {
       {/* Flow */}
       <section id="how-it-works" className="py-20 md:py-24 border-y border-border bg-muted/20">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <p className="text-sm uppercase tracking-[0.2em] text-primary mb-2">How It Works</p>
-            <h2 className="text-3xl md:text-4xl font-bold">Three Simple Steps</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">Choose Your Path</h2>
+            <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+              Two ways to generate synthetic data — pick what fits your needs
+            </p>
           </div>
 
+          {/* Path Selector Tabs */}
+          <div className="flex justify-center gap-2 mb-8">
+            <button
+              onClick={() => setActiveFlow("data")}
+              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+                activeFlow === "data"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Database className="inline h-4 w-4 mr-2" />
+              From Your Data
+            </button>
+            <button
+              onClick={() => setActiveFlow("schema")}
+              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+                activeFlow === "schema"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Wand2 className="inline h-4 w-4 mr-2" />
+              Schema-Based
+            </button>
+          </div>
+
+          {/* Flow Description */}
+          <div className="text-center mb-6">
+            <p className="text-sm text-muted-foreground">
+              {activeFlow === "data" 
+                ? "Train ML models on your existing data for realistic synthetic output"
+                : "Define columns and types — get instant data without uploads"}
+            </p>
+          </div>
+
+          {/* Steps */}
           <div className="max-w-3xl mx-auto space-y-4">
-            {flows.map((step) => (
+            {(activeFlow === "data" ? dataFlow : schemaFlow).map((step) => (
               <div key={step.label} className="flex gap-4 p-5 rounded-2xl border border-border bg-card">
                 <div className="h-12 w-12 flex items-center justify-center rounded-full bg-primary/10 text-primary font-bold shrink-0">
                   {step.label}
@@ -300,6 +420,16 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Quick CTA */}
+          <div className="text-center mt-8">
+            <Button size="lg" variant="outline" className="rounded-full" asChild>
+              <Link href={activeFlow === "schema" ? "/generators/schema" : "/datasets"}>
+                {activeFlow === "schema" ? "Try Schema Generator" : "Upload Your First Dataset"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -354,6 +484,31 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section id="faq" className="py-20 md:py-24 border-t border-border">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <p className="text-sm uppercase tracking-[0.2em] text-primary mb-2">FAQ</p>
+            <h2 className="text-3xl md:text-4xl font-bold">Common Questions</h2>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="space-y-3">
+              {faqItems.map((item, idx) => (
+                <AccordionItem key={idx} value={`faq-${idx}`} className="border border-border rounded-xl px-6 bg-card">
+                  <AccordionTrigger className="text-left hover:no-underline py-5">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground pb-5">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 md:py-24">
         <div className="container mx-auto px-6">
@@ -391,7 +546,7 @@ export default function LandingPage() {
                 Open source platform for creating privacy-preserving synthetic data. Free to use and self-hostable.
               </p>
               <div className="flex gap-4 text-muted-foreground">
-                <Link href="https://github.com/Urz1/synthetic-data-studio" className="hover:text-foreground" aria-label="GitHub">
+                <Link href="https://github.com/Urz1/synthetic-data-studio" target="_blank" rel="noopener noreferrer" className="hover:text-foreground" aria-label="GitHub">
                   <Github className="h-5 w-5" />
                 </Link>
               </div>
@@ -405,12 +560,12 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="https://docs.synthdata.studio" target="_blank" className="hover:text-foreground">
+                  <Link href="https://docs.synthdata.studio" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
                     Documentation
                   </Link>
                 </li>
                 <li>
-                  <Link href="https://github.com/Urz1/synthetic-data-studio" target="_blank" className="hover:text-foreground">
+                  <Link href="https://github.com/Urz1/synthetic-data-studio" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
                     GitHub
                   </Link>
                 </li>
@@ -420,12 +575,12 @@ export default function LandingPage() {
               <h4 className="font-semibold mb-3">Resources</h4>
               <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>
-                  <Link href="https://docs.synthdata.studio/docs/getting-started/quick-start" target="_blank" className="hover:text-foreground">
+                  <Link href="https://docs.synthdata.studio/docs/getting-started/quick-start" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
                     Quick Start
                   </Link>
                 </li>
                 <li>
-                  <Link href="https://docs.synthdata.studio/docs/developer-guide/api-integration" target="_blank" className="hover:text-foreground">
+                  <Link href="https://docs.synthdata.studio/docs/developer-guide/api-integration" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
                     API Reference
                   </Link>
                 </li>
@@ -435,7 +590,7 @@ export default function LandingPage() {
           <div className="border-t border-border pt-6 text-sm text-muted-foreground flex flex-col md:flex-row justify-between gap-3">
             <span>© 2025 Synth Studio. Open Source under MIT License.</span>
             <div className="flex gap-4">
-              <Link href="https://github.com/Urz1/synthetic-data-studio" target="_blank" className="hover:text-foreground">
+              <Link href="https://github.com/Urz1/synthetic-data-studio" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
                 GitHub
               </Link>
             </div>

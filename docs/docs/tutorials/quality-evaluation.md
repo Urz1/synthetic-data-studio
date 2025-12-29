@@ -6,13 +6,15 @@ sidebar_position: 3
 slug: /tutorials/quality-evaluation
 tags: [tutorials, quality]
 ---
+
 # Quality Evaluation Tutorial
 
 Master the art of evaluating synthetic data quality using comprehensive statistical tests, ML utility assessments, and privacy leakage detection.
 
-##  Tutorial Goals
+## Tutorial Goals
 
 By the end of this tutorial, you will:
+
 - Understand all quality evaluation metrics
 - Run comprehensive quality assessments
 - Interpret evaluation results correctly
@@ -24,33 +26,38 @@ By the end of this tutorial, you will:
 **Difficulty**: Advanced
 **Prerequisites**: Basic and privacy synthesis tutorials completed
 
-##  Quality Evaluation Framework
+## Quality Evaluation Framework
 
 ### Three Dimensions of Quality
 
 Synthetic Data Studio evaluates quality across three critical dimensions:
 
 #### 1. Statistical Similarity
+
 **Question**: How well does the synthetic data match real data distributions?
 
 #### 2. Machine Learning Utility
+
 **Question**: Can you train effective ML models on synthetic data?
 
 #### 3. Privacy Preservation
+
 **Question**: Are there unacceptable privacy leakage risks?
 
 ### Quality Score Interpretation
 
-| Score Range | Quality Level | Description | Action Required |
-|-------------|---------------|-------------|-----------------|
-| 0.9-1.0 | Excellent | Exceptional quality | Production ready |
-| 0.8-0.9 | Good | High quality | Most applications |
-| 0.7-0.8 | Acceptable | Reasonable quality | Development/testing |
-| 0.6-0.7 | Marginal | Limited quality | Needs improvement |
-| < 0.6 | Poor | Significant issues | Not recommended |
+| Score Range | Quality Level | Description         | Action Required     |
+| ----------- | ------------- | ------------------- | ------------------- |
+| 0.9-1.0     | Excellent     | Exceptional quality | Production ready    |
+| 0.8-0.9     | Good          | High quality        | Most applications   |
+| 0.7-0.8     | Acceptable    | Reasonable quality  | Development/testing |
+| 0.6-0.7     | Marginal      | Limited quality     | Needs improvement   |
+| < 0.6       | Poor          | Significant issues  | Not recommended     |
 
-##  Running Comprehensive Evaluations
+## Running Comprehensive Evaluations
+
 # Check evaluation status
+
 curl https://api.synthdata.studio/evaluations/eval-comprehensive-123
 
 First, ensure you have both original and synthetic datasets:
@@ -87,6 +94,7 @@ curl -X POST "http://localhost:8000/evaluations/run" \
 ```
 
 **Expected Response:**
+
 ```json
 {
   "evaluation_id": "eval-comprehensive-123",
@@ -109,7 +117,7 @@ curl http://localhost:8000/evaluations/eval-comprehensive-123
 
 ### Step 4: Review Complete Results
 
-```bash
+````bash
 # Get full evaluation report
 # Get full evaluation report
 curl https://api.synthdata.studio/evaluations/eval-comprehensive-123
@@ -125,7 +133,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
     "num_rows": 1000,
     "epochs": 50
   }'
-```
+````
 
 ```json
 {
@@ -149,8 +157,9 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
 ```
 
 **Interpretation Guide**:
--  **p > 0.05**: Distributions are similar (good)
--  **p = 0.01-0.05**: Marginally different
+
+- **p > 0.05**: Distributions are similar (good)
+- **p = 0.01-0.05**: Marginally different
 - ❌ **p < 0.01**: Distributions are different (needs improvement)
 
 ### Chi-Square Test for Categorical Data
@@ -201,18 +210,20 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
 ```
 
 **Distance Scale**:
--  **< 0.05**: Excellent match
--  **0.05-0.10**: Good match
--  **0.10-0.20**: Acceptable
+
+- **< 0.05**: Excellent match
+- **0.05-0.10**: Good match
+- **0.10-0.20**: Acceptable
 - ❌ **> 0.20**: Poor match
 
-##  Machine Learning Utility Assessment
+## Machine Learning Utility Assessment
 
 ### Classification Performance
 
 **Purpose**: Tests if synthetic data can train good classifiers
 
 **Methodology**:
+
 1. Train classifier on synthetic data
 2. Test on real data holdout set
 3. Compare to baseline (real data training)
@@ -242,7 +253,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
   "ml_utility": {
     "regression": {
       "r_squared": 0.82,
-      "mean_absolute_error": 1250.50,
+      "mean_absolute_error": 1250.5,
       "root_mean_squared_error": 1850.75,
       "baseline_r_squared": 0.85,
       "utility_score": 0.96,
@@ -271,7 +282,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
 }
 ```
 
-##  Privacy Leakage Detection
+## Privacy Leakage Detection
 
 ### Membership Inference Attack
 
@@ -282,7 +293,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
   "privacy_preservation": {
     "membership_inference": {
       "attack_success_rate": 0.52,
-      "baseline_accuracy": 0.50,
+      "baseline_accuracy": 0.5,
       "privacy_score": 0.96,
       "risk_level": "low",
       "interpretation": "No significant membership inference risk detected"
@@ -292,8 +303,9 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
 ```
 
 **Risk Assessment**:
--  **< 0.55**: Low risk (good privacy)
--  **0.55-0.60**: Moderate risk
+
+- **< 0.55**: Low risk (good privacy)
+- **0.55-0.60**: Moderate risk
 - ❌ **> 0.60**: High risk (privacy concerns)
 
 ### Attribute Inference Attack
@@ -306,7 +318,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
     "attribute_inference": {
       "target_attribute": "salary",
       "attack_accuracy": 0.15,
-      "baseline_accuracy": 0.10,
+      "baseline_accuracy": 0.1,
       "privacy_score": 0.67,
       "risk_level": "moderate",
       "recommendations": [
@@ -318,7 +330,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
 }
 ```
 
-##  Complete Evaluation Report
+## Complete Evaluation Report
 
 ### Overall Assessment Structure
 
@@ -370,7 +382,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
 }
 ```
 
-##  Comparative Analysis
+## Comparative Analysis
 
 ### Compare Multiple Generators
 
@@ -447,13 +459,14 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
 }
 ```
 
-##  Improving Quality Scores
+## Improving Quality Scores
 
 ### Statistical Similarity Issues
 
 **Problem**: Poor distribution matching (KS test failures)
 
 **Solutions**:
+
 ```json
 {
   "increase_epochs": true,
@@ -467,6 +480,7 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
 **Problem**: Categorical data imbalance
 
 **Solutions**:
+
 ```json
 {
   "use_mode_specific_loss": true,
@@ -481,6 +495,7 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
 **Problem**: Poor predictive performance
 
 **Solutions**:
+
 ```json
 {
   "increase_training_data": true,
@@ -496,6 +511,7 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
 **Problem**: Membership inference vulnerability
 
 **Solutions**:
+
 ```json
 {
   "use_differential_privacy": true,
@@ -505,7 +521,7 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
 }
 ```
 
-##  Custom Evaluation Configuration
+## Custom Evaluation Configuration
 
 ### Selective Testing
 
@@ -537,8 +553,8 @@ Customize machine learning evaluation parameters:
     "algorithms": ["random_forest", "xgboost", "logistic_regression"],
     "metrics": ["accuracy", "precision", "recall", "f1", "auc", "r_squared"],
     "hyperparameters": {
-      "random_forest": {"n_estimators": 100, "max_depth": 10},
-      "xgboost": {"n_estimators": 100, "learning_rate": 0.1}
+      "random_forest": { "n_estimators": 100, "max_depth": 10 },
+      "xgboost": { "n_estimators": 100, "learning_rate": 0.1 }
     }
   }
 }
@@ -567,7 +583,7 @@ Configure privacy evaluation parameters:
 }
 ```
 
-##  AI-Powered Insights
+## AI-Powered Insights
 
 ### Natural Language Explanations
 
@@ -579,6 +595,7 @@ curl -X POST "http://localhost:8000/evaluations/{evaluation_id}/explain" \
 ```
 
 **AI Analysis Example**:
+
 ```json
 {
   "evaluation_id": "eval-123",
@@ -618,7 +635,7 @@ curl -X POST "http://localhost:8000/llm/suggest-improvements/{evaluation_id}" \
   -H "Content-Type: application/json"
 ```
 
-##  Quality Monitoring Dashboard
+## Quality Monitoring Dashboard
 
 ### Track Quality Over Time
 
@@ -663,7 +680,7 @@ curl -X POST "http://localhost:8000/evaluations/compare" \
 }
 ```
 
-##  Quality Certification
+## Quality Certification
 
 ### Generate Quality Reports
 
@@ -705,29 +722,33 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/model-card" \
 }
 ```
 
-## � Troubleshooting Quality Issues
+## Troubleshooting Quality Issues
 
 ### Common Quality Problems
 
 **Inconsistent Statistical Tests**
+
 ```
 Cause: Small sample sizes, outliers, non-normal distributions
 Solution: Increase evaluation sample size, handle outliers, use appropriate tests
 ```
 
 **Poor ML Utility**
+
 ```
 Cause: Insufficient training data, wrong algorithm, feature loss
 Solution: Increase synthetic dataset size, choose better algorithm, preserve correlations
 ```
 
 **Privacy Test Failures**
+
 ```
 Cause: Weak privacy parameters, membership inference risks
 Solution: Use DP methods, adjust epsilon, implement better privacy techniques
 ```
 
 **Slow Evaluations**
+
 ```
 Cause: Large datasets, complex ML models, full privacy tests
 Solution: Use quick evaluations for iteration, sample data for testing, selective test runs
@@ -736,32 +757,35 @@ Solution: Use quick evaluations for iteration, sample data for testing, selectiv
 ### Performance Optimization
 
 **Speed Up Evaluations**:
+
 - Use quick statistical evaluation for iteration
 - Sample smaller datasets for testing
 - Run selective tests (statistical only)
 - Cache evaluation results
 
 **Improve Accuracy**:
+
 - Use larger evaluation datasets
 - Run multiple cross-validation folds
 - Include diverse test scenarios
 - Validate against domain expertise
 
-## � Tutorial Complete!
+## Tutorial Complete!
 
 ### What You Mastered
 
- **Comprehensive quality evaluation** across all dimensions
- **Statistical similarity assessment** with multiple test methods
- **Machine learning utility testing** with cross-validation
- **Privacy leakage detection** and risk assessment
- **Comparative analysis** of different synthesis methods
- **Quality improvement strategies** and parameter optimization
- **Professional reporting** and certification generation
+**Comprehensive quality evaluation** across all dimensions
+**Statistical similarity assessment** with multiple test methods
+**Machine learning utility testing** with cross-validation
+**Privacy leakage detection** and risk assessment
+**Comparative analysis** of different synthesis methods
+**Quality improvement strategies** and parameter optimization
+**Professional reporting** and certification generation
 
 ### Your Quality Assessment Toolkit
 
 You now have the expertise to:
+
 - **Evaluate any synthetic dataset** comprehensively
 - **Identify quality issues** and their root causes
 - **Optimize synthesis parameters** for better results
@@ -769,13 +793,13 @@ You now have the expertise to:
 - **Generate professional reports** for stakeholders
 - **Make data-driven decisions** about synthetic data usage
 
-##  Advanced Applications
+## Advanced Applications
 
 ### Quality Assurance Pipelines
 
 Implement automated quality checks in CI/CD:
 
-```yaml
+````yaml
 # .github/workflows/quality-check.yml
 name: Quality Assurance
 
@@ -784,7 +808,7 @@ on: [push, pull_request]
 ```bash
 # Get full evaluation report
 curl https://api.synthdata.studio/evaluations/eval-comprehensive-123
-```
+````
 
 ```bash
 curl -X POST "https://api.synthdata.studio/datasets/upload" \
@@ -799,6 +823,7 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
     "epochs": 50
   }'
 ```
+
       - name: Run quality evaluation
         run: python scripts/quality_evaluation.py
 
@@ -808,7 +833,8 @@ curl -X POST "https://api.synthdata.studio/generators/dataset/{dataset_id}/gener
             echo "Quality score below threshold"
             exit 1
           fi
-```
+
+````
 
 ### Multi-Stage Quality Gates
 
@@ -834,9 +860,9 @@ Implement quality gates for different environments:
     }
   }
 }
-```
+````
 
-##  Next Steps
+## Next Steps
 
 After mastering quality evaluation:
 
@@ -853,5 +879,4 @@ After mastering quality evaluation:
 
 ---
 
-**Congratulations!**  You are now a synthetic data quality evaluation expert. Your datasets are ready for rigorous quality assurance and production deployment!
-
+**Congratulations!** You are now a synthetic data quality evaluation expert. Your datasets are ready for rigorous quality assurance and production deployment!

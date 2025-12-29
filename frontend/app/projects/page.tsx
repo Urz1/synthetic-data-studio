@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useMemo } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
@@ -15,53 +15,37 @@ import { useDeleteWithProgress } from "@/hooks/use-delete-with-progress"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { useProjects } from "@/lib/hooks"
 import { api } from "@/lib/api"
 import type { Project } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 
 export default function ProjectsPage() {
   const { user } = useAuth()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+
+  // TanStack Query for data fetching with caching
+  const { data: projectsData, isLoading: loading, error: queryError, refetch } = useProjects()
+  const projects = useMemo(() => {
+    if (!projectsData) return []
+    return Array.isArray(projectsData) ? projectsData : []
+  }, [projectsData])
+  
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load projects") : null
 
   // Delete hook with progress tracking
   const { isDeleting, isGhostId, startDelete } = useDeleteWithProgress({
     entityType: "Project",
-    onSuccess: (id) => {
-      // Remove deleted project from state immediately
-      setProjects(prev => prev.filter(p => p.id !== id))
+    onSuccess: () => {
+      // TanStack Query will refetch automatically
+      refetch()
       setProjectToDelete(null)
     },
     onError: () => {
       setProjectToDelete(null)
     },
   })
-
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  async function loadProjects() {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await api.listProjects()
-      setProjects(data)
-    } catch (err) {
-      // Distinguish network errors from API errors
-      const message = err instanceof Error ? err.message : "Failed to load projects"
-      if (message === "Failed to fetch" || message.includes("NetworkError")) {
-        setError("Unable to connect to server. Please check your connection and try again.")
-      } else {
-        setError(message)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const filteredProjects = projects.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -99,7 +83,7 @@ export default function ProjectsPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={loadProjects} className="ml-4">
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="ml-4">
               Retry
             </Button>
           </AlertDescription>

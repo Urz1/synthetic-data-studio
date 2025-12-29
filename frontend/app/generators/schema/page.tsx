@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { ProjectSelector } from "@/components/projects/project-selector"
 import type { Project } from "@/lib/types"
 
 interface SchemaColumn {
@@ -424,17 +425,17 @@ export default function SchemaGeneratorPage() {
                  {/* Responsive: stack on mobile, grid on sm+ */}
                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                        <Label htmlFor="project-select">Target Project</Label>
-                        <Select value={selectedProjectId} onValueChange={setSelectedProjectId} disabled={isLoadingProjects}>
-                            <SelectTrigger id="project-select">
-                                <SelectValue placeholder="Select project" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {projects.map(p => (
-                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <ProjectSelector
+                          projects={projects}
+                          selectedProjectId={selectedProjectId}
+                          onProjectChange={setSelectedProjectId}
+                          onProjectCreated={(newProject) => {
+                            setProjects(prev => [...prev, newProject])
+                          }}
+                          isLoading={isLoadingProjects}
+                          label="Target Project"
+                          placeholder="Select project"
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="dataset-name">Dataset Name</Label>
