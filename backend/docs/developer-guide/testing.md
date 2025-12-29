@@ -463,13 +463,13 @@ open htmlcov/index.html
 
 ### Coverage Goals by Module
 
-| Module | Target Coverage | Rationale |
-|--------|----------------|-----------|
-| Core (config, utils) | 90% | Critical infrastructure |
-| Services | 85% | Business logic |
-| Routes | 80% | API endpoints |
-| Models | 75% | Data structures |
-| Tests | N/A | Test code itself |
+| Module               | Target Coverage | Rationale               |
+| -------------------- | --------------- | ----------------------- |
+| Core (config, utils) | 90%             | Critical infrastructure |
+| Services             | 85%             | Business logic          |
+| Routes               | 80%             | API endpoints           |
+| Models               | 75%             | Data structures         |
+| Tests                | N/A             | Test code itself        |
 
 ### Code Quality Metrics
 
@@ -499,25 +499,25 @@ jobs:
         python-version: [3.9, 3.10, 3.11]
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-    - name: Run tests
-      run: pytest --cov=app --cov-report=xml
+      - name: Run tests
+        run: pytest --cov=app --cov-report=xml
 
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
 ```
 
 ### Pre-commit Hooks
@@ -611,6 +611,7 @@ def test_database_operation(db_session):
 ### Common Issues
 
 **Test Isolation Problems**
+
 ```python
 # Problem: Tests affect each other through shared state
 # Solution: Use unique test data and proper cleanup
@@ -627,6 +628,7 @@ def test_create_another_user(db_session):  # This might fail if previous test's 
 ```
 
 **Async Test Issues**
+
 ```python
 # Problem: Forgetting await
 async def test_async_function():
@@ -640,6 +642,7 @@ async def test_async_endpoint(client):
 ```
 
 **Fixture Scoping Issues**
+
 ```python
 # Problem: Using session-scoped fixtures for unit tests
 @pytest.fixture(scope="session")  # Too broad scope
@@ -744,4 +747,4 @@ def test_complex_business_logic():
 
 ---
 
-**Ready to contribute?** Check our [Contributing Guide](../CONTRIBUTING.md) for testing guidelines and run `pytest` to ensure your changes don't break existing functionality.
+**Ready to contribute?** Check our [Contributing Guide](../../CONTRIBUTING.md) for testing guidelines and run `pytest` to ensure your changes don't break existing functionality.

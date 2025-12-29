@@ -29,6 +29,7 @@ curl -X POST "http://localhost:8000/auth/login" \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -48,10 +49,12 @@ curl -X GET "http://localhost:8000/datasets/" \
 ### Token Management
 
 #### Token Expiration
+
 - Access tokens expire in 30 minutes by default
 - Implement automatic token refresh for long-running integrations
 
 #### Refresh Tokens (Optional)
+
 ```bash
 # Use refresh token to get new access token
 curl -X POST "http://localhost:8000/auth/refresh" \
@@ -81,11 +84,13 @@ curl -X POST "http://localhost:8000/auth/refresh" \
 ### Python Client
 
 #### Installation
+
 ```bash
 pip install requests pydantic
 ```
 
 #### Basic Usage
+
 ```python
 import requests
 from typing import Optional, Dict, Any
@@ -158,74 +163,78 @@ print(f"Generation started: {result}")
 ### JavaScript/Node.js Client
 
 #### Installation
+
 ```bash
 npm install axios
 ```
 
 #### Basic Usage
+
 ```javascript
-const axios = require('axios');
+const axios = require("axios");
 
 class SynthStudioClient {
-    constructor(baseURL = 'http://localhost:8000') {
-        this.client = axios.create({ baseURL });
-        this.token = null;
-    }
+  constructor(baseURL = "http://localhost:8000") {
+    this.client = axios.create({ baseURL });
+    this.token = null;
+  }
 
-    async login(email, password) {
-        const response = await this.client.post('/auth/login', {
-            email,
-            password
-        });
-        this.token = response.data.access_token;
-        this.client.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
-        return response.data;
-    }
+  async login(email, password) {
+    const response = await this.client.post("/auth/login", {
+      email,
+      password,
+    });
+    this.token = response.data.access_token;
+    this.client.defaults.headers.common[
+      "Authorization"
+    ] = `Bearer ${this.token}`;
+    return response.data;
+  }
 
-    async uploadDataset(filePath) {
-        const FormData = require('form-data');
-        const fs = require('fs');
+  async uploadDataset(filePath) {
+    const FormData = require("form-data");
+    const fs = require("fs");
 
-        const form = new FormData();
-        form.append('file', fs.createReadStream(filePath));
+    const form = new FormData();
+    form.append("file", fs.createReadStream(filePath));
 
-        const response = await this.client.post('/datasets/upload', form, {
-            headers: {
-                ...form.getHeaders(),
-                'Authorization': `Bearer ${this.token}`
-            }
-        });
-        return response.data;
-    }
+    const response = await this.client.post("/datasets/upload", form, {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+    return response.data;
+  }
 
-    async generateSyntheticData(datasetId, options = {}) {
-        const defaultOptions = {
-            generator_type: 'ctgan',
-            num_rows: 1000,
-            ...options
-        };
+  async generateSyntheticData(datasetId, options = {}) {
+    const defaultOptions = {
+      generator_type: "ctgan",
+      num_rows: 1000,
+      ...options,
+    };
 
-        const response = await this.client.post(
-            `/generators/dataset/${datasetId}/generate`,
-            defaultOptions
-        );
-        return response.data;
-    }
+    const response = await this.client.post(
+      `/generators/dataset/${datasetId}/generate`,
+      defaultOptions
+    );
+    return response.data;
+  }
 
-    async getEvaluation(evaluationId) {
-        const response = await this.client.get(`/evaluations/${evaluationId}`);
-        return response.data;
-    }
+  async getEvaluation(evaluationId) {
+    const response = await this.client.get(`/evaluations/${evaluationId}`);
+    return response.data;
+  }
 }
 
 // Usage
 const client = new SynthStudioClient();
-await client.login('user@example.com', 'password');
+await client.login("user@example.com", "password");
 
-const dataset = await client.uploadDataset('data.csv');
+const dataset = await client.uploadDataset("data.csv");
 const result = await client.generateSyntheticData(dataset.id, {
-    generator_type: 'dp-ctgan',
-    num_rows: 500
+  generator_type: "dp-ctgan",
+  num_rows: 500,
 });
 ```
 
@@ -236,6 +245,7 @@ const result = await client.generateSyntheticData(dataset.id, {
 Many operations (data generation, evaluation) run asynchronously.
 
 #### Polling for Completion
+
 ```python
 import time
 
@@ -261,6 +271,7 @@ result = wait_for_completion(client, generator_id)
 ```
 
 #### Webhook Notifications (Future Feature)
+
 ```python
 # Configure webhook endpoint
 webhook_config = {
@@ -278,6 +289,7 @@ client.post("/webhooks/register", json=webhook_config)
 ### Batch Operations
 
 #### Bulk Dataset Upload
+
 ```python
 def upload_multiple_datasets(client, file_paths):
     """Upload multiple datasets."""
@@ -296,6 +308,7 @@ results = upload_multiple_datasets(client, files)
 ```
 
 #### Batch Evaluation
+
 ```python
 def evaluate_multiple_generators(client, generator_ids):
     """Run evaluations for multiple generators."""
@@ -324,6 +337,7 @@ def evaluate_multiple_generators(client, generator_ids):
 ### Incremental Sync
 
 #### Change Detection
+
 ```python
 def get_dataset_changes(client, last_sync_timestamp):
     """Get datasets modified since last sync."""
@@ -349,17 +363,17 @@ def sync_datasets(client, last_sync):
 
 ### HTTP Status Codes
 
-| Status Code | Meaning | Action |
-|-------------|---------|--------|
-| 200 | Success | Process response |
-| 201 | Created | Resource created successfully |
-| 400 | Bad Request | Check request parameters |
-| 401 | Unauthorized | Refresh token or re-authenticate |
-| 403 | Forbidden | Check permissions |
-| 404 | Not Found | Verify resource exists |
-| 422 | Validation Error | Check data format |
-| 429 | Too Many Requests | Implement rate limiting |
-| 500 | Server Error | Retry with exponential backoff |
+| Status Code | Meaning           | Action                           |
+| ----------- | ----------------- | -------------------------------- |
+| 200         | Success           | Process response                 |
+| 201         | Created           | Resource created successfully    |
+| 400         | Bad Request       | Check request parameters         |
+| 401         | Unauthorized      | Refresh token or re-authenticate |
+| 403         | Forbidden         | Check permissions                |
+| 404         | Not Found         | Verify resource exists           |
+| 422         | Validation Error  | Check data format                |
+| 429         | Too Many Requests | Implement rate limiting          |
+| 500         | Server Error      | Retry with exponential backoff   |
 
 ### Error Response Format
 
@@ -553,6 +567,7 @@ asyncio.run(monitor_generation_progress("gen-123"))
 ### Service Mesh Integration
 
 #### Istio Integration
+
 ```yaml
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
@@ -560,16 +575,16 @@ metadata:
   name: synth-studio-api
 spec:
   http:
-  - match:
-    - uri:
-        prefix: "/api"
-    route:
-    - destination:
-        host: synth-studio
-    timeout: 300s  # For long-running generations
-    retries:
-      attempts: 3
-      perTryTimeout: 60s
+    - match:
+        - uri:
+            prefix: "/api"
+      route:
+        - destination:
+            host: synth-studio
+      timeout: 300s # For long-running generations
+      retries:
+        attempts: 3
+        perTryTimeout: 60s
 ```
 
 ## 🏢 Enterprise Integration
@@ -577,6 +592,7 @@ spec:
 ### SSO Integration
 
 #### SAML 2.0 (Future)
+
 ```python
 # SAML authentication flow
 def saml_login(saml_response):
@@ -589,6 +605,7 @@ def saml_login(saml_response):
 ```
 
 #### OAuth 2.0
+
 ```python
 def oauth_callback(code, state):
     """Handle OAuth callback."""
@@ -644,7 +661,7 @@ async def audit_middleware(request, call_next):
 
 - **Python SDK**: `pip install synth-studio-sdk`
 - **JavaScript SDK**: `npm install synth-studio-sdk`
-- **Go SDK**: `go get github.com/synth-studio/sdk-go`
+- **Go SDK**: Coming soon
 
 ### Community Libraries
 
@@ -657,24 +674,28 @@ async def audit_middleware(request, call_next):
 ### Common Problems
 
 **Connection Timeouts**
+
 ```
 Cause: Large datasets, slow networks
 Solution: Increase timeout, use streaming, compress data
 ```
 
 **Authentication Failures**
+
 ```
 Cause: Expired tokens, clock skew
 Solution: Implement token refresh, synchronize clocks
 ```
 
 **Rate Limit Exceeded**
+
 ```
 Cause: Too many requests
 Solution: Implement queuing, exponential backoff
 ```
 
 **Data Format Issues**
+
 ```
 Cause: Incompatible file formats
 Solution: Validate formats before upload, use conversion tools
@@ -732,9 +753,9 @@ test_integration()
 
 ### Example Applications
 
-- **[Basic Integration](https://github.com/synth-studio/examples/tree/main/basic-integration)**
-- **[Enterprise Integration](https://github.com/synth-studio/examples/tree/main/enterprise-integration)**
-- **[Real-time Dashboard](https://github.com/synth-studio/examples/tree/main/dashboard-integration)**
+- **Basic Integration** - See Python client example in this guide
+- **JavaScript Integration** - See Node.js client example in this guide
+- **Examples** - Check the `/docs/examples` folder
 
 ### Webinars and Tutorials
 
