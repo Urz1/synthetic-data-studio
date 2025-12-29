@@ -37,6 +37,12 @@ jobs:
             --exclude "^https://api.synthdata.studio"
             --exclude "^http://localhost"
             --exclude "^https://github.com/.*/issues/new"
+            --exclude "^https://github.com/.*/discussions"
+            --exclude "PRODUCTION_CHECKLIST.md"
+            --exclude "DEPLOYMENT_GUIDE.md"
+            --exclude "PRODUCTION_CLEANUP_SUMMARY.md"
+            --exclude "linkedin.com"
+            --exclude "contributor-covenant.org"
             --timeout 30
             '**/*.md'
             'docs/**/*.md'

@@ -443,8 +443,6 @@ Frontend runs at http://localhost:3000
 
 - **[Backend README](backend/README.md)** - Backend API, architecture, and deployment
 - **[Frontend README](frontend/README.md)** - Frontend setup, structure, and deployment
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete production deployment guide
-- **[Production Checklist](PRODUCTION_CHECKLIST.md)** - Production readiness checklist
 - **[Local Development](LOCAL_DEVELOPMENT.md)** - Local dev environment setup
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 - **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community standards

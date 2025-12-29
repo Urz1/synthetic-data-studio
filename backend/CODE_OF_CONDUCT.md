@@ -80,5 +80,4 @@ For answers to common questions about this code of conduct, see the FAQ at [http
 [v2.1]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
 [Mozilla CoC]: https://github.com/mozilla/diversity
 [FAQ]: https://www.contributor-covenant.org/faq
-[translations]: https://www.contributor-covenant.org/translations</content>
-</xai:function_call
+[translations]: https://www.contributor-covenant.org/translations

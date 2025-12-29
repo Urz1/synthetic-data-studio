@@ -14,22 +14,26 @@
 ## 📬 Getting in Touch
 
 ### For General Questions
+
 - **Email**: halisadam391@gmail.com
 - **Response Time**: Usually within 24-48 hours
 
 ### For Bug Reports
+
 1. Open an issue on [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues)
 2. Use the bug report template
 3. Include detailed steps to reproduce
 4. Attach error logs if applicable
 
 ### For Feature Requests
+
 1. Open an issue on GitHub
 2. Use the feature request template
 3. Describe the use case and benefits
 4. Discuss implementation approach
 
 ### For Technical Support
+
 - **Email**: halisadam391@gmail.com with subject "Synth Studio Support"
 - Include:
   - Your environment (OS, Node version, Python version)
@@ -38,6 +42,7 @@
   - Steps already tried
 
 ### For Collaboration
+
 - **LinkedIn**: Best for professional networking and collaboration
 - **Email**: For detailed project discussions
 - Open to:
@@ -53,18 +58,21 @@
 ### Ways to Contribute
 
 1. **Code Contributions**
+
    - Fix bugs
    - Add new features
    - Improve performance
    - Enhance UI/UX
 
 2. **Documentation**
+
    - Fix typos and errors
    - Add examples
    - Translate documentation
    - Write tutorials
 
 3. **Testing**
+
    - Report bugs
    - Test new features
    - Write test cases
@@ -79,6 +87,7 @@
 ### Contribution Process
 
 1. **Fork the Repository**
+
    ```bash
    # Click "Fork" on GitHub
    git clone https://github.com/YOUR_USERNAME/synthetic-data-studio.git
@@ -86,6 +95,7 @@
    ```
 
 2. **Create a Branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    # or
@@ -93,12 +103,14 @@
    ```
 
 3. **Make Your Changes**
+
    - Follow the code style guidelines
    - Write clear commit messages
    - Add tests for new features
    - Update documentation
 
 4. **Test Your Changes**
+
    ```bash
    # Frontend
    cd frontend
@@ -112,6 +124,7 @@
    ```
 
 5. **Commit and Push**
+
    ```bash
    git add .
    git commit -m "feat: add new feature description"
@@ -127,6 +140,7 @@
 ### Code Style Guidelines
 
 #### Frontend (TypeScript/React)
+
 ```typescript
 // Use functional components with TypeScript
 interface Props {
@@ -152,6 +166,7 @@ const flag = true; // ❌
 ```
 
 #### Backend (Python/FastAPI)
+
 ```python
 # Follow PEP 8 style guide
 # Use type hints
@@ -168,12 +183,12 @@ async def get_items(
 ) -> List[Item]:
     """
     Retrieve items with pagination.
-    
+
     Args:
         skip: Number of items to skip
         limit: Maximum number of items to return
         user: Current authenticated user
-        
+
     Returns:
         List of items
     """
@@ -201,10 +216,12 @@ chore: update dependencies to latest versions
 ### Pull Request Guidelines
 
 1. **Title**: Clear and descriptive
+
    - ✅ `feat: Add HIPAA compliance reporting`
    - ❌ `Update stuff`
 
 2. **Description**: Include:
+
    - What changes were made
    - Why these changes are needed
    - How to test the changes
@@ -236,6 +253,7 @@ chore: update dependencies to latest versions
 Clear description of the issue
 
 **Steps to Reproduce**
+
 1. Go to '...'
 2. Click on '....'
 3. See error
@@ -247,6 +265,7 @@ What should happen
 What actually happens
 
 **Environment**
+
 - OS: [e.g., Windows 11, macOS 14, Ubuntu 22.04]
 - Node Version: [e.g., 18.17.0]
 - Python Version: [e.g., 3.9.7]
@@ -257,7 +276,9 @@ If applicable
 
 **Error Messages**
 ```
+
 Paste error logs here
+
 ```
 
 **Additional Context**
@@ -279,6 +300,7 @@ Any other relevant information
 ### Rates & Engagement
 
 Contact via email for:
+
 - Hourly rates
 - Project-based pricing
 - Long-term engagements
@@ -297,6 +319,7 @@ Want to be listed here? Make a contribution!
 ### Sponsors
 
 Interested in sponsoring this project?
+
 - Contact via email
 - GitHub Sponsors (coming soon)
 
@@ -307,8 +330,8 @@ Interested in sponsoring this project?
 ### Learning Materials
 
 - **Documentation**: Complete guides in `/docs`
-- **Examples**: Code samples in `/backend/docs/examples`
-- **Tutorials**: Step-by-step guides in `/backend/docs/tutorials`
+- **Examples**: Code samples in `/docs/docs/examples`
+- **Tutorials**: Step-by-step guides in `/docs/docs/tutorials`
 
 ### Community
 
@@ -340,6 +363,7 @@ Yes! This project is MIT licensed. You're free to use it commercially.
 ### How do I report security vulnerabilities?
 
 **Do not** open a public issue. Email directly to: halisadam391@gmail.com with:
+
 - Subject: "Security Vulnerability Report"
 - Detailed description of the vulnerability
 - Steps to reproduce
@@ -348,6 +372,7 @@ Yes! This project is MIT licensed. You're free to use it commercially.
 ### Can you build a custom feature for me?
 
 Yes! Contact via email to discuss:
+
 - Feature requirements
 - Timeline
 - Budget
@@ -356,6 +381,7 @@ Yes! Contact via email to discuss:
 ### Do you offer training?
 
 Yes! Available for:
+
 - Team training sessions
 - Workshop facilitation
 - One-on-one mentoring
@@ -385,6 +411,7 @@ To all the open-source projects and communities that made this possible.
 MIT License - see [LICENSE](LICENSE) file for details.
 
 **What this means:**
+
 - ✅ Commercial use
 - ✅ Modification
 - ✅ Distribution
@@ -406,5 +433,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Last Updated: December 7, 2025*  
-*Maintained by: Sadam Husen*
+_Last Updated: December 7, 2025_  
+_Maintained by: Sadam Husen_

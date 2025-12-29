@@ -670,7 +670,7 @@ async def audit_middleware(request, call_next):
 
 - **Python SDK**: `pip install synth-studio-sdk`
 - **JavaScript SDK**: `npm install synth-studio-sdk`
-- **Go SDK**: `go get github.com/synth-studio/sdk-go`
+- **Go SDK**: Coming soon
 
 ### Community Libraries
 
@@ -762,9 +762,9 @@ test_integration()
 
 ### Example Applications
 
-- **[Basic Integration](https://github.com/synth-studio/examples/tree/main/basic-integration)**
-- **[Enterprise Integration](https://github.com/synth-studio/examples/tree/main/enterprise-integration)**
-- **[Real-time Dashboard](https://github.com/synth-studio/examples/tree/main/dashboard-integration)**
+- **[Basic Integration](./api-integration.md#python-client)** - Python client example above
+- **[JavaScript Integration](./api-integration.md#javascriptnodejs-client)** - Node.js client example above
+- **[SDK Quickstart](/docs/examples)** - Example usage in the docs
 
 ### Webinars and Tutorials
 
