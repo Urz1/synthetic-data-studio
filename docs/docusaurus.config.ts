@@ -180,18 +180,14 @@ const config: Config = {
       additionalLanguages: ["bash", "python", "json"],
     },
 
-    // Algolia DocSearch: include only when API key is provided
-    ...(process.env.ALGOLIA_API_KEY
-      ? {
-          algolia: {
-            appId: process.env.ALGOLIA_APP_ID || "YU8J8A14J6",
-            apiKey: process.env.ALGOLIA_API_KEY,
-            indexName: process.env.ALGOLIA_INDEX_NAME || "synthdata",
-            contextualSearch: true,
-            searchPagePath: "search",
-          },
-        }
-      : {}),
+    // Algolia DocSearch configuration
+    algolia: {
+      appId: "YU8J8A14J6",
+      apiKey: "beeb0d69192952d94894c41b14926781",
+      indexName: "Synth Crawler",
+      contextualSearch: true,
+      searchPagePath: "search",
+    },
   } satisfies Preset.ThemeConfig,
 };
 
