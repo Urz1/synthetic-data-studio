@@ -38,8 +38,8 @@ export interface Project {
 }
 
 export interface Dataset {
-  description: ReactNode;
-  num_rows: any;
+  description?: string;
+  num_rows?: number;
   id: string;
   project_id: string;
   name: string;
@@ -47,10 +47,9 @@ export interface Dataset {
   file_path?: string;
   size_bytes?: number;
   row_count?: number;
-  schema_data: {
-    columns: string[];
-    dtypes: Record<string, string>;
-  };
+  column_count?: number; // Number of columns in dataset
+  // Schema data is a flat object: { "column_name": "type", ... }
+  schema_data?: Record<string, string>;
   status: "uploaded" | "profiling" | "profiled" | "error";
   checksum: string;
   pii_flags?: Record<string, PiiFlag>;

@@ -368,7 +368,7 @@ def sync_datasets(client, last_sync):
     return len(changes)
 ```
 
-## ? Error Handling
+## Error Handling
 
 ### HTTP Status Codes
 

@@ -6,11 +6,12 @@ sidebar_position: 1
 slug: /getting-started/installation
 tags: [getting-started, install]
 ---
+
 # Installation Guide
 
 This guide will walk you through installing and setting up Synthetic Data Studio on your local machine.
 
-##  Prerequisites
+## Prerequisites
 
 ### System Requirements
 
@@ -25,7 +26,7 @@ This guide will walk you through installing and setting up Synthetic Data Studio
 - **Python**: Version 3.9 or higher
 - **pip**: Python package installer (comes with Python)
 
-##  Installation Steps
+## Installation Steps
 
 ### Step 1: Clone the Repository
 
@@ -106,7 +107,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Visit http://localhost:8000/docs to see the API documentation.
 
-## � Docker Installation (Alternative)
+## Docker Installation (Alternative)
 
 If you prefer using Docker:
 
@@ -118,7 +119,7 @@ docker build -t synth-studio-backend .
 docker run -p 8000:8000 -v $(pwd)/uploads:/app/uploads synth-studio-backend
 ```
 
-##  Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -170,7 +171,7 @@ For systems with limited RAM:
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 ```
 
-##  Testing Installation
+## Testing Installation
 
 ### Run Basic Tests
 
@@ -195,7 +196,7 @@ curl http://localhost:8000/health
 # Should return: {"status": "healthy", "service": "synthetic-data-studio-backend"}
 ```
 
-##  Project Structure
+## Project Structure
 
 After installation, your project should look like this:
 
@@ -213,7 +214,7 @@ synthetic-data-studio/
 └── README.md
 ```
 
-##  Next Steps
+## Next Steps
 
 Now that you have Synthetic Data Studio installed:
 
@@ -222,7 +223,7 @@ Now that you have Synthetic Data Studio installed:
 3. **Generate Data**: Try [generating synthetic data](../user-guide/generating-data.md)
 4. **API Documentation**: Explore the full API at http://localhost:8000/docs
 
-##  Support
+## Support
 
 If you encounter issues during installation:
 
@@ -230,7 +231,7 @@ If you encounter issues during installation:
 - Search existing [GitHub Issues](https://github.com/Urz1/synthetic-data-studio/issues)
 - Create a new issue with your error logs and system information
 
-##  Updating
+## Updating
 
 To update to the latest version:
 
@@ -250,6 +251,4 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-**Installation complete!**  Ready to generate your first synthetic dataset?
-
-
+**Installation complete!** Ready to generate your first synthetic dataset?

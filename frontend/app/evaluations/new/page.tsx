@@ -301,10 +301,10 @@ export default function NewEvaluationPage() {
                           <SelectValue placeholder="Select target column..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {dataset.schema_data?.columns ? 
-                              dataset.schema_data.columns.map((col: any) => (
-                                <SelectItem key={typeof col === 'string' ? col : col.name} value={typeof col === 'string' ? col : col.name}>
-                                  {typeof col === 'string' ? col : col.name}
+                          {dataset.schema_data && Object.keys(dataset.schema_data).length > 0 ? 
+                              Object.keys(dataset.schema_data).map((colName) => (
+                                <SelectItem key={colName} value={colName}>
+                                  {colName}
                                 </SelectItem>
                               ))
                           : (
@@ -315,13 +315,11 @@ export default function NewEvaluationPage() {
                     </div>
                   )}
 
-                  {config.include_privacy && dataset.schema_data?.columns && (
+                  {config.include_privacy && dataset.schema_data && Object.keys(dataset.schema_data).length > 0 && (
                     <div className="space-y-2">
                       <Label>Sensitive Columns (for privacy checks)</Label>
                       <div className="flex flex-wrap gap-2">
-                       {dataset.schema_data.columns.map((col: any) => {
-                            const colName = typeof col === 'string' ? col : col.name;
-                            return (
+                       {Object.keys(dataset.schema_data).map((colName) => (
                                 <Badge
                                 key={colName}
                                 variant={config.sensitive_columns.includes(colName) ? "default" : "outline"}
@@ -331,7 +329,7 @@ export default function NewEvaluationPage() {
                                 {colName}
                                 </Badge>
                             )
-                       })}
+                       )}
                       </div>
                     </div>
                   )}

@@ -11,7 +11,7 @@ tags: [developer, setup]
 
 This guide covers setting up a local development environment for Synthetic Data Studio, including prerequisites, installation, and development workflows.
 
-## ? Prerequisites
+## Prerequisites
 
 ### Required Software
 
@@ -127,7 +127,7 @@ curl http://localhost:8000/health
 
 Open your browser to: http://localhost:8000/docs
 
-## ? Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -323,7 +323,7 @@ docker-compose -f docker-compose.dev.yml logs -f app
 docker-compose -f docker-compose.dev.yml exec app pytest
 ```
 
-## ? Development Tools
+## Development Tools
 
 ### Code Quality
 
@@ -649,7 +649,7 @@ Using VS Code Remote:
 3. Clone repository on remote
 4. Set up environment as usual
 
-## ? Next Steps
+## Next Steps
 
 Now that your development environment is set up:
 

@@ -11,6 +11,7 @@ import { EvaluationCard } from "@/components/evaluations/evaluation-card"
 import { Plus, Search, Filter, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useEvaluations } from "@/lib/hooks"
 import { api } from "@/lib/api"
 import type { Evaluation } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
@@ -29,44 +30,32 @@ import {
 export default function EvaluationsPage() {
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
-  const [evaluations, setEvaluations] = React.useState<Evaluation[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [evaluationToDelete, setEvaluationToDelete] = React.useState<string | null>(null)
-  const [deleting, setDeleting] = React.useState(false)  // Loading state for delete
+  const [deleting, setDeleting] = React.useState(false)
   const { user } = useAuth()
   const { toast } = useToast()
 
-  React.useEffect(() => {
-    loadEvaluations()
-  }, [])
-
-  async function loadEvaluations() {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await api.listEvaluations()
-
-      if (Array.isArray(data)) {
-        setEvaluations(data as Evaluation[])
-      } else if (data && Array.isArray((data as any).evaluations)) {
-        setEvaluations((data as any).evaluations as Evaluation[])
-      } else {
-        setEvaluations([])
-      }
-    } catch (err) {
-      // Distinguish network errors from API errors
-      const message = err instanceof Error ? err.message : "Failed to load evaluations"
-      if (message === "Failed to fetch" || message.includes("NetworkError")) {
-        setError("Unable to connect to server. Please check your connection and try again.")
-      } else {
-        setError(message)
-      }
-    } finally {
-      setLoading(false)
+  // TanStack Query for data fetching with caching
+  const { data: evaluationsData, isLoading: loading, error: queryError, refetch } = useEvaluations()
+  
+  const evaluations = React.useMemo(() => {
+    if (!evaluationsData) return []
+    if (Array.isArray(evaluationsData)) {
+      return evaluationsData as Evaluation[]
+    } else if (evaluationsData && Array.isArray((evaluationsData as any).evaluations)) {
+      return (evaluationsData as any).evaluations as Evaluation[]
     }
-  }
+    return []
+  }, [evaluationsData])
+
+  const error = queryError ? (
+    queryError instanceof Error 
+      ? (queryError.message === "Failed to fetch" || queryError.message.includes("NetworkError")
+          ? "Unable to connect to server. Please check your connection and try again."
+          : queryError.message)
+      : "Failed to load evaluations"
+  ) : null
 
   async function handleDelete(id: string) {
     try {
@@ -76,8 +65,8 @@ export default function EvaluationsPage() {
         title: "Deleted",
         description: "Evaluation has been deleted successfully.",
       })
-      // Refresh the list
-      await loadEvaluations()
+      // TanStack Query will refetch
+      refetch()
     } catch (err) {
       toast({
         title: "Error",
@@ -117,7 +106,7 @@ export default function EvaluationsPage() {
         <Alert variant="destructive" className="mb-4">
           <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={loadEvaluations} className="ml-4">
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="ml-4">
               Retry
             </Button>
           </AlertDescription>

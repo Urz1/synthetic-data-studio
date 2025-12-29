@@ -6,15 +6,16 @@ sidebar_position: 3
 slug: /getting-started/configuration
 tags: [getting-started, configuration]
 ---
+
 # Configuration Guide
 
 Learn how to configure Synthetic Data Studio for different environments and use cases.
 
-##  Configuration Overview
+## Configuration Overview
 
 Synthetic Data Studio uses environment variables for configuration. The main configuration file is `.env` in the backend directory.
 
-##  Basic Configuration
+## Basic Configuration
 
 ### Creating the Environment File
 
@@ -49,7 +50,7 @@ PORT=8000
 DEBUG=true
 ```
 
-##  Database Configuration
+## Database Configuration
 
 ### SQLite (Development/Default)
 
@@ -95,7 +96,7 @@ pip install pymysql
 mysql -u root -p -e "CREATE DATABASE synth_studio;"
 ```
 
-## � Security Configuration
+## Security Configuration
 
 ### JWT Authentication
 
@@ -133,7 +134,7 @@ ALLOW_METHODS=GET,POST,PUT,DELETE,OPTIONS
 ALLOW_HEADERS=*
 ```
 
-##  File Storage Configuration
+## File Storage Configuration
 
 ### Local Storage (Default)
 
@@ -176,7 +177,7 @@ GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
 GCS_BUCKET=your-synth-studio-bucket
 ```
 
-##  AI/LLM Configuration
+## AI/LLM Configuration
 
 ### Google Gemini (Free Tier)
 
@@ -223,7 +224,7 @@ OPENAI_MAX_TOKENS=2048
 OPENAI_TEMPERATURE=0.3
 ```
 
-##  Synthesis Configuration
+## Synthesis Configuration
 
 > [!NOTE]
 > Synthesis parameters (epochs, batch size, privacy budget) are configured per-job via the API. The defaults mentioned below are application-level defaults.
@@ -236,7 +237,7 @@ USE_GPU=true
 CUDA_VISIBLE_DEVICES=0
 ```
 
-##  Evaluation Configuration
+## Evaluation Configuration
 
 ### Statistical Tests
 
@@ -263,7 +264,7 @@ AI_ATTACK_SAMPLE_SIZE=1000
 AI_ATTACK_SIGNIFICANCE=0.05
 ```
 
-##  Server Configuration
+## Server Configuration
 
 ### Development
 
@@ -302,7 +303,7 @@ WORKER_CLASS=uvicorn.workers.UvicornWorker
 LOG_LEVEL=WARNING
 ```
 
-##  Background Jobs
+## Background Jobs
 
 ### Celery Configuration
 
@@ -321,7 +322,7 @@ CELERY_RESULT_SERIALIZER=json
 CELERY_TIMEZONE=UTC
 ```
 
-##  Monitoring & Observability
+## Monitoring & Observability
 
 ### Logging
 
@@ -351,7 +352,7 @@ METRICS_PORT=9090
 HEALTH_CHECK_INTERVAL=30
 ```
 
-## � Environment-Specific Configurations
+## Environment-Specific Configurations
 
 ### Development Environment
 
@@ -387,7 +388,7 @@ LOG_LEVEL=WARNING
 ENABLE_METRICS=true
 ```
 
-##  Validation & Troubleshooting
+## Validation & Troubleshooting
 
 ### Configuration Validation
 
@@ -427,7 +428,7 @@ python -c "from app.core.config import settings; print('Config OK')"
 uvicorn app.main:app --dry-run
 ```
 
-##  Complete Example Configuration
+## Complete Example Configuration
 
 Here's a complete production-ready configuration:
 
@@ -479,5 +480,3 @@ METRICS_PORT=9090
 ---
 
 **Need help?** Check the [Troubleshooting Guide](../reference/troubleshooting.md) or create an issue on GitHub.
-
-

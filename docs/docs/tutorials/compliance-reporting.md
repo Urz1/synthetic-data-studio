@@ -6,13 +6,15 @@ sidebar_position: 4
 slug: /tutorials/compliance-reporting
 tags: [tutorials, compliance]
 ---
+
 # Compliance Reporting Tutorial
 
 Learn how to generate comprehensive compliance documentation, audit reports, and regulatory submissions for HIPAA, GDPR, CCPA, and SOC-2 compliance.
 
-##  Tutorial Goals
+## Tutorial Goals
 
 By the end of this tutorial, you will:
+
 - Generate compliance reports for different regulatory frameworks
 - Create audit-ready documentation
 - Produce model cards and data lineage reports
@@ -23,17 +25,19 @@ By the end of this tutorial, you will:
 **Difficulty**: Intermediate
 **Prerequisites**: Privacy synthesis tutorial completed
 
-##  Compliance Frameworks Overview
+## Compliance Frameworks Overview
 
 ### HIPAA (Health Insurance Portability and Accountability Act)
 
 **Requirements for Synthetic Data**:
+
 - De-identification of Protected Health Information (PHI)
 - Privacy Rule compliance
 - Minimum necessary standard
 - Business Associate Agreement (BAA) documentation
 
 **Key Documentation**:
+
 - Privacy impact assessment
 - Data de-identification methodology
 - PHI removal verification
@@ -42,12 +46,14 @@ By the end of this tutorial, you will:
 ### GDPR (General Data Protection Regulation)
 
 **Requirements for Synthetic Data**:
+
 - Lawful processing justification (Article 6)
 - Data minimization (Article 5)
 - Privacy by design (Article 25)
 - Data Protection Impact Assessment (DPIA)
 
 **Key Documentation**:
+
 - DPIA completion
 - Lawful basis documentation
 - Data processing records
@@ -56,12 +62,14 @@ By the end of this tutorial, you will:
 ### CCPA (California Consumer Privacy Act)
 
 **Requirements for Synthetic Data**:
+
 - Right to know about data collection
 - Right to delete personal information
 - Right to opt-out of data sales
 - Data minimization requirements
 
 **Key Documentation**:
+
 - Privacy notice updates
 - Data usage documentation
 - Individual rights responses
@@ -70,18 +78,20 @@ By the end of this tutorial, you will:
 ### SOC-2 (System and Organization Controls)
 
 **Requirements for Synthetic Data**:
+
 - Security principle compliance
 - Availability of data processing
 - Processing integrity
 - Confidentiality of information
 
 **Key Documentation**:
+
 - Security controls documentation
 - Data processing reliability
 - Confidentiality agreements
 - Audit trail maintenance
 
-## � Generating Compliance Reports
+## Generating Compliance Reports
 
 ### Step 1: Prepare Your Data
 
@@ -121,6 +131,7 @@ curl -X POST "https://api.synthdata.studio/generators/{generator_id}/compliance-
 ```
 
 **HIPAA Report Structure**:
+
 ```json
 {
   "compliance_report": {
@@ -144,8 +155,11 @@ curl -X POST "https://api.synthdata.studio/generators/{generator_id}/compliance-
       },
       "data_protection": {
         "phi_identifiers_removed": [
-          "name", "date_of_birth", "social_security_number",
-          "medical_record_number", "health_plan_id"
+          "name",
+          "date_of_birth",
+          "social_security_number",
+          "medical_record_number",
+          "health_plan_id"
         ],
         "deidentification_method": "Generalization + Differential Privacy",
         "residual_risk": "< 0.1% re-identification probability"
@@ -193,6 +207,7 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/compliance-report"
 ```
 
 **GDPR Report Structure**:
+
 ```json
 {
   "compliance_report": {
@@ -249,7 +264,7 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/compliance-report"
 }
 ```
 
-##  Model Cards
+## Model Cards
 
 ### Generate Comprehensive Model Documentation
 
@@ -260,6 +275,7 @@ curl -X POST "https://api.synthdata.studio/generators/{generator_id}/model-card"
 ```
 
 **Model Card Structure**:
+
 ```json
 {
   "model_card": {
@@ -353,7 +369,7 @@ curl -X POST "https://api.synthdata.studio/generators/{generator_id}/model-card"
 }
 ```
 
-##  Audit Narratives
+## Audit Narratives
 
 ### Generate Human-Readable Audit Trails
 
@@ -362,6 +378,7 @@ curl https://api.synthdata.studio/generators/{generator_id}/audit-narrative
 ```
 
 **Audit Narrative Example**:
+
 ```json
 {
   "audit_narrative": {
@@ -450,7 +467,7 @@ curl https://api.synthdata.studio/generators/{generator_id}/audit-narrative
 }
 ```
 
-##  Comparative Compliance Analysis
+## Comparative Compliance Analysis
 
 ### Generate Multi-Framework Reports
 
@@ -492,11 +509,12 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/compliance-report"
 }
 ```
 
-##  Regulatory Submission Preparation
+## Regulatory Submission Preparation
 
 ### FDA Submission Package (Healthcare)
 
 **Required Documentation**:
+
 - Privacy impact assessment
 - Data de-identification methodology
 - Statistical validation reports
@@ -530,6 +548,7 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/compliance-report"
 ### EU Data Protection Board Filing
 
 **Required Documentation**:
+
 - DPIA completion certificate
 - Lawful processing justification
 - Data minimization evidence
@@ -560,7 +579,7 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/compliance-report"
 }
 ```
 
-##  Compliance Checklist Templates
+## Compliance Checklist Templates
 
 ### HIPAA Implementation Checklist
 
@@ -627,7 +646,7 @@ curl -X POST "http://localhost:8000/generators/{generator_id}/compliance-report"
 }
 ```
 
-##  Automated Compliance Monitoring
+## Automated Compliance Monitoring
 
 ### Compliance Health Checks
 
@@ -637,6 +656,7 @@ curl https://api.synthdata.studio/compliance/health-check
 ```
 
 **Health Check Response**:
+
 ```json
 {
   "compliance_health": {
@@ -657,21 +677,22 @@ curl https://api.synthdata.studio/compliance/health-check
 }
 ```
 
-## � Tutorial Complete!
+## Tutorial Complete!
 
 ### What You Accomplished
 
- **Generated HIPAA compliance reports** with privacy impact assessments
- **Created GDPR documentation** including DPIA completion
- **Produced CCPA compliance evidence** for data rights
- **Generated comprehensive model cards** with privacy considerations
- **Created audit narratives** for regulatory submissions
- **Prepared regulatory filing packages** for FDA and EU authorities
- **Implemented compliance checklists** for ongoing monitoring
+**Generated HIPAA compliance reports** with privacy impact assessments
+**Created GDPR documentation** including DPIA completion
+**Produced CCPA compliance evidence** for data rights
+**Generated comprehensive model cards** with privacy considerations
+**Created audit narratives** for regulatory submissions
+**Prepared regulatory filing packages** for FDA and EU authorities
+**Implemented compliance checklists** for ongoing monitoring
 
 ### Your Compliance Documentation Package
 
 You now have:
+
 - **Framework-specific compliance reports** (HIPAA, GDPR, CCPA)
 - **Model cards** documenting privacy and intended use
 - **Audit narratives** for regulatory submissions
@@ -681,12 +702,13 @@ You now have:
 ### Production-Ready Compliance
 
 Your synthetic data generation process is now:
+
 - **Regulatory compliant** across major frameworks
 - **Audit-ready** with comprehensive documentation
 - **Privacy-assured** with mathematical guarantees
 - **Production-deployable** with enterprise-grade controls
 
-##  Advanced Compliance Topics
+## Advanced Compliance Topics
 
 ### Multi-Jurisdictional Compliance
 
@@ -735,7 +757,7 @@ Implement automated compliance monitoring:
 }
 ```
 
-##  Next Steps
+## Next Steps
 
 After mastering compliance reporting:
 
@@ -746,6 +768,7 @@ After mastering compliance reporting:
 ### Professional Services
 
 For enterprise compliance needs:
+
 - **Compliance Consulting**: Expert review and validation
 - **Regulatory Filing Support**: FDA/EU submission assistance
 - **Custom Compliance Solutions**: Framework-specific implementations
@@ -753,5 +776,4 @@ For enterprise compliance needs:
 
 ---
 
-**Congratulations!**  Your synthetic data is now fully compliant and audit-ready. You have the documentation package needed for HIPAA, GDPR, CCPA, and other regulatory submissions!
-
+**Congratulations!** Your synthetic data is now fully compliant and audit-ready. You have the documentation package needed for HIPAA, GDPR, CCPA, and other regulatory submissions!

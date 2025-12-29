@@ -6,20 +6,23 @@ sidebar_position: 2
 slug: /reference/supported-formats
 tags: [reference, formats]
 ---
+
 # Supported Formats Reference
 
 Complete reference of data formats, file types, and data structure requirements supported by Synthetic Data Studio.
 
-##  File Format Support
+## File Format Support
 
 ### CSV Files
 
 #### Supported Variants
+
 - **Standard CSV**: Comma-separated values with headers
 - **TSV**: Tab-separated values
 - **Custom Delimiters**: Pipe (|), semicolon (;), etc.
 
 #### Requirements
+
 ```csv
 # Required: Header row
 name,age,income,city
@@ -29,12 +32,14 @@ Bob,35,70000,Paris
 ```
 
 #### Encoding Support
+
 - **UTF-8** (recommended)
 - **UTF-16**
 - **Latin-1**
 - **Windows-1252**
 
 #### Size Limits
+
 - **Maximum Rows**: 1,000,000
 - **Maximum Columns**: 500
 - **Maximum File Size**: 100MB (configurable)
@@ -44,15 +49,17 @@ Bob,35,70000,Paris
 #### Supported Structures
 
 **Array of Objects** (Recommended):
+
 ```json
 [
-  {"name": "John", "age": 25, "income": 50000},
-  {"name": "Jane", "age": 30, "income": 60000},
-  {"name": "Bob", "age": 35, "income": 70000}
+  { "name": "John", "age": 25, "income": 50000 },
+  { "name": "Jane", "age": 30, "income": 60000 },
+  { "name": "Bob", "age": 35, "income": 70000 }
 ]
 ```
 
 **Newline-Delimited JSON**:
+
 ```json
 {"name": "John", "age": 25, "income": 50000}
 {"name": "Jane", "age": 30, "income": 60000}
@@ -60,6 +67,7 @@ Bob,35,70000,Paris
 ```
 
 #### Nested Structures
+
 ```json
 {
   "customer": {
@@ -72,8 +80,8 @@ Bob,35,70000,Paris
     }
   },
   "transactions": [
-    {"amount": 100.50, "date": "2023-01-15"},
-    {"amount": 250.00, "date": "2023-02-20"}
+    { "amount": 100.5, "date": "2023-01-15" },
+    { "amount": 250.0, "date": "2023-02-20" }
   ]
 }
 ```
@@ -83,14 +91,17 @@ Bob,35,70000,Paris
 ### Excel Files
 
 #### Supported Formats
+
 - **.xlsx** (Excel 2007+)
 - **.xls** (Excel 97-2003)
 
 #### Sheet Selection
+
 - **Default**: First sheet
 - **Named Sheet**: Specify sheet name in upload options
 
 #### Data Requirements
+
 - **Headers**: First row must contain column names
 - **Data Start**: Data starts from row 2
 - **Empty Rows**: Automatically skipped
@@ -99,15 +110,17 @@ Bob,35,70000,Paris
 ### Parquet Files
 
 #### Support Level
+
 - **Basic Support**: Simple tabular structures
 - **Complex Types**: Limited support for nested structures
 
 #### Advantages
+
 - **Compressed**: Efficient storage
 - **Columnar**: Fast column access
 - **Typed**: Preserves data types
 
-##  Data Type Support
+## Data Type Support
 
 ### Automatic Type Inference
 
@@ -115,33 +128,34 @@ Synthetic Data Studio automatically detects and converts data types:
 
 #### Numeric Types
 
-| Detected As | Examples | SQL Type | Notes |
-|-------------|----------|----------|-------|
-| **integer** | `25`, `1000`, `-5` | INTEGER | Whole numbers |
-| **float** | `25.5`, `1000.99`, `3.14` | FLOAT | Decimal numbers |
-| **boolean** | `true`, `false`, `1`, `0` | BOOLEAN | True/false values |
+| Detected As | Examples                  | SQL Type | Notes             |
+| ----------- | ------------------------- | -------- | ----------------- |
+| **integer** | `25`, `1000`, `-5`        | INTEGER  | Whole numbers     |
+| **float**   | `25.5`, `1000.99`, `3.14` | FLOAT    | Decimal numbers   |
+| **boolean** | `true`, `false`, `1`, `0` | BOOLEAN  | True/false values |
 
 #### Text Types
 
-| Detected As | Examples | SQL Type | Notes |
-|-------------|----------|----------|-------|
-| **string** | `"John"`, `"New York"` | VARCHAR | Any text |
-| **categorical** | `"red"`, `"blue"`, `"green"` | VARCHAR | Limited unique values |
-| **email** | `"user@example.com"` | VARCHAR | Email pattern |
-| **phone** | `"+1-555-123-4567"` | VARCHAR | Phone pattern |
-| **url** | `"https://example.com"` | VARCHAR | URL pattern |
+| Detected As     | Examples                     | SQL Type | Notes                 |
+| --------------- | ---------------------------- | -------- | --------------------- |
+| **string**      | `"John"`, `"New York"`       | VARCHAR  | Any text              |
+| **categorical** | `"red"`, `"blue"`, `"green"` | VARCHAR  | Limited unique values |
+| **email**       | `"user@example.com"`         | VARCHAR  | Email pattern         |
+| **phone**       | `"+1-555-123-4567"`          | VARCHAR  | Phone pattern         |
+| **url**         | `"https://example.com"`      | VARCHAR  | URL pattern           |
 
 #### Date/Time Types
 
-| Detected As | Examples | SQL Type | Notes |
-|-------------|----------|----------|-------|
-| **date** | `"2023-01-15"`, `"01/15/2023"` | DATE | Date only |
-| **datetime** | `"2023-01-15 14:30:00"` | DATETIME | Date and time |
-| **timestamp** | `1642152600` | TIMESTAMP | Unix timestamp |
+| Detected As   | Examples                       | SQL Type  | Notes          |
+| ------------- | ------------------------------ | --------- | -------------- |
+| **date**      | `"2023-01-15"`, `"01/15/2023"` | DATE      | Date only      |
+| **datetime**  | `"2023-01-15 14:30:00"`        | DATETIME  | Date and time  |
+| **timestamp** | `1642152600`                   | TIMESTAMP | Unix timestamp |
 
 ### Type Conversion Rules
 
 #### String to Numeric
+
 ```python
 # Automatic conversion
 "25" → 25 (integer)
@@ -151,6 +165,7 @@ Synthetic Data Studio automatically detects and converts data types:
 ```
 
 #### Date Parsing
+
 ```python
 # Supported formats
 "2023-01-15" → date(2023, 1, 15)
@@ -160,6 +175,7 @@ Synthetic Data Studio automatically detects and converts data types:
 ```
 
 #### Categorical Detection
+
 ```python
 # Automatically detected if:
 # - Unique values < 10% of total rows
@@ -167,13 +183,14 @@ Synthetic Data Studio automatically detects and converts data types:
 # - Explicit category indicators
 ```
 
-##  Data Structure Requirements
+## Data Structure Requirements
 
 ### Tabular Format
 
 All data must be representable as a table:
 
 #### Required Structure
+
 ```
 Column 1 | Column 2 | Column 3 | ...
 ---------|----------|----------|---
@@ -182,6 +199,7 @@ Value 1  | Value 2  | Value 3  | ...
 ```
 
 #### Column Requirements
+
 - **Unique Names**: Each column must have a unique name
 - **No Empty Names**: Column names cannot be empty
 - **Valid Characters**: Letters, numbers, underscores, spaces
@@ -190,25 +208,29 @@ Value 1  | Value 2  | Value 3  | ...
 ### Data Quality Standards
 
 #### Completeness
+
 - **Missing Values**: Supported (represented as NULL)
 - **Empty Strings**: Converted to NULL for non-string columns
 - **Sparse Data**: Acceptable up to 50% missing values
 
 #### Consistency
+
 - **Type Consistency**: Values in a column should be same type
 - **Format Consistency**: Dates, numbers should follow consistent formats
 - **Encoding Consistency**: All text should use same encoding
 
 #### Validity
+
 - **Range Checks**: Numeric values within reasonable ranges
 - **Format Validation**: Emails, phones, URLs follow valid patterns
 - **Logical Consistency**: Related columns should have consistent values
 
-##  Data Preprocessing
+## Data Preprocessing
 
 ### Automatic Processing
 
 #### Type Conversion
+
 ```python
 # Input data
 {"age": "25", "income": "50000.50", "active": "true"}
@@ -218,6 +240,7 @@ Value 1  | Value 2  | Value 3  | ...
 ```
 
 #### Missing Value Handling
+
 ```python
 # Input with missing values
 {"name": "John", "age": "", "income": null}
@@ -227,6 +250,7 @@ Value 1  | Value 2  | Value 3  | ...
 ```
 
 #### String Normalization
+
 ```python
 # Input data
 {"name": "  john doe  ", "email": "JOHN@EXAMPLE.COM"}
@@ -238,6 +262,7 @@ Value 1  | Value 2  | Value 3  | ...
 ### Manual Preprocessing Options
 
 #### Data Cleaning Scripts
+
 ```python
 import pandas as pd
 
@@ -258,14 +283,15 @@ def clean_data(df):
 ```
 
 #### Schema Definition
+
 ```json
 {
   "columns": {
-    "customer_id": {"type": "integer", "primary_key": true},
-    "name": {"type": "string", "max_length": 100},
-    "age": {"type": "integer", "min": 0, "max": 120},
-    "email": {"type": "string", "format": "email"},
-    "income": {"type": "float", "min": 0}
+    "customer_id": { "type": "integer", "primary_key": true },
+    "name": { "type": "string", "max_length": 100 },
+    "age": { "type": "integer", "min": 0, "max": 120 },
+    "email": { "type": "string", "format": "email" },
+    "income": { "type": "float", "min": 0 }
   },
   "constraints": {
     "unique": ["email"],
@@ -274,36 +300,41 @@ def clean_data(df):
 }
 ```
 
-##  Dataset Size Guidelines
+## Dataset Size Guidelines
 
 ### Small Datasets (< 10,000 rows)
+
 - **Best for**: Prototyping, testing, learning
 - **Processing**: Instant (< 1 second)
 - **Quality**: May have higher variance
 - **Use Cases**: Examples, tutorials, validation
 
 ### Medium Datasets (10,000 - 100,000 rows)
+
 - **Best for**: Development, moderate analysis
 - **Processing**: Fast (1-10 seconds)
 - **Quality**: Good balance of speed and accuracy
 - **Use Cases**: Application development, research
 
 ### Large Datasets (100,000 - 1,000,000 rows)
+
 - **Best for**: Production, comprehensive analysis
 - **Processing**: Moderate (10-60 seconds)
 - **Quality**: High accuracy, stable results
 - **Use Cases**: Enterprise applications, large-scale research
 
 ### Very Large Datasets (> 1,000,000 rows)
+
 - **Best for**: Big data applications
 - **Processing**: Extended (1-10 minutes)
 - **Quality**: Maximum accuracy
 - **Considerations**: Memory usage, processing time
 - **Alternatives**: Sampling, distributed processing
 
-## � Unsupported Formats
+## Unsupported Formats
 
 ### File Types
+
 - **Images**: PNG, JPG, GIF (use metadata extraction)
 - **Videos**: MP4, AVI (use metadata extraction)
 - **Audio**: MP3, WAV (use metadata extraction)
@@ -311,18 +342,20 @@ def clean_data(df):
 - **Archives**: ZIP, TAR (extract first)
 
 ### Data Structures
+
 - **Graphs**: Node/edge data (convert to tabular)
 - **Time Series**: Irregular intervals (resample first)
 - **Geospatial**: Complex geometries (use coordinates)
 - **Hierarchical**: Deep nesting (flatten first)
 
 ### Special Cases
+
 - **Encrypted Data**: Must be decrypted before upload
 - **Compressed Data**: Decompress before upload
 - **Binary Data**: Convert to text representation
 - **Real-time Streams**: Batch into files first
 
-##  Data Transformation
+## Data Transformation
 
 ### Schema Mapping
 
@@ -370,7 +403,7 @@ def clean_data(df):
 }
 ```
 
-##  Best Practices
+## Best Practices
 
 ### Data Preparation
 
@@ -396,29 +429,33 @@ def clean_data(df):
 4. **Test Synthesis**: Run small generation test
 5. **Scale Up**: Gradually increase dataset size
 
-##  Troubleshooting
+## Troubleshooting
 
 ### Common Format Issues
 
 **"Unable to parse file"**
+
 ```
 Causes: Corrupted file, unsupported encoding, invalid format
 Solutions: Check file integrity, convert encoding, validate format
 ```
 
 **"Column names missing"**
+
 ```
 Causes: No header row, empty first row
 Solutions: Add header row, remove empty rows
 ```
 
 **"Type conversion failed"**
+
 ```
 Causes: Inconsistent data types, invalid values
 Solutions: Clean data, standardize formats, handle exceptions
 ```
 
 **"File too large"**
+
 ```
 Causes: Exceeds size limit
 Solutions: Split file, increase limit, use compression
@@ -427,33 +464,36 @@ Solutions: Split file, increase limit, use compression
 ### Data Quality Issues
 
 **"High missing values"**
+
 ```
 Causes: Sparse data, collection issues
 Solutions: Imputation, filtering, data collection improvement
 ```
 
 **"Inconsistent types"**
+
 ```
 Causes: Mixed data types in columns
 Solutions: Separate columns, data cleaning, type standardization
 ```
 
 **"Outlier values"**
+
 ```
 Causes: Data entry errors, legitimate extreme values
 Solutions: Review validity, apply filtering, use robust statistics
 ```
 
-##  Performance Considerations
+## Performance Considerations
 
 ### File Size Impact
 
-| File Size | Rows | Processing Time | Memory Usage |
-|-----------|------|-----------------|--------------|
-| < 1MB | < 10K | < 1 second | < 50MB |
-| 1-10MB | 10K-100K | 1-5 seconds | 50-200MB |
-| 10-100MB | 100K-1M | 5-30 seconds | 200MB-1GB |
-| > 100MB | > 1M | 30s+ | 1GB+ |
+| File Size | Rows     | Processing Time | Memory Usage |
+| --------- | -------- | --------------- | ------------ |
+| < 1MB     | < 10K    | < 1 second      | < 50MB       |
+| 1-10MB    | 10K-100K | 1-5 seconds     | 50-200MB     |
+| 10-100MB  | 100K-1M  | 5-30 seconds    | 200MB-1GB    |
+| > 100MB   | > 1M     | 30s+            | 1GB+         |
 
 ### Optimization Tips
 
@@ -463,7 +503,7 @@ Solutions: Review validity, apply filtering, use robust statistics
 4. **Batch Processing**: Split very large files
 5. **Monitor Resources**: Watch memory and CPU usage
 
-##  Integration Examples
+## Integration Examples
 
 ### Python Data Preparation
 
@@ -548,4 +588,3 @@ def upload_with_validation(file_path: str, api_url: str, token: str):
 ---
 
 **Need help with data formats?** Check our [Data Upload Guide](../user-guide/uploading-data.md) or create an issue on GitHub.
-

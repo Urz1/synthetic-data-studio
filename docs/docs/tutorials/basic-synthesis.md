@@ -6,13 +6,15 @@ sidebar_position: 1
 slug: /tutorials/basic-synthesis
 tags: [tutorials, basic]
 ---
+
 # Basic Synthesis Tutorial
 
 A hands-on tutorial for generating your first synthetic dataset using Synthetic Data Studio. Perfect for beginners who want to understand the end-to-end workflow.
 
-##  Tutorial Goals
+## Tutorial Goals
 
 By the end of this tutorial, you will:
+
 - Understand the basic concepts of synthetic data generation
 - Upload and analyze a real dataset
 - Generate synthetic data using different methods
@@ -23,14 +25,14 @@ By the end of this tutorial, you will:
 **Difficulty**: Beginner
 **Prerequisites**: None
 
-##  What You'll Need
+## What You'll Need
 
 - **Synthetic Data Studio**: Running at https://api.synthdata.studio
 - **Sample Dataset**: We'll use the included `sample_data.csv`
 - **Web Browser**: For API testing
 - **Terminal/Command Line**: For curl commands (optional)
 
-##  Step 1: Understanding Your Data
+## Step 1: Understanding Your Data
 
 ### The Sample Dataset
 
@@ -43,11 +45,12 @@ Let's start with a simple customer dataset that includes:
 ### Data Privacy Considerations
 
 Before generating synthetic data, consider:
+
 - **PII Detection**: Which columns contain personal information?
 - **Privacy Requirements**: Do you need differential privacy?
 - **Use Case**: What will the synthetic data be used for?
 
-##  Step 2: Upload Your Dataset
+## Step 2: Upload Your Dataset
 
 ### Method 1: Using the API Interface (Recommended)
 
@@ -55,10 +58,12 @@ Before generating synthetic data, consider:
    Visit: https://api.synthdata.studio/docs
 
 2. **Find the Upload Endpoint**
+
    - Scroll to `POST /datasets/upload`
    - Click "Try it out"
 
 3. **Upload the Sample File**
+
    - Click "Choose File"
    - Select `sample_data.csv` from your project directory
    - Click "Execute"
@@ -73,7 +78,9 @@ Before generating synthetic data, consider:
      "file_size": 45632,
      "upload_timestamp": "2025-11-27T14:30:00Z"
    }
-```
+   ```
+
+````
 
 **Save the dataset ID** - you'll need it for the next steps!
 
@@ -85,23 +92,26 @@ curl -X POST "https://api.synthdata.studio/datasets/upload" \
   -F "file=@sample_data.csv"
 
 # Expected response contains dataset ID
-```
+````
 
-##  Step 3: Analyze Your Data
+## Step 3: Analyze Your Data
 
 ### Generate a Data Profile
 
 Data profiling helps you understand:
+
 - Column data types and distributions
 - Missing values and data quality issues
 - Correlations between variables
 - Potential privacy concerns
 
 1. **Find the Profile Endpoint**
+
    - `POST /datasets/{dataset_id}/profile`
    - Replace `{dataset_id}` with your dataset ID
 
 2. **Execute the Request**
+
    - Click "Try it out"
    - Enter your dataset ID
    - Click "Execute"
@@ -136,7 +146,9 @@ Data profiling helps you understand:
        "income-credit_score": 0.32
      }
    }
-```
+   ```
+
+````
 
 ### Key Insights from Profiling
 
@@ -145,7 +157,7 @@ Data profiling helps you understand:
 - **Correlations**: Age and income are moderately correlated
 - **Distribution**: Age ranges from 18-80 with mean ~43
 
-##  Step 4: Generate Synthetic Data
+## Step 4: Generate Synthetic Data
 
 ### Choose Your Synthesis Method
 
@@ -173,9 +185,10 @@ Synthetic Data Studio offers multiple synthesis methods:
      "epochs": 50,
      "batch_size": 200
    }
-```
+````
 
 3. **Execute Generation**
+
    - Click "Try it out"
    - Enter your dataset ID
    - Set the parameters above
@@ -188,7 +201,9 @@ Synthetic Data Studio offers multiple synthesis methods:
      "generator_id": "660e8400-e29b-41d4-a716-446655440001",
      "estimated_time": "2-3 minutes"
    }
-```
+   ```
+
+````
 
 ### Understanding the Parameters
 
@@ -197,7 +212,7 @@ Synthetic Data Studio offers multiple synthesis methods:
 - **epochs**: 50 (training iterations)
 - **batch_size**: 200 (training batch size)
 
-##  Step 5: Monitor Generation
+## Step 5: Monitor Generation
 
 ### Check Generation Status
 
@@ -221,7 +236,7 @@ Since generation runs asynchronously, you need to check its progress:
      "created_at": "2025-11-27T14:35:00Z",
      "updated_at": "2025-11-27T14:37:30Z"
    }
-```
+````
 
 4. **Wait for Completion**
    - Status will change to "completed"
@@ -234,16 +249,18 @@ Since generation runs asynchronously, you need to check its progress:
 3. **Sample Generation**: Creates new synthetic records
 4. **Quality Validation**: Basic checks on generated data
 
-##  Step 6: Evaluate Quality
+## Step 6: Evaluate Quality
 
 ### Quick Statistical Evaluation
 
 Once generation completes, evaluate how well the synthetic data matches the original:
 
 1. **Find the Quick Evaluation Endpoint**
+
    - `POST /evaluations/quick/{generator_id}`
 
 2. **Run Evaluation**
+
    - Use your generator ID
    - Click "Execute"
 
@@ -263,7 +280,9 @@ Once generation completes, evaluate how well the synthetic data matches the orig
        "Statistical distributions are well-preserved"
      ]
    }
-```
+   ```
+
+````
 
 ### Understanding the Scores
 
@@ -272,7 +291,7 @@ Once generation completes, evaluate how well the synthetic data matches the orig
 - **Chi-Square**: 0.89 (good categorical data matching)
 - **Wasserstein Distance**: 0.12 (acceptable distribution difference)
 
-##  Step 7: Download Results
+## Step 7: Download Results
 
 ### Get Your Synthetic Dataset
 
@@ -287,9 +306,10 @@ Once generation completes, evaluate how well the synthetic data matches the orig
      "output_dataset_id": "770e8400-e29b-41d4-a716-446655440002",
      "status": "completed"
    }
-```
+````
 
 3. **Download the Data**
+
    - `GET /datasets/{output_dataset_id}/download`
    - Use the output_dataset_id
    - Click "Execute" to download
@@ -298,13 +318,14 @@ Once generation completes, evaluate how well the synthetic data matches the orig
    - Your browser will download `dataset_{id}.csv`
    - This contains your 500 synthetic customer records
 
-##  Step 8: Compare Original vs Synthetic
+## Step 8: Compare Original vs Synthetic
 
 ### Basic Comparison
 
 Let's examine both datasets to see the differences:
 
 **Original Data Sample:**
+
 ```csv
 customer_id,age,income,credit_score,purchases,category,region,signup_date
 1,35,65000,720,12,A,East,2023-01-15
@@ -313,6 +334,7 @@ customer_id,age,income,credit_score,purchases,category,region,signup_date
 ```
 
 **Synthetic Data Sample:**
+
 ```csv
 customer_id,age,income,credit_score,purchases,category,region,signup_date
 1,34,64800,718,11,A,East,2023-01-14
@@ -321,12 +343,13 @@ customer_id,age,income,credit_score,purchases,category,region,signup_date
 ```
 
 **Key Observations:**
--  **Similar distributions**: Ages, incomes look realistic
--  **Preserved correlations**: High earners still tend to have better credit
--  **Realistic values**: No impossible combinations
--  **Category balance**: A/B categories maintained
 
-##  Step 9: Experiment with Different Methods
+- **Similar distributions**: Ages, incomes look realistic
+- **Preserved correlations**: High earners still tend to have better credit
+- **Realistic values**: No impossible combinations
+- **Category balance**: A/B categories maintained
+
+## Step 9: Experiment with Different Methods
 
 ### Try TVAE for Speed
 
@@ -338,7 +361,9 @@ customer_id,age,income,credit_score,purchases,category,region,signup_date
      "epochs": 30,
      "batch_size": 100
    }
-```
+   ```
+
+````
 
 2. **Compare Results**
    - TVAE is usually 2-3x faster than CTGAN
@@ -353,33 +378,34 @@ customer_id,age,income,credit_score,purchases,category,region,signup_date
      "generator_type": "gaussian_copula",
      "num_rows": 500
    }
-```
+````
 
 2. **Compare Results**
    - Very fast (seconds)
    - Good for simple statistical properties
    - May not capture complex correlations
 
-## � Tutorial Complete!
+## Tutorial Complete!
 
 ### What You Accomplished
 
- **Uploaded a real dataset** to Synthetic Data Studio
- **Analyzed data structure** and quality
- **Generated synthetic data** using CTGAN
- **Evaluated quality** with statistical tests
- **Downloaded results** for use in your applications
- **Compared original vs synthetic** data characteristics
+**Uploaded a real dataset** to Synthetic Data Studio
+**Analyzed data structure** and quality
+**Generated synthetic data** using CTGAN
+**Evaluated quality** with statistical tests
+**Downloaded results** for use in your applications
+**Compared original vs synthetic** data characteristics
 
 ### Your Synthetic Dataset is Ready!
 
 You now have:
+
 - **500 synthetic customer records**
 - **Statistical properties** similar to original data
 - **Privacy-safe** data for development/testing
 - **Quality-validated** results
 
-##  Next Steps
+## Next Steps
 
 ### Advanced Tutorials
 
@@ -400,26 +426,30 @@ You now have:
 - **User Guides**: Learn about advanced features
 - **Developer Docs**: Build integrations and custom workflows
 
-##  Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
 **Generation Takes Too Long**
+
 - Reduce `epochs` to 20-30 for testing
 - Use TVAE instead of CTGAN
 - Try smaller `batch_size`
 
 **Poor Quality Results**
+
 - Increase `epochs` for better training
 - Switch from GaussianCopula to CTGAN
 - Check if your data has complex patterns
 
 **API Errors**
+
 - Verify dataset/generator IDs are correct
 - Check server logs for error details
 - Ensure server is running
 
 **Download Fails**
+
 - Wait for generation to complete (status = "completed")
 - Check that output_dataset_id exists
 - Verify file permissions
@@ -432,6 +462,4 @@ You now have:
 
 ---
 
-**Congratulations!**  You've successfully generated your first synthetic dataset. Ready to explore more advanced features?
-
-
+**Congratulations!** You've successfully generated your first synthetic dataset. Ready to explore more advanced features?

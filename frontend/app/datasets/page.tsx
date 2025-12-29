@@ -15,6 +15,7 @@ import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-di
 import { useDeleteWithProgress } from "@/hooks/use-delete-with-progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useDatasets, useDeleteDataset } from "@/lib/hooks"
 import { api } from "@/lib/api"
 import type { Dataset } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
@@ -23,42 +24,32 @@ import { cn } from "@/lib/utils"
 export default function DatasetsPage() {
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
-  const [datasets, setDatasets] = React.useState<Dataset[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
   const [datasetToDelete, setDatasetToDelete] = React.useState<Dataset | null>(null)
   const { user } = useAuth()
+
+  // TanStack Query for data fetching with caching
+  const { data: datasetsData, isLoading: loading, error: queryError, refetch } = useDatasets()
+  const datasets = React.useMemo(() => {
+    if (!datasetsData) return []
+    return Array.isArray(datasetsData) ? datasetsData : datasetsData.datasets || []
+  }, [datasetsData])
+  
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load datasets") : null
+
+  // Delete mutation with cache invalidation
+  const deleteDatasetMutation = useDeleteDataset()
 
   // Delete hook with progress tracking
   const { isDeleting, isGhostId, startDelete } = useDeleteWithProgress({
     entityType: "Dataset",
     onSuccess: (id) => {
-      // Remove deleted dataset from state immediately
-      setDatasets(prev => prev.filter(d => d.id !== id))
+      // No need to manually remove from state - TanStack Query will refetch
       setDatasetToDelete(null)
     },
     onError: () => {
       setDatasetToDelete(null)
     },
   })
-
-  React.useEffect(() => {
-    loadDatasets()
-  }, [])
-
-  async function loadDatasets() {
-    try {
-      setLoading(true)
-      setError(null)
-      // Get all datasets (backend will filter by user)
-      const data = await api.listDatasets()
-      setDatasets(Array.isArray(data) ? data : data.datasets || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load datasets")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleDeleteClick = (dataset: Dataset) => {
     setDatasetToDelete(dataset)
@@ -101,7 +92,7 @@ export default function DatasetsPage() {
         <Alert variant="destructive" className="mb-4">
           <AlertDescription className="flex items-center justify-between gap-3">
             <span className="break-words">{error}</span>
-            <Button variant="outline" size="sm" onClick={loadDatasets}>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry
             </Button>

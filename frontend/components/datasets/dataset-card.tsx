@@ -128,7 +128,7 @@ export function DatasetCard({ dataset, onDelete, onDownload, className }: Datase
           </div>
           <div>
             <p className="text-muted-foreground mb-1">Columns</p>
-            <p className="font-mono font-medium">{dataset.schema_data?.columns?.length || 0}</p>
+            <p className="font-mono font-medium">{dataset.column_count || Object.keys(dataset.schema_data || {}).length || 0}</p>
           </div>
           <div>
             <p className="text-muted-foreground mb-1">Size</p>

@@ -6,11 +6,12 @@ sidebar_position: 2
 slug: /getting-started/quick-start
 tags: [getting-started, quick-start]
 ---
+
 # Quick Start Tutorial
 
 Get up and running with Synthetic Data Studio in 5 minutes! This tutorial will guide you through generating your first synthetic dataset.
 
-##  What You'll Learn
+## What You'll Learn
 
 By the end of this tutorial, you'll know how to:
 
@@ -20,7 +21,7 @@ By the end of this tutorial, you'll know how to:
 - Evaluate the quality of your synthetic data
 - Download the results
 
-##  Step 1: Start the Server
+## Step 1: Start the Server
 
 First, make sure you have completed the [Installation Guide](installation.md).
 
@@ -47,13 +48,13 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 
-##  Step 2: Access the API
+## Step 2: Access the API
 
 Open your browser and visit: http://localhost:8000/docs
 
 You'll see the FastAPI interactive documentation. This is your playground for testing the API!
 
-##  Step 3: Upload a Dataset
+## Step 3: Upload a Dataset
 
 Let's use the sample customer data that comes with the project.
 
@@ -88,7 +89,7 @@ curl -X POST "http://localhost:8000/datasets/upload" \
 
 Copy the `id` from the response - you'll need it in the next steps.
 
-##  Step 4: Explore Your Data
+## Step 4: Explore Your Data
 
 Let's profile the uploaded dataset to understand its structure.
 
@@ -125,7 +126,7 @@ Let's profile the uploaded dataset to understand its structure.
 }
 ```
 
-##  Step 5: Generate Synthetic Data
+## Step 5: Generate Synthetic Data
 
 Now for the exciting part - generating synthetic data!
 
@@ -167,7 +168,7 @@ curl http://localhost:8000/generators/660e8400-e29b-41d4-a716-446655440001
 
 Wait for `"status": "completed"`.
 
-##  Step 6: Evaluate Quality
+## Step 6: Evaluate Quality
 
 Let's assess how good our synthetic data is.
 
@@ -195,7 +196,7 @@ Let's assess how good our synthetic data is.
 }
 ```
 
-##  Step 7: Download Results
+## Step 7: Download Results
 
 ### Download Synthetic Dataset
 
@@ -207,17 +208,17 @@ Let's assess how good our synthetic data is.
 curl -O http://localhost:8000/datasets/{output_dataset_id}/download
 ```
 
-##  Congratulations!
+## Congratulations!
 
 You've successfully:
 
--  Started Synthetic Data Studio
--  Uploaded a real dataset
--  Generated synthetic data with CTGAN
--  Evaluated data quality
--  Downloaded your results
+- Started Synthetic Data Studio
+- Uploaded a real dataset
+- Generated synthetic data with CTGAN
+- Evaluated data quality
+- Downloaded your results
 
-##  Next Steps
+## Next Steps
 
 ### Try Advanced Features
 
@@ -250,7 +251,7 @@ curl -X POST http://localhost:8000/llm/chat \
 - **[Tutorials](../tutorials/)**: Step-by-step learning paths
 - **[Privacy Features](../user-guide/privacy-features.md)**: Differential privacy deep dive
 
-##  Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -290,6 +291,4 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 
 ---
 
-**Ready for more?** Try the [Basic Synthesis Tutorial](../tutorials/basic-synthesis.md) for a deeper dive! 
-
-
+**Ready for more?** Try the [Basic Synthesis Tutorial](../tutorials/basic-synthesis.md) for a deeper dive!

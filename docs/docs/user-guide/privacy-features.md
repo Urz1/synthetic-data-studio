@@ -6,11 +6,12 @@ sidebar_position: 6
 slug: /user-guide/privacy-features
 tags: [user-guide, privacy]
 ---
+
 # Privacy Features & Differential Privacy
 
 Learn how to use Synthetic Data Studio's differential privacy features to generate mathematically private synthetic data with regulatory compliance.
 
-##  Differential Privacy Fundamentals
+## Differential Privacy Fundamentals
 
 ### What is Differential Privacy?
 
@@ -21,33 +22,36 @@ Differential Privacy (DP) is a mathematical framework that provides **strong pri
 ### Privacy Parameters
 
 #### Epsilon (ε) - Privacy Budget
+
 - **Definition**: Maximum privacy loss per individual
 - **Range**: 0.1 (very private) to 100+ (less private)
 - **Interpretation**: Lower ε = stronger privacy guarantees
 - **Typical Values**: 0.1-10.0 for production use
 
 #### Delta (δ) - Failure Probability
+
 - **Definition**: Probability that privacy guarantee fails
 - **Typical Value**: 1/n (where n = dataset size)
 - **Auto-calculated** in Synthetic Data Studio
 
 ### Privacy Levels
 
-| Epsilon (ε) | Privacy Level | Use Case | Compliance |
-|-------------|---------------|----------|------------|
-| < 1.0 | Very Strong | Clinical trials, genomic data | HIPAA (PHI) |
-| 1-5 | Strong | Healthcare, financial records | GDPR Article 9 |
-| 5-10 | Moderate | Customer data, HR records | CCPA |
-| 10-20 | Weak | Aggregated analytics | SOC-2 |
-| > 20 | Minimal | Non-sensitive data | None required |
+| Epsilon (ε) | Privacy Level | Use Case                      | Compliance     |
+| ----------- | ------------- | ----------------------------- | -------------- |
+| < 1.0       | Very Strong   | Clinical trials, genomic data | HIPAA (PHI)    |
+| 1-5         | Strong        | Healthcare, financial records | GDPR Article 9 |
+| 5-10        | Moderate      | Customer data, HR records     | CCPA           |
+| 10-20       | Weak          | Aggregated analytics          | SOC-2          |
+| > 20        | Minimal       | Non-sensitive data            | None required  |
 
-##  Safety System
+## Safety System
 
 ### 3-Layer Privacy Protection
 
 Synthetic Data Studio implements a comprehensive safety system:
 
 #### 1. Pre-Training Validation
+
 **Purpose**: Prevent catastrophic privacy failures before training starts
 
 ```bash
@@ -64,12 +68,14 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 ```
 
 **Validation Checks:**
--  Sampling rate validation (< 10% recommended)
--  Training steps calculation
--  Noise multiplier computation
--  Privacy budget verification
+
+- Sampling rate validation (< 10% recommended)
+- Training steps calculation
+- Noise multiplier computation
+- Privacy budget verification
 
 #### 2. Runtime Privacy Accounting
+
 **Purpose**: Track actual privacy expenditure during training
 
 - **Rényi Differential Privacy (RDP)** accounting
@@ -78,6 +84,7 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 - **Automatic noise calibration**
 
 #### 3. Post-Training Verification
+
 **Purpose**: Confirm final privacy guarantees
 
 ```bash
@@ -86,12 +93,13 @@ curl http://localhost:8000/generators/{generator_id}/privacy-report
 ```
 
 **Verification Includes:**
--  Actual epsilon achieved
--  Privacy budget utilization
--  Safety warnings and recommendations
--  Compliance framework mapping
 
-##  Using Differential Privacy
+- Actual epsilon achieved
+- Privacy budget utilization
+- Safety warnings and recommendations
+- Compliance framework mapping
+
+## Using Differential Privacy
 
 ### Step 1: Validate Configuration
 
@@ -110,13 +118,12 @@ curl -X POST "http://localhost:8000/generators/dp/validate-config" \
 ```
 
 **Successful Response:**
+
 ```json
 {
   "is_valid": true,
   "errors": [],
-  "warnings": [
-    "Batch size (200) is 10% of dataset size - good for privacy"
-  ],
+  "warnings": ["Batch size (200) is 10% of dataset size - good for privacy"],
   "requested_config": {
     "epochs": 50,
     "batch_size": 200,
@@ -141,6 +148,7 @@ curl "http://localhost:8000/generators/dp/recommended-config?dataset_id=550e8400
 ```
 
 **Quality Options:**
+
 - `high_privacy`: ε < 5, prioritizes privacy over quality
 - `balanced`: ε ≈ 10, good balance of privacy and utility
 - `high_quality`: ε ≈ 15, prioritizes quality over privacy
@@ -168,6 +176,7 @@ curl http://localhost:8000/generators/{generator_id}/privacy-report
 ```
 
 **Sample Report:**
+
 ```json
 {
   "generator_id": "gen-123",
@@ -198,33 +207,35 @@ curl http://localhost:8000/generators/{generator_id}/privacy-report
 }
 ```
 
-##  DP Method Comparison
+## DP Method Comparison
 
 ### DP-CTGAN vs DP-TVAE
 
-| Feature | DP-CTGAN | DP-TVAE |
-|---------|----------|---------|
-| **Quality** | Excellent | Good |
-| **Speed** | Slower | 2-3x faster |
-| **Memory** | Higher | Lower |
-| **Best For** | Complex data | Mixed types |
-| **Training Time** | 10-30 min | 5-15 min |
+| Feature           | DP-CTGAN     | DP-TVAE     |
+| ----------------- | ------------ | ----------- |
+| **Quality**       | Excellent    | Good        |
+| **Speed**         | Slower       | 2-3x faster |
+| **Memory**        | Higher       | Lower       |
+| **Best For**      | Complex data | Mixed types |
+| **Training Time** | 10-30 min    | 5-15 min    |
 
 ### When to Use Each Method
 
 **Choose DP-CTGAN when:**
+
 - Maximum data quality is required
 - Complex correlations need preservation
 - Training time is not a constraint
 - Dataset has intricate patterns
 
 **Choose DP-TVAE when:**
+
 - Faster generation is needed
 - Dataset has mixed data types
 - Memory constraints exist
 - Prototyping or iteration speed matters
 
-## ⚙ Advanced Configuration
+## Advanced Configuration
 
 ### Fine-Tuning Privacy Parameters
 
@@ -251,24 +262,26 @@ The noise multiplier controls privacy-utility trade-off:
 
 ```json
 {
-  "target_delta": 1e-5,  // Instead of auto-calculated 1/n
+  "target_delta": 1e-5, // Instead of auto-calculated 1/n
   "target_epsilon": 1.0
 }
 ```
 
 **Note**: Lower delta values require more noise, reducing data quality.
 
-##  Compliance Frameworks
+## Compliance Frameworks
 
 ### HIPAA Compliance
 
 **Requirements Met:**
--  De-identification of Protected Health Information (PHI)
--  Safe Harbor method compliance
--  Expert determination documentation
--  Privacy Rule compliance
+
+- De-identification of Protected Health Information (PHI)
+- Safe Harbor method compliance
+- Expert determination documentation
+- Privacy Rule compliance
 
 **Implementation:**
+
 ```json
 {
   "target_epsilon": 1.0,
@@ -280,12 +293,14 @@ The noise multiplier controls privacy-utility trade-off:
 ### GDPR Compliance
 
 **Requirements Met:**
--  Data minimization (Article 5)
--  Privacy by design (Article 25)
--  Lawful processing (Article 6)
--  Data protection impact assessment (Article 35)
+
+- Data minimization (Article 5)
+- Privacy by design (Article 25)
+- Lawful processing (Article 6)
+- Data protection impact assessment (Article 35)
 
 **Implementation:**
+
 ```json
 {
   "target_epsilon": 5.0,
@@ -297,20 +312,22 @@ The noise multiplier controls privacy-utility trade-off:
 ### CCPA Compliance
 
 **Requirements Met:**
--  Right to know about data collection
--  Right to delete personal information
--  Right to opt-out of data sales
--  Data minimization requirements
+
+- Right to know about data collection
+- Right to delete personal information
+- Right to opt-out of data sales
+- Data minimization requirements
 
 ### SOC-2 Compliance
 
 **Requirements Met:**
--  Security principle
--  Availability principle
--  Processing integrity
--  Confidentiality principle
 
-##  Privacy Evaluation
+- Security principle
+- Availability principle
+- Processing integrity
+- Confidentiality principle
+
+## Privacy Evaluation
 
 ### Membership Inference Testing
 
@@ -340,7 +357,7 @@ Test for potential attribute disclosure:
 }
 ```
 
-##  Best Practices
+## Best Practices
 
 ### Privacy-First Development
 
@@ -352,6 +369,7 @@ Test for potential attribute disclosure:
 ### Parameter Selection Guidelines
 
 #### For Healthcare Data (HIPAA)
+
 ```json
 {
   "target_epsilon": 1.0,
@@ -362,6 +380,7 @@ Test for potential attribute disclosure:
 ```
 
 #### For Financial Data (GDPR)
+
 ```json
 {
   "target_epsilon": 5.0,
@@ -372,6 +391,7 @@ Test for potential attribute disclosure:
 ```
 
 #### For General Business Data
+
 ```json
 {
   "target_epsilon": 10.0,
@@ -384,34 +404,38 @@ Test for potential attribute disclosure:
 ### Quality vs Privacy Trade-offs
 
 **High Privacy (ε < 5):**
--  Strong privacy guarantees
--  Reduced data quality
--  More noise in results
--  Regulatory compliance
+
+- Strong privacy guarantees
+- Reduced data quality
+- More noise in results
+- Regulatory compliance
 
 **Balanced Approach (ε = 5-10):**
--  Good privacy protection
--  Reasonable data quality
--  Practical for most use cases
--  Compliance-friendly
+
+- Good privacy protection
+- Reasonable data quality
+- Practical for most use cases
+- Compliance-friendly
 
 **High Quality (ε > 10):**
--  Weaker privacy guarantees
--  Better data utility
--  Less noise in results
--  May not meet strict compliance
 
-## � Common Issues & Solutions
+- Weaker privacy guarantees
+- Better data utility
+- Less noise in results
+- May not meet strict compliance
+
+## Common Issues & Solutions
 
 ### "Sampling Rate Too High"
 
 **Error:** `Batch size too large (>20% of dataset)`
 
 **Solution:**
+
 ```json
 {
-  "batch_size": 100,  // Reduce from 500
-  "epochs": 25        // May need to increase epochs
+  "batch_size": 100, // Reduce from 500
+  "epochs": 25 // May need to increase epochs
 }
 ```
 
@@ -420,6 +444,7 @@ Test for potential attribute disclosure:
 **Error:** `Target epsilon too low for training parameters`
 
 **Solutions:**
+
 1. Increase target epsilon
 2. Reduce epochs
 3. Increase batch size
@@ -430,6 +455,7 @@ Test for potential attribute disclosure:
 **Error:** `Privacy accounting failed - training unstable`
 
 **Solutions:**
+
 1. Reduce learning rate
 2. Increase max_grad_norm
 3. Use smaller batch sizes
@@ -440,12 +466,13 @@ Test for potential attribute disclosure:
 **Issue:** Synthetic data quality is low despite DP guarantees
 
 **Solutions:**
+
 1. Increase epochs gradually
 2. Use DP-CTGAN over DP-TVAE
 3. Adjust noise multiplier
 4. Consider non-DP methods if privacy requirements allow
 
-##  Monitoring & Auditing
+## Monitoring & Auditing
 
 ### Privacy Budget Tracking
 
@@ -478,7 +505,7 @@ Track DP training metrics:
 - Convergence behavior
 - Quality metrics over time
 
-##  Integration with Compliance
+## Integration with Compliance
 
 ### Automated Compliance Reporting
 
@@ -508,7 +535,7 @@ Generate human-readable audit trails:
 curl http://localhost:8000/generators/{generator_id}/audit-narrative
 ```
 
-##  Next Steps
+## Next Steps
 
 After implementing privacy features:
 
@@ -519,5 +546,3 @@ After implementing privacy features:
 ---
 
 **Need help with privacy parameters?** Use the `/dp/recommended-config` endpoint or check our [Troubleshooting Guide](../reference/troubleshooting.md).
-
-

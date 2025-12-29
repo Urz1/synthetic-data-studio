@@ -28,6 +28,10 @@ export default function DatasetUploadPage() {
   const [progress, setProgress] = React.useState(0)
   const [error, setError] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState(false)
+  // New project creation state
+  const [showNewProjectInput, setShowNewProjectInput] = React.useState(false)
+  const [newProjectName, setNewProjectName] = React.useState("")
+  const [creatingProject, setCreatingProject] = React.useState(false)
 
   // Load projects
   React.useEffect(() => {
@@ -43,6 +47,29 @@ export default function DatasetUploadPage() {
       }
     } catch (err) {
       console.error("Failed to load projects:", err)
+    }
+  }
+
+  async function handleCreateProject() {
+    if (!newProjectName.trim()) return
+    
+    setCreatingProject(true)
+    setError(null)
+    
+    try {
+      const newProject = await api.createProject({ 
+        name: newProjectName.trim(),
+        description: ""
+      })
+      // Add to projects list and select it
+      setProjects(prev => [...prev, newProject])
+      setSelectedProject(newProject.id)
+      setShowNewProjectInput(false)
+      setNewProjectName("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project")
+    } finally {
+      setCreatingProject(false)
     }
   }
 
@@ -137,7 +164,15 @@ export default function DatasetUploadPage() {
                 {/* Project Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="project">Project</Label>
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <Select value={selectedProject} onValueChange={(value) => {
+                    if (value === "create-new") {
+                      setShowNewProjectInput(true)
+                      setSelectedProject("")
+                    } else {
+                      setShowNewProjectInput(false)
+                      setSelectedProject(value)
+                    }
+                  }}>
                     <SelectTrigger id="project">
                       <SelectValue placeholder="Select a project" />
                     </SelectTrigger>
@@ -147,8 +182,50 @@ export default function DatasetUploadPage() {
                           {project.name}
                         </SelectItem>
                       ))}
+                      <SelectItem value="create-new" className="text-primary font-medium">
+                        + Create New Project
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Inline new project creation */}
+                  {showNewProjectInput && (
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="New project name"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        disabled={creatingProject}
+                      />
+                      <Button 
+                        type="button" 
+                        onClick={handleCreateProject}
+                        disabled={!newProjectName.trim() || creatingProject}
+                        size="sm"
+                      >
+                        {creatingProject ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Create"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowNewProjectInput(false)
+                          setNewProjectName("")
+                          if (projects.length > 0) {
+                            setSelectedProject(projects[0].id)
+                          }
+                        }}
+                        disabled={creatingProject}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* File Upload */}

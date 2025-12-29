@@ -47,7 +47,7 @@ export default function SyntheticDatasetDetailPage() {
 
       const data = await api.getSyntheticDatasetDetails(id)
       
-      setDataset(data.dataset)
+      setDataset(data.dataset as unknown as SyntheticDataset)
       setGenerator(data.generator)
     } catch (err) {
       console.error("Failed to load synthetic dataset:", err)
