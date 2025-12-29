@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -17,7 +17,8 @@ import { Loader2 } from "lucide-react";
  * 3. Backend validates the token and sets cookies in the response
  * 4. We redirect to /dashboard
  */
-export default function AuthCompletePage() {
+
+function AuthCompleteContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export default function AuthCompletePage() {
           headers: {
             "Content-Type": "application/json",
           },
-        });
+        }); 
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
@@ -73,25 +74,43 @@ export default function AuthCompletePage() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center space-y-4">
-        {isProcessing ? (
-          <>
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <h1 className="text-xl font-semibold">Completing sign in...</h1>
-            <p className="text-muted-foreground">Please wait while we set up your session</p>
-          </>
-        ) : error ? (
-          <>
-            <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-              <span className="text-destructive text-2xl">!</span>
-            </div>
-            <h1 className="text-xl font-semibold text-destructive">Authentication Failed</h1>
-            <p className="text-muted-foreground">{error}</p>
-            <p className="text-sm text-muted-foreground">Redirecting to login...</p>
-          </>
-        ) : null}
-      </div>
+    <div className="text-center space-y-4">
+      {isProcessing ? (
+        <>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <h1 className="text-xl font-semibold">Completing sign in...</h1>
+          <p className="text-muted-foreground">Please wait while we set up your session</p>
+        </>
+      ) : error ? (
+        <>
+          <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <span className="text-destructive text-2xl">!</span>
+          </div>
+          <h1 className="text-xl font-semibold text-destructive">Authentication Failed</h1>
+          <p className="text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground">Redirecting to login...</p>
+        </>
+      ) : null}
     </div>
   );
 }
+
+function AuthCompleteLoading() {
+  return (
+    <div className="text-center space-y-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+      <h1 className="text-xl font-semibold">Loading...</h1>
+    </div>
+  );
+}
+
+export default function AuthCompletePage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Suspense fallback={<AuthCompleteLoading />}>
+        <AuthCompleteContent />
+      </Suspense>
+    </div>
+  );
+}
+
