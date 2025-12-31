@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { RegisterForm } from "@/components/auth/register-form"
+import { BetterAuthRegisterForm } from "@/components/auth/better-auth-register-form"
 import { DashboardPrefetcher } from "@/components/auth/dashboard-prefetcher"
 
 // Purposeful display face for the marketing/auth pages
@@ -23,8 +23,7 @@ export default async function RegisterPage({
   searchParams: SearchParams | Promise<SearchParams>
 }) {
   const sp = await Promise.resolve(searchParams)
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio"
-  const next = getStringParam(sp.next)
+  const next = getStringParam(sp.next) || "/dashboard"
   const error = getStringParam(sp.error)
   const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login"
 
@@ -67,7 +66,7 @@ export default async function RegisterPage({
               </Alert>
             )}
 
-            <RegisterForm apiUrl={apiUrl} next={next} />
+            <BetterAuthRegisterForm callbackURL={next} externalError={error} />
           </CardContent>
           <CardFooter className="flex justify-center border-t pt-6">
             <p className="text-sm text-muted-foreground">

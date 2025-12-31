@@ -78,46 +78,481 @@ div[class*='announcementBar'] {
   background-color: rgba(167, 139, 250, 0.1);
 }
 
-/* Mobile navbar sidebar fixes */
-.navbar-sidebar {
-  background-color: var(--ifm-background-color);
+/* ============================================
+   Mobile Navbar - Burger Toggle & Sidebar
+   ============================================ */
+
+/* Burger toggle button - ensure visibility */
+.navbar__toggle {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin-right: 0.5rem;
+  color: var(--ifm-navbar-link-color, var(--ifm-color-content));
+  cursor: pointer;
+  background: transparent;
+  border: none;
 }
 
-.navbar-sidebar__items {
-  display: flex;
+.navbar__toggle svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.navbar__toggle svg path {
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Show toggle only on mobile */
+@media (min-width: 997px) {
+  .navbar__toggle {
+    display: none !important;
+  }
+}
+
+@media (max-width: 996px) {
+  .navbar__toggle {
+    display: flex !important;
+  }
+
+  /* Hide desktop nav items on mobile */
+  .navbar__items--right>.navbar__item:not(.navbar__toggle) {
+    display: none;
+  }
+
+  /* Ensure navbar is visible */
+  .navbar {
+    display: flex !important;
+    z-index: 100;
+  }
+}
+
+/* Mobile navbar sidebar fixes */
+.navbar-sidebar {
+  background-color: var(--ifm-background-color) !important;
+  height: 100vh !important;
+  overflow-y: auto;
+  z-index: 200 !important;
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 80vw;
+  max-width: 350px;
+  /* These override Docusaurus defaults */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* When sidebar is shown - MUST override visibility and opacity too */
+.navbar-sidebar--show {
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+  display: flex !important;
   flex-direction: column;
+}
+
+[data-theme='dark'] .navbar-sidebar {
+  background-color: #0c0d0f !important;
+}
+
+/* Backdrop overlay when sidebar is open */
+.navbar-sidebar__backdrop {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  z-index: 199 !important;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.navbar-sidebar__backdrop--show {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto;
+}
+
+
+.navbar-sidebar__items {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .navbar-sidebar__item {
   display: block !important;
+  width: 100%;
 }
 
 .navbar-sidebar .menu {
   padding: 1rem;
+  width: 100%;
 }
 
 .navbar-sidebar .menu__list {
   display: block !important;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .navbar-sidebar .menu__list-item {
   display: block !important;
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
 }
 
 .navbar-sidebar .menu__link {
   display: flex !important;
+  align-items: center;
   padding: 0.75rem 1rem;
   font-size: 1rem;
+  color: var(--ifm-font-color-base);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.navbar-sidebar .menu__link:hover {
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+.navbar-sidebar__brand {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.navbar-sidebar__close {
+  margin-left: auto;
 }
 
 /* Ensure mobile menu items are visible */
 @media (max-width: 996px) {
+  .navbar-sidebar__items {
+    display: flex !important;
+  }
+
   .navbar-sidebar__items .menu__list {
     display: block !important;
   }
 
-  .navbar-sidebar__brand {
-    padding: 1rem;
+  .navbar-sidebar__items--show-secondary {
+    transform: none !important;
   }
+
+  /* Fix for nested menus */
+  .navbar-sidebar .menu__list .menu__list {
+    padding-left: 1rem;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Enhanced sidebar styles */
+.menu__list-item-collapsible>.menu__link {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Category headers with emoji icons */
+.menu__list-item-collapsible>.menu__link--sublist {
+  background: linear-gradient(90deg, transparent 0%, rgba(124, 58, 237, 0.05) 100%);
+  border-radius: 8px;
+  margin: 0.25rem 0;
+  padding: 0.625rem 0.75rem;
+}
+
+[data-theme='dark'] .menu__list-item-collapsible>.menu__link--sublist {
+  background: linear-gradient(90deg, transparent 0%, rgba(167, 139, 250, 0.08) 100%);
+}
+
+.menu__list-item-collapsible>.menu__link--sublist:hover {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.1) 0%, rgba(124, 58, 237, 0.15) 100%);
+}
+
+[data-theme='dark'] .menu__list-item-collapsible>.menu__link--sublist:hover {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.1) 0%, rgba(167, 139, 250, 0.15) 100%);
+}
+
+/* ============================================
+   Sidebar Icons - Professional Lucide SVG Icons
+   ============================================ */
+
+/* Base icon styles */
+.sidebar-icon-docs>.menu__link::before,
+.sidebar-icon-rocket>.menu__link--sublist::before,
+.sidebar-icon-book>.menu__link--sublist::before,
+.sidebar-icon-graduation>.menu__link--sublist::before,
+.sidebar-icon-code>.menu__link--sublist::before,
+.sidebar-icon-package>.menu__link--sublist::before,
+.sidebar-icon-list>.menu__link--sublist::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: -3px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.85;
+}
+
+/* Documentation Index - BookOpen icon */
+.sidebar-icon-docs>.menu__link::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E");
+}
+
+/* Getting Started - Rocket icon */
+.sidebar-icon-rocket>.menu__link--sublist::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z'/%3E%3Cpath d='m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z'/%3E%3Cpath d='M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0'/%3E%3Cpath d='M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5'/%3E%3C/svg%3E");
+}
+
+/* User Guide - Book icon */
+.sidebar-icon-book>.menu__link--sublist::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20'/%3E%3C/svg%3E");
+}
+
+/* Tutorials - GraduationCap icon */
+.sidebar-icon-graduation>.menu__link--sublist::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 10v6M2 10l10-5 10 5-10 5z'/%3E%3Cpath d='M6 12v5c3 3 9 3 12 0v-5'/%3E%3C/svg%3E");
+}
+
+/* Developer Guide - Code icon */
+.sidebar-icon-code>.menu__link--sublist::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='16 18 22 12 16 6'/%3E%3Cpolyline points='8 6 2 12 8 18'/%3E%3C/svg%3E");
+}
+
+/* Examples - Package icon */
+.sidebar-icon-package>.menu__link--sublist::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ec4899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7.5 4.27 9 5.15'/%3E%3Cpath d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/%3E%3Cpath d='m3.3 7 8.7 5 8.7-5'/%3E%3Cpath d='M12 22V12'/%3E%3C/svg%3E");
+}
+
+/* Reference - List icon */
+.sidebar-icon-list>.menu__link--sublist::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='8' x2='21' y1='6' y2='6'/%3E%3Cline x1='8' x2='21' y1='12' y2='12'/%3E%3Cline x1='8' x2='21' y1='18' y2='18'/%3E%3Cline x1='3' x2='3.01' y1='6' y2='6'/%3E%3Cline x1='3' x2='3.01' y1='12' y2='12'/%3E%3Cline x1='3' x2='3.01' y1='18' y2='18'/%3E%3C/svg%3E");
+}
+
+/* Sub-items styling */
+.menu__list .menu__list {
+  padding-left: 0.75rem;
+  margin-left: 0.5rem;
+  border-left: 2px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .menu__list .menu__list {
+  border-left-color: var(--ifm-color-emphasis-300);
+}
+
+.menu__list .menu__list .menu__link {
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+/* Active link styling */
+.menu__link--active:not(.menu__link--sublist) {
+  background: linear-gradient(90deg, var(--ifm-color-primary) 0%, #6d28d9 100%);
+  color: white !important;
+  font-weight: 500;
+}
+
+.menu__link--active:not(.menu__link--sublist):hover {
+  background: linear-gradient(90deg, var(--ifm-color-primary-dark) 0%, #5b21b6 100%);
+  color: white;
+}
+
+/* Sidebar scrollbar styling */
+.menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.menu::-webkit-scrollbar-thumb {
+  background: var(--ifm-color-emphasis-300);
+  border-radius: 3px;
+}
+
+.menu::-webkit-scrollbar-thumb:hover {
+  background: var(--ifm-color-emphasis-400);
+}
+
+/* Doc page content styling */
+article h1 {
+  border-bottom: 2px solid var(--ifm-color-primary);
+  padding-bottom: 0.5rem;
+}
+
+/* Better table styling in docs */
+table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+table thead {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+}
+
+[data-theme='dark'] table thead {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%);
+}
+
+table th {
+  font-weight: 600;
+}
+
+/* Admonition styling */
+.admonition {
+  border-radius: 8px;
+  border-left-width: 4px;
+}
+
+/* Announcement bar styling */
+.announcementBar_mb4j {
+  background: linear-gradient(90deg, var(--ifm-color-primary) 0%, #6d28d9 100%);
+}
+
+/* ============================================
+   Table of Contents - Scroll Spy Active Indicator
+   ============================================ */
+
+/* TOC container styling */
+.table-of-contents {
+  position: relative;
+  border-left: 2px solid var(--ifm-color-emphasis-200);
+  padding-left: 0;
+}
+
+[data-theme='dark'] .table-of-contents {
+  border-left-color: var(--ifm-color-emphasis-300);
+}
+
+/* TOC links base styling */
+.table-of-contents__link {
+  position: relative;
+  display: block;
+  padding: 0.375rem 0 0.375rem 1rem;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  border-left: 2px solid transparent;
+  margin-left: -2px;
+}
+
+.table-of-contents__link:hover {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.05) 0%, transparent 100%);
+}
+
+[data-theme='dark'] .table-of-contents__link:hover {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.08) 0%, transparent 100%);
+}
+
+/* Active indicator line with animation */
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+  border-left-color: var(--ifm-color-primary);
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.1) 0%, transparent 100%);
+}
+
+[data-theme='dark'] .table-of-contents__link--active {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.15) 0%, transparent 100%);
+}
+
+/* Animated dot indicator for active link */
+.table-of-contents__link--active::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--ifm-color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--ifm-color-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px var(--ifm-color-primary);
+    opacity: 1;
+  }
+
+  50% {
+    box-shadow: 0 0 12px var(--ifm-color-primary);
+    opacity: 0.8;
+  }
+}
+
+/* Nested TOC items */
+.table-of-contents__link--h3 {
+  padding-left: 1.5rem;
+}
+
+.table-of-contents__link--h4 {
+  padding-left: 2rem;
+  font-size: 0.75rem;
+}
+
+/* TOC title styling */
+.theme-doc-toc-desktop .table-of-contents::before {
+  content: 'On this page';
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0.75rem;
+  padding-left: 1rem;
+}
+
+/* Smooth scroll behavior for TOC */
+.table-of-contents li {
+  transition: opacity 0.15s ease;
+}
+
+/* Dim non-active siblings when one is active */
+.table-of-contents:has(.table-of-contents__link--active) li:not(:has(.table-of-contents__link--active)) {
+  opacity: 0.7;
+}
+
+.table-of-contents:has(.table-of-contents__link--active) li:not(:has(.table-of-contents__link--active)):hover {
+  opacity: 1;
+}
+
+/* Progress indicator line (optional - tracks scroll progress) */
+.theme-doc-toc-desktop::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: var(--scroll-progress, 0%);
+  background: linear-gradient(180deg, var(--ifm-color-primary) 0%, #06b6d4 100%);
+  transition: height 0.1s ease-out;
+  z-index: 1;
 }
