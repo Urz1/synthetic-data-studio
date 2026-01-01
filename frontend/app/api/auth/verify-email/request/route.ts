@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 
-// POST /api/auth/password-reset/confirm - Confirm password reset with token
+// POST /api/auth/verify-email/request - Request email verification
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
 
-    const response = await fetch(`${API_BASE}/auth/password-reset/confirm`, {
+    const response = await fetch(`${API_BASE}/auth/verify-email/request`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Password Reset Confirm Error]", error);
+    console.error("[Email Verification Request Error]", error);
     return NextResponse.json(
       { error: "Service temporarily unavailable" },
       { status: 502 }

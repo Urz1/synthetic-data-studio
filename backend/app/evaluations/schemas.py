@@ -23,6 +23,7 @@ class EvaluationRequest(BaseModel):
     include_statistical: bool = True
     include_ml_utility: bool = True
     include_privacy: bool = True
+    statistical_columns: Optional[List[str]] = None
 
 
 # ============================================================================

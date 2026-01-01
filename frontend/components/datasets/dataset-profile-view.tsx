@@ -31,14 +31,32 @@ const typeIcons = {
 
 export function DatasetProfileView({ dataset, className }: DatasetProfileViewProps) {
   const columns: ColumnInfo[] = React.useMemo(() => {
-    // schema_data is Record<string, string> where keys are column names and values are types
-    const columnNames = dataset.schema_data ? Object.keys(dataset.schema_data) : []
-    return columnNames.map((colName: string) => ({
-      name: colName,
-      dtype: dataset.schema_data?.[colName] || "unknown",
-      profile: dataset.profiling_data?.columns?.[colName],
-      piiFlag: dataset.pii_flags?.[colName],
-    }))
+    // Handle different schema_data formats (flat string record vs nested object)
+    let schemaMap: Record<string, any> = {};
+    if (dataset.schema_data) {
+      if ('dtypes' in dataset.schema_data && typeof dataset.schema_data.dtypes === 'object') {
+        // Handle nested structure: { dtypes: { col: type }, ... }
+        schemaMap = dataset.schema_data.dtypes as Record<string, any>;
+      } else {
+        // Handle flat structure: { col: type }
+        schemaMap = dataset.schema_data;
+      }
+    }
+
+    const columnNames = Object.keys(schemaMap);
+    
+    return columnNames.map((colName: string) => {
+      // Ensure dtype is a string, not an object
+      const typesVal = schemaMap[colName];
+      const dtype = typeof typesVal === 'string' ? typesVal : JSON.stringify(typesVal);
+
+      return {
+        name: colName,
+        dtype: dtype || "unknown",
+        profile: dataset.profiling_data?.columns?.[colName],
+        piiFlag: dataset.pii_flags?.[colName],
+      }
+    })
   }, [dataset])
 
   const piiColumns = columns.filter((col) => col.piiFlag)

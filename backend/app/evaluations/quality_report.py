@@ -60,6 +60,7 @@ class QualityReportGenerator:
         include_statistical: bool = True,
         include_ml_utility: bool = True,
         include_privacy: bool = True,
+        statistical_columns: Optional[List[str]] = None,
         # CONFIGURABLE WEIGHTS (audit fix - was hardcoded)
         statistical_weight: float = 0.4,
         ml_utility_weight: float = 0.3,
@@ -74,6 +75,7 @@ class QualityReportGenerator:
             include_statistical: Include statistical similarity tests
             include_ml_utility: Include ML utility tests
             include_privacy: Include privacy leakage tests
+            statistical_columns: Specific columns to use for statistical tests (optional)
         
         Returns:
             Comprehensive quality report dictionary
@@ -103,7 +105,7 @@ class QualityReportGenerator:
         if include_statistical:
             try:
                 stat_evaluator = StatisticalEvaluator(self.real_data, self.synthetic_data)
-                stat_results = stat_evaluator.evaluate_all()
+                stat_results = stat_evaluator.evaluate_all(columns=statistical_columns)
                 report["evaluations"]["statistical_similarity"] = stat_results
                 logger.info("✓ Statistical evaluation complete")
             except Exception as e:

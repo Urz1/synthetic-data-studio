@@ -15,6 +15,8 @@ import type { Evaluation, Generator, Dataset } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { useToast } from "@/hooks/use-toast"
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
+import { DistributionChart } from "@/components/evaluations/distribution-chart"
+import { MetricsBreakdown } from "@/components/evaluations/metrics-breakdown"
 
 export default function EvaluationDetailPage() {
   const params = useParams()
@@ -371,20 +373,65 @@ export default function EvaluationDetailPage() {
               </Card>
             )}
 
-            {/* Detailed JSON Report (Fallback/Debug) */}
+            {/* Top Failing Columns (New) */}
+            {(report?.evaluations?.statistical_similarity?.distributions) && (
             <Card>
-              <CardHeader>
-                <CardTitle>Detailed Report Data</CardTitle>
-                <CardDescription>Raw evaluation metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-muted p-4 rounded-md overflow-x-auto">
-                    <pre className="text-xs font-mono">
-                        {JSON.stringify(report, null, 2)}
-                    </pre>
-                </div>
-              </CardContent>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                        Column Quality Analysis
+                    </CardTitle>
+                    <CardDescription>
+                        Analysis of individual column distributions and statistical similarity
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-8">
+                         {/* Metrics Grid */}
+                         <MetricsBreakdown 
+                            metrics={report.evaluations.statistical_similarity.column_tests} 
+                            distributions={report.evaluations.statistical_similarity.distributions} 
+                         />
+                         
+                         {/* Detailed Charts for Top Columns */}
+                         <div className="pt-4 border-t">
+                            <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-primary" />
+                                Distribution Comparison
+                            </h3>
+                            <div className="grid gap-6 md:grid-cols-2">
+                                {Object.keys(report.evaluations.statistical_similarity.distributions).slice(0, 4).map(col => (
+                                    <div key={col} className="border rounded-lg p-4 bg-card/50">
+                                        <DistributionChart 
+                                            data={report.evaluations.statistical_similarity.distributions[col]} 
+                                            columnName={col}
+                                            height={250}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                         </div>
+                    </div>
+                </CardContent>
             </Card>
+            )}
+
+            {/* Detailed JSON Report (Hidden by default) */}
+            <details className="group">
+                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-primary transition-colors mb-2 list-none flex items-center gap-2 select-none">
+                     <Database className="h-4 w-4" />
+                     <span className="font-medium">View Raw Report Data</span>
+                </summary>
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="bg-muted p-4 rounded-md overflow-x-auto">
+                            <pre className="text-xs font-mono">
+                                {JSON.stringify(report, null, 2)}
+                            </pre>
+                        </div>
+                    </CardContent>
+                </Card>
+            </details>
           </div>
 
           <div className="space-y-4">

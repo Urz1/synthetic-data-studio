@@ -20,6 +20,7 @@ from sqlmodel import select
 # Local - Core
 from app.core.dependencies import get_db, get_current_user
 from app.core.validators import validate_uuid
+from app.core.config import settings
 
 # Local - Services
 from app.datasets.repositories import get_dataset_by_id
@@ -82,10 +83,12 @@ def list_evaluations(
  
     
     # Join evaluations with generators to filter by generator owner
+    # Exclude soft-deleted evaluations (where deleted_at is set)
     statement = (
         select(Evaluation)
         .join(Generator, Evaluation.generator_id == Generator.id)
         .where(Generator.created_by == current_user.id)
+        .where(Evaluation.deleted_at == None)  # Filter out soft-deleted
     )
     evaluations = db.exec(statement).all()
     
@@ -199,7 +202,7 @@ async def run_evaluation(
         if dataset.file_path:
             real_data = pd.read_csv(dataset.file_path)
         else:
-            file_path = Path("uploads") / dataset.original_filename
+            file_path = Path(settings.upload_dir) / dataset.original_filename
             real_data = pd.read_csv(file_path)
         
         # Load synthetic data from output dataset
@@ -210,7 +213,7 @@ async def run_evaluation(
         if output_dataset.file_path:
             synthetic_data = pd.read_csv(output_dataset.file_path)
         else:
-            synth_file_path = Path("uploads") / output_dataset.original_filename
+            synth_file_path = Path(settings.upload_dir) / output_dataset.original_filename
             synthetic_data = pd.read_csv(synth_file_path)
         
         # Generate quality report
@@ -226,7 +229,8 @@ async def run_evaluation(
             sensitive_columns=request.sensitive_columns,
             include_statistical=request.include_statistical,
             include_ml_utility=request.include_ml_utility,
-            include_privacy=request.include_privacy
+            include_privacy=request.include_privacy,
+            statistical_columns=request.statistical_columns
         )
         
         # Sanitize report for JSON compliance (remove NaN/Infinity)

@@ -41,9 +41,12 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@tanstack/react-query": "^5.90.15",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^3.0.0",
     "@types/pg": "^8.16.0",
     "@vercel/analytics": "latest",
     "autoprefixer": "^10.4.20",
+    "bcryptjs": "^3.0.3",
     "better-auth": "^1.4.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -80,6 +83,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.9.4",
+    "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.0.3",
     "eslint-plugin-react": "^7.37.5",
@@ -88,6 +92,7 @@
     "globals": "^16.5.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
+    "tsx": "^4.21.0",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }

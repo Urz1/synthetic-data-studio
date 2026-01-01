@@ -7,6 +7,8 @@ const config: Config = {
   tagline: "Privacy-Preserving Synthetic Data Generation",
   favicon: "img/logo.png",
 
+  plugins: [],
+
   future: {
     v4: true,
   },
@@ -86,12 +88,11 @@ const config: Config = {
     announcementBar: {
       id: "beta_notice",
       content:
-        '🚀 Synth Studio is in active development. <a href="/docs/INDEX">Get started</a> or <a href="https://github.com/Urz1/synthetic-data-studio">star us on GitHub</a>!',
+        '🚀 Synth Studio is in active development. <a href="/docs">Get started</a> or <a href="https://github.com/Urz1/synthetic-data-studio">star us on GitHub</a>!',
       backgroundColor: "#7c3aed",
       textColor: "#ffffff",
       isCloseable: true,
     },
-
     colorMode: {
       defaultMode: "dark",
       respectPrefersColorScheme: true,
@@ -116,6 +117,13 @@ const config: Config = {
           position: "left",
         },
         { to: "/blog", label: "Blog", position: "left" },
+        {
+          type: "html",
+          position: "right",
+          value:
+            '<a href="https://github.com/Urz1/synthetic-data-studio" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center;"><img src="https://img.shields.io/github/stars/Urz1/synthetic-data-studio?style=social" alt="GitHub stars" style="height: 20px;" /></a>',
+          className: "github-stars-badge",
+        },
         {
           href: "https://github.com/Urz1/synthetic-data-studio",
           label: "GitHub",

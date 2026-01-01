@@ -7,6 +7,7 @@
 # Standard library
 from typing import Optional
 import os
+import uuid
 from datetime import datetime
 
 # Third-party
@@ -28,6 +29,12 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
     if not normalized:
         return None
     return db.query(User).filter(func.lower(User.email) == normalized).first()
+
+
+def get_user_by_id(db: Session, user_id: uuid.UUID) -> Optional[User]:
+    """Get user by UUID."""
+    return db.query(User).filter(User.id == user_id).first()
+
 
 
 def create_user(db: Session, user: UserCreate) -> User:

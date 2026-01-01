@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    // Hard logout: evict cache, call backend, full page reload
+    // Hard logout: evict cache, call Better Auth signOut, full page reload
     try {
       // Clear service worker caches
       if ('caches' in window) {
@@ -120,12 +120,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await Promise.all(names.map(n => caches.delete(n)))
       }
       
-      // Call api.logout (which calls /auth/logout)
-      await api.logout()
+      // Clear any session storage
+      sessionStorage.clear()
+      
+      // Call Better Auth signOut via our logout endpoint
+      // This revokes the session server-side and clears cookies
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+      })
     } catch (err) {
       console.error("Logout error", err)
     } finally {
       // Full page reload to /login - wipes JS heap and prevents Back button issues
+      // Using replace prevents back button from returning to authenticated pages
       window.location.replace("/login")
     }
   }
