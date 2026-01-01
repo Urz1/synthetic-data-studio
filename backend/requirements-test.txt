@@ -11,7 +11,7 @@ pytest-mock==3.12.0
 
 # HTTP testing
 httpx==0.25.2
-requests==2.31.0
+requests==2.32.4
 
 # Test data generation
 faker==20.1.0
