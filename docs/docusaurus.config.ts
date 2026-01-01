@@ -7,14 +7,7 @@ const config: Config = {
   tagline: "Privacy-Preserving Synthetic Data Generation",
   favicon: "img/logo.png",
 
-  plugins: [
-    function navDebugClientModule() {
-      return {
-        name: "nav-debug-client-module",
-        clientModules: [require.resolve("./src/js/nav-debug.js")],
-      };
-    },
-  ],
+  plugins: [],
 
   future: {
     v4: true,
