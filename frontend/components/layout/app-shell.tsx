@@ -46,15 +46,19 @@ import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { HelpButton } from "@/components/onboarding/help-button"
 import { cn } from "@/lib/utils"
 
-// Regular user navigation items
-const navItems = [
+// Regular user navigation items - Main Tools
+const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourId: "dashboard" },
   { title: "Datasets", href: "/datasets", icon: Database, tourId: "sidebar-datasets" },
   { title: "Generators", href: "/generators", icon: Zap, tourId: "sidebar-generators" },
   { title: "Evaluations", href: "/evaluations", icon: TestTube2, tourId: "sidebar-evaluations" },
   { title: "Projects", href: "/projects", icon: FolderOpen, tourId: "sidebar-projects" },
   { title: "Jobs", href: "/jobs", icon: Workflow },
-  { title: "Assistant", href: "/assistant", icon: MessageSquare },
+]
+
+// Meta / Secondary navigation
+const metaNavItems = [
+  { title: "AI Assistant", href: "/assistant", icon: MessageSquare, badge: "Beta" },
   { title: "Settings", href: "/settings", icon: Settings },
   { title: "Help & Docs", href: "/help", icon: HelpCircle },
 ]
@@ -103,9 +107,7 @@ export function AppShell({ children, user }: AppShellProps) {
     setIsLoggingOut(true)
     try {
       await logout()
-      // Logout redirects to landing page, so we don't need to do anything here
     } catch (error) {
-      // If logout fails, reset the loading state
       setIsLoggingOut(false)
       console.error("Logout failed:", error)
     }
@@ -114,58 +116,84 @@ export function AppShell({ children, user }: AppShellProps) {
   return (
     <SidebarProvider>
       <Sidebar className="border-r border-sidebar-border/70">
-        <SidebarHeader className="flex items-center gap-3 px-3 py-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-sidebar-border/70 bg-card/60">
+        <SidebarHeader className="flex flex-row items-center gap-3 px-3 py-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-sidebar-border/70 bg-card/60">
             <Image
               src="/FInal_Logo.png"
               alt="Synth Studio"
-              width={48}
-              height={48}
-              className="object-contain"
+              width={32}
+              height={32}
+              className="object-contain p-0.5"
             />
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold">Synth Studio</span>
-            <span className="text-xs text-muted-foreground">Privacy-first</span>
+          <div className="flex flex-col leading-none gap-0.5">
+            <span className="text-sm font-semibold tracking-tight">Synth Studio</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Privacy-first</span>
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="px-2 pb-4">
+        <SidebarContent className="px-2 pb-4 gap-0">
           <SidebarGroup>
-            <SidebarGroupLabel className="text-xs uppercase tracking-[0.2em] text-muted-foreground px-2 mb-2">
-              Workspace
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-semibold px-2 mb-1">
+              Platform
             </SidebarGroupLabel>
-            <SidebarMenu aria-label="Primary navigation">
-              {navItems.map((item) => {
+            <SidebarMenu aria-label="Primary navigation" className="gap-0.5">
+              {mainNavItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname?.startsWith(item.href)
-                const isExternal = item.href.startsWith("http")
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      {isExternal ? (
-                        <a
-                          href={item.href}
-                          className="flex items-center gap-3"
-                          target="_blank"
-                          rel="noreferrer"
-                          data-tour={item.tourId}
-                        >
-                          <Icon className="h-4 w-4" />
-                          <span className="truncate">{item.title}</span>
-                        </a>
-                      ) : (
-                        <Link
-                          href={item.href}
-                          className="flex items-center gap-3"
-                          aria-current={isActive ? "page" : undefined}
-                          data-tour={item.tourId}
-                        >
-                          <Icon className="h-4 w-4" />
-                          <span className="truncate">{item.title}</span>
-                        </Link>
-                      )}
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive} 
+                      size="sm"
+                      className="h-8 text-sm font-medium"
+                    >
+                      <Link
+                        href={item.href}
+                        className="flex items-center gap-2.5"
+                        data-tour={item.tourId}
+                      >
+                        <Icon className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+                        <span>{item.title}</span>
+                      </Link>
                     </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+          
+          <div className="px-4 my-2">
+            <Separator className="bg-sidebar-border/50" />
+          </div>
+
+          <SidebarGroup>
+           <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-semibold px-2 mb-1">
+              Tools
+            </SidebarGroupLabel>
+            <SidebarMenu aria-label="Secondary navigation" className="gap-0.5">
+              {metaNavItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname?.startsWith(item.href)
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive} 
+                      size="sm"
+                      className="h-8 text-sm font-medium"
+                    >
+                      <Link href={item.href} className="flex items-center gap-2.5">
+                        <Icon className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    {item.badge && (
+                      <span className="absolute right-2 top-1.5 flex h-5 items-center justify-center rounded-sm bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                        {item.badge}
+                      </span>
+                    )}
                   </SidebarMenuItem>
                 )
               })}
@@ -178,20 +206,25 @@ export function AppShell({ children, user }: AppShellProps) {
               <SidebarGroupLabel className="text-xs uppercase tracking-[0.2em] text-muted-foreground px-2 mb-2">
                 Administration
               </SidebarGroupLabel>
-              <SidebarMenu aria-label="Admin navigation">
+              <SidebarMenu aria-label="Admin navigation" className="gap-0.5">
                 {adminNavItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname?.startsWith(item.href)
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={isActive}>
+                       <SidebarMenuButton 
+                        asChild 
+                        isActive={isActive} 
+                        size="sm"
+                        className="h-8 text-sm font-medium"
+                      >
                         <Link
                           href={item.href}
-                          className="flex items-center gap-3"
+                          className="flex items-center gap-2.5"
                           aria-current={isActive ? "page" : undefined}
                         >
-                          <Icon className="h-4 w-4" />
-                          <span className="truncate">{item.title}</span>
+                          <Icon className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+                          <span>{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

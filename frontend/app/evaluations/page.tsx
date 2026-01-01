@@ -11,8 +11,7 @@ import { EvaluationCard } from "@/components/evaluations/evaluation-card"
 import { Plus, Search, Filter, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useEvaluations } from "@/lib/hooks"
-import { api } from "@/lib/api"
+import { useEvaluations, useDeleteEvaluation } from "@/lib/hooks"
 import type { Evaluation } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import ProtectedRoute from "@/components/layout/protected-route"
@@ -32,12 +31,14 @@ export default function EvaluationsPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [evaluationToDelete, setEvaluationToDelete] = React.useState<string | null>(null)
-  const [deleting, setDeleting] = React.useState(false)
   const { user } = useAuth()
   const { toast } = useToast()
 
   // TanStack Query for data fetching with caching
   const { data: evaluationsData, isLoading: loading, error: queryError, refetch } = useEvaluations()
+  
+  // Optimistic delete mutation - removes item from UI instantly
+  const deleteEvaluation = useDeleteEvaluation()
   
   const evaluations = React.useMemo(() => {
     if (!evaluationsData) return []
@@ -57,27 +58,26 @@ export default function EvaluationsPage() {
       : "Failed to load evaluations"
   ) : null
 
-  async function handleDelete(id: string) {
-    try {
-      setDeleting(true)
-      await api.deleteEvaluation(id)
-      toast({
-        title: "Deleted",
-        description: "Evaluation has been deleted successfully.",
-      })
-      // TanStack Query will refetch
-      refetch()
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to delete evaluation",
-        variant: "destructive",
-      })
-    } finally {
-      setDeleting(false)
-      setDeleteDialogOpen(false)
-      setEvaluationToDelete(null)
-    }
+  function handleDelete(id: string) {
+    deleteEvaluation.mutate(id, {
+      onSuccess: () => {
+        toast({
+          title: "Deleted",
+          description: "Evaluation has been deleted successfully.",
+        })
+      },
+      onError: (err) => {
+        toast({
+          title: "Error",
+          description: err instanceof Error ? err.message : "Failed to delete evaluation",
+          variant: "destructive",
+        })
+      },
+      onSettled: () => {
+        setDeleteDialogOpen(false)
+        setEvaluationToDelete(null)
+      },
+    })
   }
 
   const filteredEvaluations = evaluations.filter((evaluation) => {

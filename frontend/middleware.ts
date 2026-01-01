@@ -3,7 +3,12 @@ import type { NextRequest } from "next/server";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
+
+// Legacy cookie (old system)
 const SESSION_COOKIE_NAME = "ss_jwt";
+// Better Auth cookies
+const BETTER_AUTH_SESSION_COOKIE = "better-auth.session_token";
+const BETTER_AUTH_SECURE_COOKIE = "__Secure-better-auth.session_token";
 
 const PUBLIC_PATH_PREFIXES = [
   "/",
@@ -78,50 +83,63 @@ export async function middleware(request: NextRequest) {
   }
   // Server-side protection for app routes (only for non-public protected paths)
   else if (!isPublicPath(pathname) && isProtectedPath(pathname)) {
-    const token = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
+    // Check for authentication - support both legacy JWT and Better Auth cookies
+    const legacyToken = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
+    const betterAuthToken =
+      request.cookies.get(BETTER_AUTH_SESSION_COOKIE)?.value || "";
+    const betterAuthSecureToken =
+      request.cookies.get(BETTER_AUTH_SECURE_COOKIE)?.value || "";
+
+    const hasAnyToken = legacyToken || betterAuthToken || betterAuthSecureToken;
 
     const loginUrl = new URL("/login", request.url);
 
-    if (!token) {
+    if (!hasAnyToken) {
       return NextResponse.redirect(loginUrl, 303);
     }
 
-    // OFFLINE JWT validation - no backend calls!
-    // This is faster and avoids race conditions
-    if (!isJwtNotExpired(token)) {
-      // Token expired - clear cookies and redirect
-      const res = NextResponse.redirect(loginUrl, 303);
-      res.cookies.set({
-        name: SESSION_COOKIE_NAME,
-        value: "",
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 0,
-      });
-      res.cookies.set({
-        name: "ss_access",
-        value: "",
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 0,
-      });
-      res.cookies.set({
-        name: "ss_refresh",
-        value: "",
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 0,
-      });
-      return res;
+    // Only validate JWT expiration for legacy tokens
+    // Better Auth handles its own session validation
+    if (legacyToken && !betterAuthToken && !betterAuthSecureToken) {
+      if (!isJwtNotExpired(legacyToken)) {
+        // Token expired - clear cookies and redirect
+        const res = NextResponse.redirect(loginUrl, 303);
+        res.cookies.set({
+          name: SESSION_COOKIE_NAME,
+          value: "",
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 0,
+        });
+        res.cookies.set({
+          name: "ss_access",
+          value: "",
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 0,
+        });
+        res.cookies.set({
+          name: "ss_refresh",
+          value: "",
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 0,
+        });
+        return res;
+      }
     }
   }
 
   const response = NextResponse.next();
 
   // Content Security Policy
+  // Only upgrade insecure requests in production (HTTPS)
+  const upgradeInsecure =
+    process.env.NODE_ENV === "production" ? "upgrade-insecure-requests;" : "";
+
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
@@ -130,7 +148,7 @@ export async function middleware(request: NextRequest) {
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' ${API_BASE} https://www.google-analytics.com;
     frame-ancestors 'none';
-    upgrade-insecure-requests;
+    ${upgradeInsecure}
   `
     .replace(/\s{2,}/g, " ")
     .trim();

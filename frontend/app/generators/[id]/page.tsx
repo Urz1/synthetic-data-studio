@@ -418,14 +418,6 @@ export default function GeneratorDetailPage() {
                   {downloadingSyntheticData ? 'Downloading...' : 'Download Data'}
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={handleExportModel} disabled={exportingModel || generator.status !== 'completed'}>
-                {exportingModel ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                {exportingModel ? 'Exporting...' : 'Export Model'}
-              </Button>
               <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button 

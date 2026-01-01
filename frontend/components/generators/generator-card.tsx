@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/lib/api"
+import { useDeleteGenerator } from "@/lib/hooks"
 import type { Generator } from "@/lib/types"
 
 interface GeneratorCardProps {
@@ -98,33 +99,37 @@ export function GeneratorCard({ generator, onDeleted, className }: GeneratorCard
     }
   }
 
+  // Optimistic delete mutation - removes from UI instantly
+  const deleteGenerator = useDeleteGenerator()
+
   // Handle delete generator
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setIsDeleting(true)
     toast({
       title: `Deleting ${generator.name}...`,
       description: "Please wait while the generator is being removed.",
     })
 
-    try {
-      await api.deleteGenerator(generator.id)
-      
-      toast({
-        title: "Generator deleted",
-        description: `${generator.name} has been permanently removed.`,
-      })
-      
-      onDeleted?.(generator.id)
-    } catch (err) {
-      toast({
-        title: `Could not delete ${generator.name}`,
-        description: "Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsDeleting(false)
-      setDeleteDialogOpen(false)
-    }
+    deleteGenerator.mutate(generator.id, {
+      onSuccess: () => {
+        toast({
+          title: "Generator deleted",
+          description: `${generator.name} has been permanently removed.`,
+        })
+        onDeleted?.(generator.id)
+      },
+      onError: () => {
+        toast({
+          title: `Could not delete ${generator.name}`,
+          description: "Please try again.",
+          variant: "destructive",
+        })
+      },
+      onSettled: () => {
+        setIsDeleting(false)
+        setDeleteDialogOpen(false)
+      },
+    })
   }
 
   return (

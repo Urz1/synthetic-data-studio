@@ -803,6 +803,7 @@ class ApiClient {
         sensitive_columns: string[];
         attacks: string[];
       };
+      statistical_columns?: string[];
     };
   }): Promise<Evaluation> {
     return this.request("/evaluations/run", {

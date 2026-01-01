@@ -235,6 +235,15 @@ export interface EvaluationReport {
         pass_rate: number;
         overall_quality: string;
       };
+      column_tests: Record<string, any[]>;
+      distributions?: Record<
+        string,
+        {
+          labels: string[];
+          real: number[];
+          synth: number[];
+        }
+      >;
       details: any; // Using any for complex nested structure
     };
     ml_utility?: {

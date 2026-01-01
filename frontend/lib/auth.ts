@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
+import bcrypt from "bcryptjs";
 
 /**
  * Better Auth server-side configuration
@@ -18,6 +19,10 @@ import { Pool } from "pg";
 // Create PostgreSQL pool for database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 export const auth = betterAuth({
@@ -25,12 +30,25 @@ export const auth = betterAuth({
   database: pool,
 
   // Base configuration
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  // BETTER_AUTH_URL controls the OAuth redirect URLs
+  // Fallback is production - set BETTER_AUTH_URL=http://localhost:3000 for local dev
+  baseURL: process.env.BETTER_AUTH_URL || "https://www.synthdata.studio",
   secret: process.env.BETTER_AUTH_SECRET,
 
-  // Email and password authentication
+  // Email and password authentication with bcrypt
   emailAndPassword: {
     enabled: true,
+    // Custom bcrypt password hashing to match FastAPI's format
+    password: {
+      hash: async (password: string) => {
+        // Hash with 12 rounds to match FastAPI's bcrypt config
+        return bcrypt.hash(password, 12);
+      },
+      verify: async (data: { hash: string; password: string }) => {
+        // Verify bcrypt password hash
+        return bcrypt.compare(data.password, data.hash);
+      },
+    },
   },
 
   // Social sign-in providers
@@ -61,6 +79,13 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: ["google", "github"],
     },
+  },
+
+  // Advanced settings
+  advanced: {
+    // Disable __Secure- cookie prefix for HTTP development
+    // In production (HTTPS), this is automatically true
+    useSecureCookies: process.env.NODE_ENV === "production",
   },
 });
 

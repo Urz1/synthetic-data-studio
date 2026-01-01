@@ -38,6 +38,7 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import { useState, useEffect } from "react"
 import { AuthIntentLink } from "@/components/auth/auth-intent-link"
 import dynamic from "next/dynamic"
+import { GitHubStarButton } from "@/components/github-star-button"
 
 // Dynamic import with SSR disabled - prevents ALL hydration mismatches
 // HeroStory uses window.matchMedia, animations, and browser-only state
@@ -240,6 +241,9 @@ export default function LandingPage() {
             <Button asChild className="rounded-full px-5">
               <AuthIntentLink href="/register" eventLocation="navbar" mode="register">Get Started</AuthIntentLink>
             </Button>
+            <div className="hidden lg:block">
+              <GitHubStarButton />
+            </div>
           </div>
 
           <div className="md:hidden flex items-center gap-2">
@@ -279,6 +283,9 @@ export default function LandingPage() {
             <Button className="w-full rounded-full" asChild>
               <AuthIntentLink href="/register" eventLocation="mobile_nav" mode="register" onClick={() => setMobileMenuOpen(false)}>Get Started</AuthIntentLink>
             </Button>
+            <div className="pt-2 flex justify-center">
+              <GitHubStarButton />
+            </div>
           </motion.div>
         )}
       </nav>
@@ -297,7 +304,7 @@ export default function LandingPage() {
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <Github className="h-5 w-5" />
-              <span className="text-sm font-medium">Star on GitHub</span>
+              <span className="text-sm font-medium">100% Open Source</span>
             </a>
             <div className="flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" />

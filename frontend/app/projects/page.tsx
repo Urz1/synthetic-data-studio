@@ -15,8 +15,7 @@ import { useDeleteWithProgress } from "@/hooks/use-delete-with-progress"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
-import { useProjects } from "@/lib/hooks"
-import { api } from "@/lib/api"
+import { useProjects, useDeleteProject } from "@/lib/hooks"
 import type { Project } from "@/lib/types"
 import ProtectedRoute from "@/components/layout/protected-route"
 
@@ -34,12 +33,13 @@ export default function ProjectsPage() {
   
   const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load projects") : null
 
-  // Delete hook with progress tracking
+  // Optimistic delete mutation - removes item from UI instantly
+  const deleteProjectMutation = useDeleteProject()
+
+  // Delete hook with progress tracking (uses the optimistic mutation)
   const { isDeleting, isGhostId, startDelete } = useDeleteWithProgress({
     entityType: "Project",
     onSuccess: () => {
-      // TanStack Query will refetch automatically
-      refetch()
       setProjectToDelete(null)
     },
     onError: () => {
@@ -58,7 +58,7 @@ export default function ProjectsPage() {
     await startDelete(
       projectToDelete.id,
       projectToDelete.name,
-      () => api.deleteProject(projectToDelete.id)
+      () => deleteProjectMutation.mutateAsync(projectToDelete.id)
     )
   }
 

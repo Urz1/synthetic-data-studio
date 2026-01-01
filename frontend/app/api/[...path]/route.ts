@@ -1,73 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { auth } from "@/lib/auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
-const SESSION_COOKIE_NAME = "ss_jwt";
-const REFRESH_COOKIE_NAME = "ss_refresh";
 
 /**
  * Production-ready API proxy for Next.js App Router.
  *
- * Forwards requests from the frontend to the backend API with proper
- * authentication handling, cookie forwarding, and redirect support.
+ * This proxy:
+ * 1. Reads the Better Auth session
+ * 2. Extracts user info from the session
+ * 3. Forwards requests to FastAPI with proper auth headers
  *
- * Features:
- * - Automatic Authorization header injection from cookies
- * - Cookie forwarding to backend for session management
- * - Proper redirect handling for OAuth and other flows
- * - Cookie domain normalization for cross-subdomain access
+ * The FastAPI backend accepts requests with either:
+ * - Bearer token (JWT)
+ * - X-User-Id and X-User-Email headers (trusted internal proxy)
  */
-
-/**
- * Normalizes cookie domain for cross-subdomain access.
- * Ensures cookies set by api.synthdata.studio work on www.synthdata.studio
- */
-function normalizeCookieForFrontend(cookie: string): string {
-  // If cookie has a domain that's the API subdomain, replace with parent domain
-  // This handles cases where backend might set domain=api.synthdata.studio
-  if (cookie.match(/Domain=api\./i)) {
-    return cookie.replace(/Domain=api\.[^;]+/i, "Domain=.synthdata.studio");
-  }
-  return cookie;
-}
 
 async function proxyRequest(request: NextRequest, path: string) {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value;
+  // Get Better Auth session
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
 
   // Build backend URL with query parameters from original request
   const url = new URL(request.url);
-  const queryString = url.search; // Includes the leading '?' if params exist
+  const queryString = url.search;
   const backendUrl = `${API_BASE}/${path}${queryString}`;
 
-  // Build headers - forward essential headers
+  // Build headers
   const headers: HeadersInit = {
     "Content-Type": request.headers.get("Content-Type") || "application/json",
     Accept: request.headers.get("Accept") || "application/json",
+    // Mark this as a trusted internal proxy request
+    "X-Proxy-Secret": process.env.PROXY_SECRET || "internal-proxy",
   };
 
-  // Add Authorization header if we have an access token
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-
-  // Forward cookies to backend for auth-related endpoints
-  // This ensures session cookies are available for all auth operations
-  if (accessToken || refreshToken) {
-    const cookieParts: string[] = [];
-    if (accessToken) cookieParts.push(`${SESSION_COOKIE_NAME}=${accessToken}`);
-    if (refreshToken)
-      cookieParts.push(`${REFRESH_COOKIE_NAME}=${refreshToken}`);
-    headers["Cookie"] = cookieParts.join("; ");
+  // If we have a Better Auth session, pass user info to FastAPI
+  if (session?.user) {
+    headers["X-User-Id"] = session.user.id;
+    headers["X-User-Email"] = session.user.email;
+    headers["X-User-Name"] = session.user.name || "";
+    // Also pass the session token for verification
+    headers["X-Session-Token"] = session.session?.token || "";
   }
 
   // Build fetch options
   const fetchOptions: RequestInit = {
     method: request.method,
     headers,
-    // Use manual redirect to properly forward cookies with redirects
     redirect: "manual",
   };
 
@@ -87,25 +69,10 @@ async function proxyRequest(request: NextRequest, path: string) {
     const backendResponse = await fetch(backendUrl, fetchOptions);
 
     // Handle redirect responses (3xx)
-    // Important for OAuth and other redirect-based flows
     if (backendResponse.status >= 300 && backendResponse.status < 400) {
       const location = backendResponse.headers.get("Location");
       if (location) {
-        const response = NextResponse.redirect(
-          location,
-          backendResponse.status
-        );
-
-        // Forward and normalize Set-Cookie headers
-        const setCookieHeaders = backendResponse.headers.getSetCookie?.() || [];
-        for (const cookie of setCookieHeaders) {
-          response.headers.append(
-            "Set-Cookie",
-            normalizeCookieForFrontend(cookie)
-          );
-        }
-
-        return response;
+        return NextResponse.redirect(location, backendResponse.status);
       }
     }
 
@@ -120,15 +87,8 @@ async function proxyRequest(request: NextRequest, path: string) {
       },
     });
 
-    // Forward and normalize Set-Cookie headers
-    const setCookieHeaders = backendResponse.headers.getSetCookie?.() || [];
-    for (const cookie of setCookieHeaders) {
-      response.headers.append("Set-Cookie", normalizeCookieForFrontend(cookie));
-    }
-
     return response;
   } catch (error) {
-    // Log error server-side only
     console.error("[API Proxy] Backend connection error:", error);
 
     return NextResponse.json(

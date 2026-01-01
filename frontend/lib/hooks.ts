@@ -2,7 +2,14 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import type { Dataset, Generator, Project, Evaluation, Job } from "./types";
+import type {
+  Dataset,
+  Generator,
+  Project,
+  Evaluation,
+  Job,
+  SyntheticDataset,
+} from "./types";
 
 /**
  * TanStack Query hooks for API data fetching
@@ -38,6 +45,10 @@ export const queryKeys = {
   // Evaluations
   evaluations: ["evaluations"] as const,
   evaluation: (id: string) => ["evaluations", id] as const,
+
+  // Synthetic Datasets
+  syntheticDatasets: ["syntheticDatasets"] as const,
+  syntheticDataset: (id: string) => ["syntheticDatasets", id] as const,
 
   // Jobs
   jobs: ["jobs"] as const,
@@ -84,8 +95,46 @@ export function useDeleteDataset() {
 
   return useMutation({
     mutationFn: (id: string) => api.deleteDataset(id),
-    onSuccess: () => {
-      // Invalidate datasets list to trigger refetch
+    onMutate: async (id: string) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: queryKeys.datasets });
+
+      // Snapshot the previous value
+      const previousDatasets = queryClient.getQueriesData({
+        queryKey: queryKeys.datasets,
+      });
+
+      // Optimistically remove the dataset from all cached queries
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.datasets },
+        (old: any) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.filter((d: Dataset) => d.id !== id);
+          }
+          if (old.datasets && Array.isArray(old.datasets)) {
+            return {
+              ...old,
+              datasets: old.datasets.filter((d: Dataset) => d.id !== id),
+            };
+          }
+          return old;
+        }
+      );
+
+      // Return context with snapshot for rollback
+      return { previousDatasets };
+    },
+    onError: (_err, _id, context) => {
+      // Rollback to previous state on error
+      if (context?.previousDatasets) {
+        context.previousDatasets.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      // Always refetch to ensure consistency with server
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets });
     },
   });
@@ -123,7 +172,33 @@ export function useDeleteGenerator() {
 
   return useMutation({
     mutationFn: (id: string) => api.deleteGenerator(id),
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.generators });
+      const previousGenerators = queryClient.getQueriesData({
+        queryKey: queryKeys.generators,
+      });
+
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.generators },
+        (old: any) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.filter((g: Generator) => g.id !== id);
+          }
+          return old;
+        }
+      );
+
+      return { previousGenerators };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousGenerators) {
+        context.previousGenerators.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.generators });
     },
   });
@@ -153,7 +228,39 @@ export function useDeleteProject() {
 
   return useMutation({
     mutationFn: (id: string) => api.deleteProject(id),
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.projects });
+      const previousProjects = queryClient.getQueriesData({
+        queryKey: queryKeys.projects,
+      });
+
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.projects },
+        (old: any) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.filter((p: Project) => p.id !== id);
+          }
+          if (old.projects && Array.isArray(old.projects)) {
+            return {
+              ...old,
+              projects: old.projects.filter((p: Project) => p.id !== id),
+            };
+          }
+          return old;
+        }
+      );
+
+      return { previousProjects };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousProjects) {
+        context.previousProjects.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.projects });
     },
   });
@@ -175,6 +282,109 @@ export function useEvaluation(id: string) {
     queryKey: queryKeys.evaluation(id),
     queryFn: () => api.getEvaluation(id),
     enabled: !!id,
+  });
+}
+
+export function useDeleteEvaluation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteEvaluation(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.evaluations });
+      const previousEvaluations = queryClient.getQueriesData({
+        queryKey: queryKeys.evaluations,
+      });
+
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.evaluations },
+        (old: any) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.filter((e: Evaluation) => e.id !== id);
+          }
+          if (old.evaluations && Array.isArray(old.evaluations)) {
+            return {
+              ...old,
+              evaluations: old.evaluations.filter(
+                (e: Evaluation) => e.id !== id
+              ),
+            };
+          }
+          return old;
+        }
+      );
+
+      return { previousEvaluations };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousEvaluations) {
+        context.previousEvaluations.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.evaluations });
+    },
+  });
+}
+
+// ============================================================================
+// SYNTHETIC DATASET HOOKS
+// ============================================================================
+
+export function useSyntheticDatasets() {
+  return useQuery({
+    queryKey: queryKeys.syntheticDatasets,
+    queryFn: () => api.listSyntheticDatasets(),
+  });
+}
+
+export function useSyntheticDataset(id: string) {
+  return useQuery({
+    queryKey: queryKeys.syntheticDataset(id),
+    queryFn: () => api.getSyntheticDataset(id),
+    enabled: !!id,
+  });
+}
+
+export function useDeleteSyntheticDataset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteSyntheticDataset(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.syntheticDatasets,
+      });
+      const previousDatasets = queryClient.getQueriesData({
+        queryKey: queryKeys.syntheticDatasets,
+      });
+
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.syntheticDatasets },
+        (old: any) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.filter((d: SyntheticDataset) => d.id !== id);
+          }
+          return old;
+        }
+      );
+
+      return { previousDatasets };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousDatasets) {
+        context.previousDatasets.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.syntheticDatasets });
+    },
   });
 }
 

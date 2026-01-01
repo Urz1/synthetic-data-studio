@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
@@ -15,11 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import type { Generator, Dataset } from "@/lib/types"
+import ProtectedRoute from "@/components/layout/protected-route"
+import { useToast } from "@/hooks/use-toast"
 
 export default function NewEvaluationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedGeneratorId = searchParams.get("generator")
+  const { user } = useAuth()
+  const { toast } = useToast()
 
   // Data State
   const [generators, setGenerators] = React.useState<Generator[]>([])
@@ -38,6 +43,7 @@ export default function NewEvaluationPage() {
     include_privacy: true,
     target_column: "",
     sensitive_columns: [] as string[],
+    statistical_columns: [] as string[], // New state for statistical columns
   })
 
   // Load Generators
@@ -46,13 +52,18 @@ export default function NewEvaluationPage() {
       try {
         setIsLoading(true)
         const data = await api.listGenerators()
-        // Filter for completed generators only
-        const completedOnly = data.filter(g => g.status === 'completed')
-        setGenerators(completedOnly)
+        // Filter for completed generators with a source dataset (exclude schema-based)
+        // Schema generators can't be evaluated as they have no original data to compare against
+        const evaluatable = data.filter(g => 
+          g.status === 'completed' && 
+          g.type !== 'schema' && 
+          g.dataset_id // Must have a source dataset
+        )
+        setGenerators(evaluatable)
 
         // Handle preselection
         if (preselectedGeneratorId) {
-          const preselected = completedOnly.find(g => g.id === preselectedGeneratorId)
+          const preselected = evaluatable.find((g: Generator) => g.id === preselectedGeneratorId)
           if (preselected) {
             handleGeneratorChange(preselected.id)
           }
@@ -74,13 +85,33 @@ export default function NewEvaluationPage() {
     setSelectedGenerator(generator || null)
     
     // Reset config that depends on dataset
-    setConfig(prev => ({ ...prev, target_column: "", sensitive_columns: [] }))
+    setConfig(prev => ({ ...prev, target_column: "", sensitive_columns: [], statistical_columns: [] }))
     
     if (generator?.dataset_id) {
       try {
         // Fetch source dataset details to get columns
         const datasetData = await api.getDataset(generator.dataset_id)
         setDataset(datasetData)
+
+        // Smart Default Selection for Statistical Columns
+        if (datasetData.schema_data) {
+             const allCols = Object.keys(datasetData.schema_data).filter(c => !c.startsWith('_'))
+             
+             // Filter out likely IDs and PII for statistical tests
+             const idPatterns = ['id', 'uuid', 'guid', 'key', 'hash', 'token', 'url', 'email', 'phone', 'created_at', 'updated_at', 'timestamp']
+             const defaultStatsCols = allCols.filter(col => {
+                 const colLower = col.toLowerCase()
+                 // Exclude if it perfectly matches an ID pattern or ends with _id
+                 if (colLower.endsWith('_id')) return false
+                 if (idPatterns.some(p => colLower.includes(p))) return false
+                 return true
+             })
+             
+             // If filter removes everything, specific fallback or keep all
+             const finalCols = defaultStatsCols.length > 0 ? defaultStatsCols : allCols
+             
+             setConfig(prev => ({ ...prev, statistical_columns: finalCols }))
+        }
       } catch (err) {
         console.error("Failed to load dataset details:", err)
       }
@@ -111,14 +142,21 @@ export default function NewEvaluationPage() {
                 models: ["lr", "rf"], // Default models
                 test_size: 0.2
             } : undefined,
+
             privacy_config: config.include_privacy && config.sensitive_columns.length > 0 ? {
                 sensitive_columns: config.sensitive_columns,
                 attacks: ["membership_inference"]
-            } : undefined
+            } : undefined,
+            statistical_columns: config.include_statistical ? config.statistical_columns : undefined
         }
       })
       
-      // Async redirection - Standard Pattern
+      // Success feedback before redirect
+      toast({
+        title: "Evaluation Started",
+        description: "Your evaluation is running. Results will appear shortly.",
+      })
+      
       router.push("/evaluations")
     } catch (err) {
       console.error("Failed to run evaluation:", err)
@@ -136,19 +174,31 @@ export default function NewEvaluationPage() {
     }))
   }
 
+  const toggleStatisticalColumn = (column: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      statistical_columns: prev.statistical_columns.includes(column)
+        ? prev.statistical_columns.filter((c) => c !== column)
+        : [...prev.statistical_columns, column],
+    }))
+  }
+
   // Loading View
   if (isLoading) {
       return (
-          <AppShell user={{ full_name: "", email: "" }}>
+          <ProtectedRoute>
+          <AppShell user={user || { full_name: "", email: "" }}>
               <div className="flex items-center justify-center py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
           </AppShell>
+          </ProtectedRoute>
       )
   }
 
   return (
-    <AppShell user={{ full_name: "Admin User", email: "admin@example.com" }}>
+    <ProtectedRoute>
+    <AppShell user={user || { full_name: "", email: "" }}>
       <div className="mb-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/evaluations">
@@ -198,9 +248,9 @@ export default function NewEvaluationPage() {
                   <SelectContent>
                     {generators.map((generator) => (
                       <SelectItem key={generator.id} value={generator.id}>
-                        <div className="flex items-center gap-2">
-                            <span>{generator.name}</span>
-                            <Badge variant="outline" className="text-xs">{generator.type}</Badge>
+                        <div className="flex items-center gap-2 max-w-[500px]">
+                            <span className="truncate">{generator.name}</span>
+                            <Badge variant="outline" className="text-xs shrink-0">{generator.type}</Badge>
                         </div>
                       </SelectItem>
                     ))}
@@ -279,6 +329,40 @@ export default function NewEvaluationPage() {
               </Card>
             )}
 
+            {/* Statistical Columns Configuration */}
+            {dataset && config.include_statistical && (
+                 <Card>
+                 <CardHeader>
+                   <CardTitle>Statistical Analysis Columns</CardTitle>
+                   <CardDescription>
+                       Select columns to analyze for statistical similarity. 
+                       <span className="block mt-1 text-xs text-muted-foreground">
+                        Tip: Exclude unique identifiers (IDs, Emails) to avoid false "0% Quality" scores.
+                       </span>
+                   </CardDescription>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                     {dataset.schema_data && Object.keys(dataset.schema_data).length > 0 && (
+                     <div className="flex flex-wrap gap-2">
+                        {Object.keys(dataset.schema_data)
+                         .filter(col => !col.startsWith('_')) 
+                         .map((colName) => (
+                                 <Badge
+                                 key={`stat-${colName}`}
+                                 variant={config.statistical_columns.includes(colName) ? "secondary" : "outline"}
+                                 className={`cursor-pointer ${config.statistical_columns.includes(colName) ? "border-primary/30" : "opacity-60"}`}
+                                 onClick={() => toggleStatisticalColumn(colName)}
+                                 >
+                                 {colName}
+                                 </Badge>
+                             )
+                        )}
+                       </div>
+                     )}
+                 </CardContent>
+               </Card>
+            )}
+
             {/* Column Configuration */}
             {dataset && (config.include_ml_utility || config.include_privacy) && (
               <Card>
@@ -302,13 +386,15 @@ export default function NewEvaluationPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {dataset.schema_data && Object.keys(dataset.schema_data).length > 0 ? 
-                              Object.keys(dataset.schema_data).map((colName) => (
+                              Object.keys(dataset.schema_data)
+                                .filter(col => !col.startsWith('_')) // Hide system/internal columns
+                                .map((colName) => (
                                 <SelectItem key={colName} value={colName}>
                                   {colName}
                                 </SelectItem>
                               ))
                           : (
-                              <SelectItem value="none" disabled>No columns found</SelectItem>
+                               <SelectItem value="none" disabled>No columns found</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -319,7 +405,9 @@ export default function NewEvaluationPage() {
                     <div className="space-y-2">
                       <Label>Sensitive Columns (for privacy checks)</Label>
                       <div className="flex flex-wrap gap-2">
-                       {Object.keys(dataset.schema_data).map((colName) => (
+                       {Object.keys(dataset.schema_data)
+                        .filter(col => !col.startsWith('_')) // Hide system/internal columns
+                        .map((colName) => (
                                 <Badge
                                 key={colName}
                                 variant={config.sensitive_columns.includes(colName) ? "default" : "outline"}
@@ -401,5 +489,6 @@ export default function NewEvaluationPage() {
       </form>
       )}
     </AppShell>
+    </ProtectedRoute>
   )
 }

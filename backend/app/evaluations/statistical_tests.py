@@ -360,9 +360,66 @@ class StatisticalEvaluator:
             "num_features": len(real_numerical.columns)
         }
     
-    def evaluate_all(self) -> Dict[str, Any]:
+    
+    def histogram_overlap(self, column: str, bins: int = 15) -> Dict[str, Any]:
+        """
+        Calculate histogram overlap and return distribution data for visualization.
+        
+        Args:
+            column: Column name to test
+            bins: Number of bins (default: 15 for visualization balance)
+            
+        Returns:
+            Dictionary with overlap score and histogram data points
+        """
+        real_col = self.real_data[column].dropna()
+        synth_col = self.synthetic_data[column].dropna()
+        
+        if len(real_col) == 0 or len(synth_col) == 0:
+            return {
+                "score": 0,
+                "overlap": 0,
+                "distribution": {"labels": [], "real": [], "synth": []}
+            }
+
+        # Calculate common bin edges
+        min_val = min(real_col.min(), synth_col.min())
+        max_val = max(real_col.max(), synth_col.max())
+        
+        # Determine bin edges - adding small epsilon to max to include edge case
+        bin_edges = np.linspace(min_val, max_val, bins + 1)
+        
+        # Calculate histograms (density=True for normalized comparison)
+        real_hist, _ = np.histogram(real_col, bins=bin_edges, density=True)
+        synth_hist, _ = np.histogram(synth_col, bins=bin_edges, density=True)
+        
+        # Calculate overlap coefficient (Intersection area of two histograms)
+        # For normalized histograms, max overlap area is 1.0 (perfect match)
+        bin_width = bin_edges[1] - bin_edges[0]
+        overlap_area = np.minimum(real_hist, synth_hist).sum() * bin_width
+        
+        # Prepare visualization data (center of bins)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        # Format for frontend (labels as strings for simple charting)
+        distribution_data = {
+            "labels": [f"{x:.2f}" for x in bin_centers],
+            "real": real_hist.tolist(),
+            "synth": synth_hist.tolist()
+        }
+        
+        return {
+            "score": float(overlap_area),
+            "overlap": float(overlap_area),
+            "distribution": distribution_data
+        }
+
+    def evaluate_all(self, columns: List[str] = None) -> Dict[str, Any]:
         """
         Run all statistical tests and compile comprehensive report.
+        
+        Args:
+            columns: Specific columns to evaluate (optional). If None, evaluates all.
         
         Returns:
             Dictionary with all test results and overall assessment
@@ -371,13 +428,21 @@ class StatisticalEvaluator:
         
         results = {
             "column_tests": {},
+            "distributions": {},  # New field for visualizations
             "overall_tests": {},
             "summary": {}
         }
         
-        # Test each column
-        numerical_cols = self.real_data.select_dtypes(include=[np.number]).columns
-        categorical_cols = self.real_data.select_dtypes(include=['object', 'category']).columns
+        # Select columns based on types
+        numerical_cols = list(self.real_data.select_dtypes(include=[np.number]).columns)
+        categorical_cols = list(self.real_data.select_dtypes(include=['object', 'category']).columns)
+        
+        # Filter if specific columns requested
+        if columns:
+            target_set = set(columns)
+            numerical_cols = [c for c in numerical_cols if c in target_set]
+            categorical_cols = [c for c in categorical_cols if c in target_set]
+            logger.info(f"Filtered to {len(numerical_cols)} numerical and {len(categorical_cols)} categorical columns")
         
         total_tests = 0
         passed_tests = 0
@@ -399,6 +464,16 @@ class StatisticalEvaluator:
             js_result = self.jensen_shannon_divergence(col)
             col_results.append(js_result)
             
+            # Distribution Data (New)
+            dist_data = self.histogram_overlap(col)
+            results["distributions"][col] = dist_data["distribution"]
+            # Add overlap score as a lightweight metric
+            col_results.append({
+                "test": "Histogram Overlap",
+                "score": dist_data["score"],
+                "interpretation": f"Overlap: {dist_data['score']:.2f}"
+            })
+            
             results["column_tests"][col] = col_results
         
         for col in categorical_cols:
@@ -407,6 +482,17 @@ class StatisticalEvaluator:
             results["column_tests"][col] = [chi_result]
             total_tests += 1
             if chi_result.get('passed'): passed_tests += 1
+            
+            # For categorical, "distribution" is just relative frequency
+            real_counts = self.real_data[col].value_counts(normalize=True)
+            synth_counts = self.synthetic_data[col].value_counts(normalize=True)
+            all_cats = sorted(list(set(real_counts.index) | set(synth_counts.index)))[:15] # Top 15 cats
+            
+            results["distributions"][col] = {
+                "labels": [str(c) for c in all_cats],
+                "real": [real_counts.get(c, 0) for c in all_cats],
+                "synth": [synth_counts.get(c, 0) for c in all_cats]
+            }
         
         # Overall tests
         corr_result = self.correlation_comparison()

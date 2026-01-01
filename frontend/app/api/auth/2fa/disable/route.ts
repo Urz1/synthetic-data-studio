@@ -1,17 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 
-// POST /api/auth/password-reset/confirm - Confirm password reset with token
+// POST /api/auth/2fa/disable - Disable 2FA with verification code
 export async function POST(request: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
+
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.text();
 
-    const response = await fetch(`${API_BASE}/auth/password-reset/confirm`, {
+    const response = await fetch(`${API_BASE}/auth/2fa/disable`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-User-Id": session.user.id,
+        "X-User-Email": session.user.email,
+        "X-Proxy-Secret": process.env.PROXY_SECRET || "internal-proxy",
       },
       body,
     });
@@ -26,7 +38,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Password Reset Confirm Error]", error);
+    console.error("[2FA Disable Error]", error);
     return NextResponse.json(
       { error: "Service temporarily unavailable" },
       { status: 502 }

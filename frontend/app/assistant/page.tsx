@@ -94,8 +94,13 @@ export default function AssistantPage() {
   const [isMetricLoading, setIsMetricLoading] = useState(false)
   
   // Feature generator state
+  interface Feature {
+    name: string
+    expression: string
+    description: string
+  }
   const [schemaInput, setSchemaInput] = useState("")
-  const [generatedFeatures, setGeneratedFeatures] = useState<string[]>([])
+  const [generatedFeatures, setGeneratedFeatures] = useState<Feature[]>([])
   const [isFeaturesLoading, setIsFeaturesLoading] = useState(false)
 
   // PII detection state
@@ -182,7 +187,12 @@ export default function AssistantPage() {
     setIsFeaturesLoading(true)
     try {
       const result = await api.generateFeatures({ description: schemaInput })
-      setGeneratedFeatures(result.features)
+      // Handle both string[] and Feature[] for backward compatibility
+      const features = result.features.map((f: any) => {
+        if (typeof f === 'string') return { name: f, expression: '', description: '' }
+        return f
+      })
+      setGeneratedFeatures(features)
       toast({
         title: "Success",
         description: `Generated ${result.features.length} feature suggestions`,
@@ -710,24 +720,44 @@ John Doe,john@example.com,555-1234`}
                         className="h-7"
                         onClick={() => {
                           const jsonSchema = generatedFeatures.map(f => {
-                            const [name, type] = f.split(':').map(s => s.trim())
-                            return { name: name || f, type: type || 'string' }
+                            // If it has expression, likely a derived feature
+                            return { 
+                              name: f.name, 
+                              expression: f.expression,
+                              description: f.description 
+                            }
                           })
                           navigator.clipboard.writeText(JSON.stringify(jsonSchema, null, 2))
-                          toast({ title: "Copied!", description: "Schema copied to clipboard as JSON" })
+                          toast({ title: "Copied!", description: "Features copied to clipboard as JSON" })
                         }}
                       >
                         <Copy className="h-3 w-3 mr-1" />
                         Copy JSON
                       </Button>
                     </div>
-                    <div className="space-y-2">
-                      {generatedFeatures.map((feature, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
-                          <code className="bg-background px-2 py-1 rounded truncate" title={feature}>{feature}</code>
-                          <Badge variant="outline">AI Suggested</Badge>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {generatedFeatures.map((feature, idx) => {
+                        const name = typeof feature.name === 'string' ? feature.name : JSON.stringify(feature.name);
+                        const expression = typeof feature.expression === 'string' ? feature.expression : (feature.expression ? JSON.stringify(feature.expression) : '');
+                        const description = typeof feature.description === 'string' ? feature.description : (feature.description ? JSON.stringify(feature.description) : '');
+
+                        return (
+                          <div key={idx} className="flex flex-col gap-1 p-3 bg-background rounded border text-sm">
+                            <div className="flex items-center justify-between">
+                              <code className="font-semibold text-primary">{name || 'Unknown Feature'}</code>
+                              <Badge variant="outline">AI Suggested</Badge>
+                            </div>
+                            {expression && (
+                              <div className="flex gap-2 text-xs text-muted-foreground">
+                                <span className="font-mono bg-muted px-1 rounded">{expression}</span>
+                              </div>
+                            )}
+                            {description && (
+                              <p className="text-xs text-muted-foreground">{description}</p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

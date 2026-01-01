@@ -36,14 +36,13 @@ export default function DatasetsPage() {
   
   const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load datasets") : null
 
-  // Delete mutation with cache invalidation
+  // Optimistic delete mutation - removes item from UI instantly
   const deleteDatasetMutation = useDeleteDataset()
 
-  // Delete hook with progress tracking
+  // Delete hook with progress tracking (uses the optimistic mutation)
   const { isDeleting, isGhostId, startDelete } = useDeleteWithProgress({
     entityType: "Dataset",
-    onSuccess: (id) => {
-      // No need to manually remove from state - TanStack Query will refetch
+    onSuccess: () => {
       setDatasetToDelete(null)
     },
     onError: () => {
@@ -61,7 +60,7 @@ export default function DatasetsPage() {
     await startDelete(
       datasetToDelete.id,
       datasetToDelete.name,
-      () => api.deleteDataset(datasetToDelete.id)
+      () => deleteDatasetMutation.mutateAsync(datasetToDelete.id)
     )
   }
 
