@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function SettingsPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, refreshUser } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
@@ -67,6 +67,7 @@ export default function SettingsPage() {
     setIsProfileSaving(true)
     try {
       await api.updateProfile({ full_name: fullName })
+      await refreshUser() // Refresh user state in context
       toast({
         title: "Profile updated",
         description: "Your profile has been saved successfully.",
