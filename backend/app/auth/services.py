@@ -88,10 +88,10 @@ def verify_token(token: str) -> Optional[str]:
         if jti and is_token_blacklisted(jti):
             return None
         
-        username: str = payload.get("sub")
-        if username is None:
+        username = payload.get("sub")
+        if not username:
             return None
-        return username
+        return str(username)
     except JWTError:
         return None
 

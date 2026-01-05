@@ -57,6 +57,22 @@ def get_current_user(
             user = get_user_by_email(db, user_email)
             if user:
                 return user
+            
+            # User exists in Better Auth but not in FastAPI users table
+            # Auto-create the user record for seamless sync
+            from app.auth.models import User
+            user_name = request.headers.get("X-User-Name", "")
+            new_user = User(
+                id=uuid.UUID(user_id) if user_id else uuid.uuid4(),
+                email=user_email,
+                name=user_name or user_email.split("@")[0],
+                hashed_password=None,  # OAuth/Better Auth user - no local password
+                is_email_verified=True,  # Already verified via Better Auth
+            )
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            return new_user
         
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

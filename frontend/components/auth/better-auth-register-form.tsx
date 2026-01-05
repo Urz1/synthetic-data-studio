@@ -8,7 +8,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
-import { signUpWithEmail, signInWithProvider, type SocialProvider } from "@/lib/auth-client";
+import { signInWithProvider, type SocialProvider } from "@/lib/auth-client";
+import { PasswordRequirements, usePasswordValidation } from "@/components/auth/password-requirements";
 
 interface BetterAuthRegisterFormProps {
   /** URL to redirect to after successful registration */
@@ -38,6 +39,11 @@ export function BetterAuthRegisterForm({
   const [error, setError] = useState(externalError);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | "email" | null>(null);
+  
+  // Live password validation
+  const passwordValidation = usePasswordValidation(password);
+  const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
+  const showMismatchError = confirmPassword.length > 0 && password !== confirmPassword;
 
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,18 +65,43 @@ export function BetterAuthRegisterForm({
     setLoadingProvider("email");
 
     try {
-      const result = await signUpWithEmail(email, password, name, callbackURL);
-      
-      if (result.error) {
-        setError(result.error.message || "Registration failed");
+      // Use FastAPI registration (sends verification email)
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          full_name: name,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = "Registration failed";
+        try {
+          const errorText = await response.text();
+          const errorData = JSON.parse(errorText);
+          // Handle different error formats: detail, error, message
+          if (typeof errorData.detail === "string") {
+            errorMessage = errorData.detail;
+          } else if (typeof errorData.error === "string") {
+            errorMessage = errorData.error;
+          } else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map((e: { msg?: string }) => e.msg || String(e)).join(", ");
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // JSON parse failed - use default message
+        }
+        setError(errorMessage);
         setIsLoading(false);
         setLoadingProvider(null);
         return;
       }
 
-      // Success - redirect
-      router.push(callbackURL);
-      router.refresh();
+      // Success - redirect to verify email page
+      router.push(`/verify-email?sent=1&email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setIsLoading(false);
@@ -138,9 +169,11 @@ export function BetterAuthRegisterForm({
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
             disabled={isLoading}
             required
           />
+          <PasswordRequirements password={password} />
         </div>
 
         <div className="space-y-2">
@@ -151,16 +184,24 @@ export function BetterAuthRegisterForm({
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
             disabled={isLoading}
             required
+            className={showMismatchError ? "border-destructive focus-visible:ring-destructive" : ""}
           />
+          {showMismatchError && (
+            <p className="text-xs text-destructive">Passwords do not match</p>
+          )}
+          {confirmPassword.length > 0 && passwordsMatch && (
+            <p className="text-xs text-green-500">Passwords match ✓</p>
+          )}
         </div>
 
         <Button 
           type="submit" 
           variant="secondary"
           className="w-full min-h-[44px]"
-          disabled={isLoading}
+          disabled={isLoading || !passwordValidation.isValid || !passwordsMatch}
         >
           {loadingProvider === "email" ? (
             <>

@@ -59,7 +59,7 @@ export default function RootLayout({
             __html: `(function(){
   try {
     var root = document.documentElement;
-    var stored = localStorage.getItem('theme') || 'system';
+    var stored = localStorage.getItem('theme') || 'dark';
     var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     var resolved = stored === 'system' ? (prefersDark ? 'dark' : 'light') : stored;
     var isDark = resolved === 'dark';
@@ -92,7 +92,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <ErrorBoundary>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <QueryProvider>
               <AuthProvider>
                 {children}
