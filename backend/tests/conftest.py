@@ -31,7 +31,6 @@ from app.main import app
 from app.auth.services import create_access_token
 
 # Local - Models
-from app.artifacts.models import Artifact
 from app.audit.models import AuditLog
 from app.auth.models import User
 from app.billing.models import UsageRecord, Quota

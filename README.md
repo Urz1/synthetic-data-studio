@@ -73,7 +73,6 @@ Generate high-quality synthetic data with **differential privacy** guarantees. B
 - **Chat Assistant** - Natural language data generation guidance
 - **Enhanced PII Detection** - LLM-powered sensitivity analysis
 - **Compliance Writer** - Auto-generate compliance documentation
-- **Report Translation** - Multi-language report generation
 
 ### Quality Evaluation
 
