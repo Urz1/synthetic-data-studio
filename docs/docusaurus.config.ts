@@ -13,6 +13,8 @@ const config: Config = {
     v4: true,
   },
 
+  scripts: [],
+
   url: "https://docs.synthdata.studio",
   baseUrl: "/",
 
@@ -110,13 +112,26 @@ const config: Config = {
           sidebarId: "docsSidebar",
           position: "left",
           label: "Docs",
+          className: "sidebar-icon-docs", // Icon for Docs
+        },
+        {
+          to: "/docs/getting-started/quick-start",
+          label: "Quick Start",
+          position: "left",
+          className: "mobile-only-item sidebar-icon-rocket", // Icon for Quick Start
         },
         {
           to: "/docs/developer-guide/api-integration",
           label: "API",
           position: "left",
+          className: "sidebar-icon-api", // Icon for API
         },
-        { to: "/blog", label: "Blog", position: "left" },
+        {
+          to: "/blog",
+          label: "Blog",
+          position: "left",
+          className: "sidebar-icon-blog", // Icon for Blog
+        },
         {
           type: "html",
           position: "right",
@@ -128,6 +143,7 @@ const config: Config = {
           href: "https://github.com/Urz1/synthetic-data-studio",
           label: "GitHub",
           position: "right",
+          className: "sidebar-icon-github", // Icon for GitHub
         },
       ],
     },

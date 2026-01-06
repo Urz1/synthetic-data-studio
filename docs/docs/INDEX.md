@@ -119,7 +119,7 @@ docs/
 
 ### By Technical Focus
 
-- **Privacy**: [DP Configuration](user-guide/privacy-features.md), [Privacy Reports](examples/postman-collection.json)
+- **Privacy**: [DP Configuration](user-guide/privacy-features.md), [Privacy Reports](user-guide/ai-features.md)
 - **Quality**: [Evaluation API](examples/python-client.md), [Statistical Tests](user-guide/evaluating-quality.md#statistical-tests)
 - **AI Features**: [Chat Interface](examples/curl-examples.md), [Smart Suggestions](user-guide/ai-features.md#suggestions)
 

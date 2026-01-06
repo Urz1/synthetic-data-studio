@@ -334,7 +334,7 @@ function CTASection() {
               Start Building
               <ArrowRight size={16} />
             </Link>
-            <Link className={styles.ctaSecondary} to="https://github.com/synthdata-studio/synth-studio" target="_blank">
+            <Link className={styles.ctaSecondary} to="https://github.com/Urz1/synthetic-data-studio" target="_blank">
               <Star size={18} />
               Star on GitHub
             </Link>
