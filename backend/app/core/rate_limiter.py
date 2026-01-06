@@ -1,11 +1,13 @@
 """Rate limiting middleware for API protection."""
 
-import time
-from typing import Dict, Optional, Callable
-from collections import defaultdict
+# Standard library
 import asyncio
+import time
+from collections import defaultdict
+from typing import Callable, Dict, Optional
 
-from fastapi import Request, Response, HTTPException
+# Third-party
+from fastapi import HTTPException, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 

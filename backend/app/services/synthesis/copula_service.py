@@ -5,11 +5,14 @@ Uses statistical copulas to generate realistic data from schema definitions
 without requiring training data. Ideal for quick prototyping and testing.
 """
 
+# Standard library
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+# Third-party
 import pandas as pd
-from sdv.single_table import GaussianCopulaSynthesizer
 from sdv.metadata import SingleTableMetadata
+from sdv.single_table import GaussianCopulaSynthesizer
 
 logger = logging.getLogger(__name__)
 

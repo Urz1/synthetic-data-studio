@@ -5,10 +5,13 @@ These Pydantic models define the API contract and are separate from
 database models (models.py) following clean architecture principles.
 """
 
-from typing import Optional, Dict, Any
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+# Standard library
 import uuid
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+# Third-party
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------------------------------------------------------------------------

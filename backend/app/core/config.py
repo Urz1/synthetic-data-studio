@@ -1,10 +1,13 @@
 """Configuration helpers (environment variables and defaults)."""
 
-from dataclasses import dataclass
+# Standard library
 import os
 import sys
-from typing import List
+from dataclasses import dataclass
 from pathlib import Path
+from typing import List
+
+# Third-party
 from dotenv import load_dotenv
 
 # Ensure we load the backend-local .env regardless of CWD.

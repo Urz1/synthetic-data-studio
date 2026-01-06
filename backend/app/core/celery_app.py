@@ -1,7 +1,12 @@
 """Celery application configuration."""
 
+# Standard library
 import ssl
+
+# Third-party
 from celery import Celery
+
+# Internal
 from app.core.config import settings
 
 # Determine if using SSL (rediss://)

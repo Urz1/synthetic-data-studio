@@ -4,20 +4,23 @@ Audit logging middleware for automatic request/response logging.
 Captures all API requests and responses for compliance and debugging.
 """
 
+# Standard library
+import datetime
 import logging
 import uuid
 from typing import Callable
-import datetime
 
+# Third-party
 from fastapi import Request, Response
+from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from sqlmodel import Session
 
-from app.database.database import SessionLocal
+# Internal
+from app.audit.enums import AuditAction
 from app.audit.models import AuditLog
 from app.audit.repositories import create_audit_log
-from app.audit.enums import AuditAction
+from app.database.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 

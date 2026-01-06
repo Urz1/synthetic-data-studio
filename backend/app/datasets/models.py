@@ -3,11 +3,15 @@
 Includes `Dataset` and `DatasetFile` models.
 """
 
-from typing import Optional, List
-import uuid
+# Standard library
 import datetime
+import uuid
+from typing import List, Optional
 
-from sqlmodel import SQLModel, Field, Column
+# Third-party
+from sqlmodel import Column, Field, SQLModel
+
+# Internal
 from app.database.database import JSONType
 
 

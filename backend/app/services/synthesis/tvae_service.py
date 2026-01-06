@@ -5,12 +5,15 @@ Implements ML-based synthetic data generation using TVAE from SDV library.
 TVAE is faster than CTGAN and works well for datasets with smoother distributions.
 """
 
+# Standard library
 import logging
-from typing import Dict, Any, Optional, List
-import pandas as pd
+from typing import Any, Dict, List, Optional
+
+# Third-party
 import numpy as np
-from sdv.single_table import TVAESynthesizer
+import pandas as pd
 from sdv.metadata import SingleTableMetadata
+from sdv.single_table import TVAESynthesizer
 
 logger = logging.getLogger(__name__)
 

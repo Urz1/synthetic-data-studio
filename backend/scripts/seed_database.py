@@ -19,37 +19,40 @@ Usage:
     python scripts/seed_database.py --clean  # Drop and recreate all data
 """
 
+# Standard library
+import argparse
+import hashlib
 import os
+import random
 import sys
 import uuid
-import random
-import hashlib
-import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import pandas as pd
+# Third-party
 import bcrypt
+import pandas as pd
 from faker import Faker
+from sqlmodel import select, Session, SQLModel
 
-from sqlmodel import Session, select, SQLModel
+# Internal
 from app.database.database import engine
 
-# Import all models
-from app.auth.models import User, APIKey
-from app.projects.models import Project
-from app.datasets.models import Dataset, DatasetFile
-from app.generators.models import Generator
-from app.evaluations.models import Evaluation
-from app.jobs.models import Job
-from app.audit.models import AuditLog
-from app.billing.models import UsageRecord, Quota
-from app.exports.models import Export
-from app.compliance.models import ComplianceReport
+# Internal - Models
 from app.artifacts.models import Artifact
+from app.audit.models import AuditLog
+from app.auth.models import APIKey, User
+from app.billing.models import Quota, UsageRecord
+from app.compliance.models import ComplianceReport
+from app.datasets.models import Dataset, DatasetFile
+from app.evaluations.models import Evaluation
+from app.exports.models import Export
+from app.generators.models import Generator
+from app.jobs.models import Job
+from app.projects.models import Project
 
 # Initialize
 fake = Faker()

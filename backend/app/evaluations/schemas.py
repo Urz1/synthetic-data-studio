@@ -4,10 +4,13 @@ API request/response schemas for evaluations.
 These Pydantic models define the API contract.
 """
 
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+# Standard library
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+# Third-party
+from pydantic import BaseModel, ConfigDict
 
 
 # ============================================================================

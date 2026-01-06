@@ -1,6 +1,9 @@
 """Base Celery task with database session management."""
 
+# Third-party
 from celery import Task
+
+# Internal
 from app.database.database import SessionLocal
 
 class DatabaseTask(Task):

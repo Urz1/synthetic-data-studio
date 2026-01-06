@@ -5,14 +5,18 @@ Implements privacy-preserving synthetic data generation using TVAE with
 Differential Privacy. Faster training than DP-CTGAN while maintaining privacy guarantees.
 """
 
+# Standard library
 import logging
-from typing import Dict, Any, Optional, Tuple
-import pandas as pd
-import numpy as np
-from opacus.accountants.rdp import RDPAccountant
-from sdv.single_table import TVAESynthesizer
-from sdv.metadata import SingleTableMetadata
+from typing import Any, Dict, Optional, Tuple
 
+# Third-party
+import numpy as np
+import pandas as pd
+from opacus.accountants.rdp import RDPAccountant
+from sdv.metadata import SingleTableMetadata
+from sdv.single_table import TVAESynthesizer
+
+# Internal
 from app.services.privacy.dp_config_validator import DPConfigValidator
 
 logger = logging.getLogger(__name__)

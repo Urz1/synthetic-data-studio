@@ -1,10 +1,15 @@
+"""Database configuration and connection setup."""
+
+# Standard library
 import os
 import sys
 from pathlib import Path
+
+# Third-party
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, JSON
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import JSON, create_engine
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Ensure we load the backend-local .env regardless of CWD.
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]

@@ -5,10 +5,14 @@ Reuses the existing REDIS_URL configuration used by Celery.
 Provides graceful fallback to in-memory storage for development.
 """
 
+# Standard library
 import logging
 from typing import Optional
-from redis import Redis, ConnectionError as RedisConnectionError
 
+# Third-party
+from redis import ConnectionError as RedisConnectionError, Redis
+
+# Internal
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

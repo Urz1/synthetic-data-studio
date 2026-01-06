@@ -2,12 +2,16 @@
 CRUD operations for evaluations.
 """
 
+# Standard library
 import logging
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import List, Optional
 
+# Third-party
+from sqlalchemy.orm import Session
+
+# Internal
 from .models import Evaluation
 
 logger = logging.getLogger(__name__)

@@ -1,11 +1,15 @@
 """Database models for generators."""
 
-from typing import Optional, Dict, Any
-import uuid
+# Standard library
 import datetime
+import uuid
 import warnings
+from typing import Any, Dict, Optional
 
-from sqlmodel import SQLModel, Field, Column
+# Third-party
+from sqlmodel import Column, Field, SQLModel
+
+# Internal
 from app.database.database import JSONType
 
 # Suppress the schema_json shadowing warning - we're aware of it but 

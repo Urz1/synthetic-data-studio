@@ -4,19 +4,22 @@ This module provides optimized endpoints that aggregate data from multiple
 sources to reduce the number of API calls needed for dashboard views.
 """
 
+# Standard library
 import logging
-from typing import Any
 from datetime import datetime, timedelta
+from typing import Any
 
+# Third-party
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, func, and_
+from sqlmodel import Session, and_, func, select
 
-from app.core.dependencies import get_db, get_current_user
-from app.datasets.models import Dataset
-from app.generators.models import Generator
-from app.evaluations.models import Evaluation
-from app.auth.models import User
+# Internal
 from app.audit.models import AuditLog
+from app.auth.models import User
+from app.core.dependencies import get_current_user, get_db
+from app.datasets.models import Dataset
+from app.evaluations.models import Evaluation
+from app.generators.models import Generator
 
 logger = logging.getLogger(__name__)
 

@@ -1,31 +1,37 @@
 """Generator background tasks."""
 
-import uuid
+# Standard library
 import logging
 import traceback
+import uuid
 from datetime import datetime
 
+# Internal - Core
 from app.core.celery_app import celery_app
+
+# Internal - Module
 from app.tasks.base import DatabaseTask
-from app.jobs.models import Job
-from app.jobs.repositories import update_job_status
-from app.generators.models import Generator
-from app.datasets.models import Dataset
 
-# Import all models to ensure metadata is loaded
-from app.auth.models import User
-from app.projects.models import Project
-from app.evaluations.models import Evaluation
-from app.compliance.models import ComplianceReport
+# Internal - Models (import all to ensure metadata is loaded)
 from app.audit.models import AuditLog
+from app.auth.models import User
+from app.compliance.models import ComplianceReport
+from app.datasets.models import Dataset
+from app.evaluations.models import Evaluation
+from app.generators.models import Generator
+from app.jobs.models import Job
+from app.projects.models import Project
 
+# Internal - Repositories
+from app.jobs.repositories import update_job_status
+
+# Internal - Services
+from app.generators.services import _generate_from_dataset
 from app.services.synthesis.copula_service import GaussianCopulaService
-from app.services.synthesis.tvae_service import TVAEService
 from app.services.synthesis.ctgan_service import CTGANService
 from app.services.synthesis.dp_ctgan_service import DPCTGANService
 from app.services.synthesis.dp_tvae_service import DPTVAEService
-
-from app.generators.services import _generate_from_dataset
+from app.services.synthesis.tvae_service import TVAEService
 
 logger = logging.getLogger(__name__)
 

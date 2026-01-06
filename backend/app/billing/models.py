@@ -1,10 +1,12 @@
 """Billing & usage models."""
 
-from typing import Optional
-import uuid
+# Standard library
 import datetime
+import uuid
+from typing import Optional
 
-from sqlmodel import SQLModel, Field
+# Third-party
+from sqlmodel import Field, SQLModel
 
 
 class UsageRecord(SQLModel, table=True):

@@ -1,5 +1,6 @@
 """Celery configuration."""
 
+# Internal
 from app.core.config import settings
 
 # Celery settings

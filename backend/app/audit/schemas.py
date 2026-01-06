@@ -1,9 +1,11 @@
 """Audit log Pydantic schemas for request/response."""
 
-from typing import Optional, Dict, Any
-import uuid
+# Standard library
 import datetime
+import uuid
+from typing import Any, Dict, Optional
 
+# Third-party
 from pydantic import BaseModel, ConfigDict
 
 

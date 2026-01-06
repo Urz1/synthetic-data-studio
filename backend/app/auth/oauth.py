@@ -8,18 +8,22 @@ Handles OAuth2 flow for third-party authentication.
 # IMPORTS
 # ============================================================================
 
+# Standard library
 import hashlib
 import hmac
+import json
+import logging
 import secrets
 import time
-import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
+# Third-party
 import httpx
 
+# Internal
 from app.core.config import settings
-from app.core.redis_utils import set_with_expiry, get_value, delete_key
+from app.core.redis_utils import delete_key, get_value, set_with_expiry
 
 
 logger = logging.getLogger(__name__)
@@ -99,7 +103,6 @@ def validate_oauth_state(state: str) -> bool:
 EXCHANGE_TOKEN_PREFIX = "oauth_exchange:"
 EXCHANGE_TOKEN_EXPIRY_SECONDS = 60  # 1 minute - very short-lived
 
-import json
 
 
 def generate_exchange_token(user_data: Dict[str, Any], jwt_token: str, refresh_token: str) -> str:

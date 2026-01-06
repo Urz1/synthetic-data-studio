@@ -4,7 +4,10 @@ API request/response schemas for LLM module.
 These Pydantic models define the API contract for chat, compliance, and feature generation.
 """
 
-from typing import List, Dict, Any, Optional
+# Standard library
+from typing import Any, Dict, List, Optional
+
+# Third-party
 from pydantic import BaseModel, ConfigDict, Field
 
 

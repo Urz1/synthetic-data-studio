@@ -4,10 +4,13 @@ Core validation utilities used across all modules.
 Centralizes common validation logic to ensure consistency and DRY principles.
 """
 
+# Standard library
 import re
 import uuid
 from pathlib import Path
 from typing import Optional
+
+# Third-party
 from fastapi import HTTPException
 
 

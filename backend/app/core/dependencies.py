@@ -1,14 +1,19 @@
 """Dependency injection helpers (DB session, auth, etc.)."""
 
+# Standard library
 import os
 import uuid
 from typing import Optional
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+# Third-party
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
-from app.database.database import engine
-from app.auth.services import verify_token
+
+# Internal
 from app.auth.repositories import get_user_by_email, get_user_by_id
+from app.auth.services import verify_token
+from app.database.database import engine
 
 security = HTTPBearer(auto_error=False)
 
