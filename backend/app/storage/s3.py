@@ -4,16 +4,18 @@ AWS S3 Storage Service for Synth Studio.
 Handles all file storage operations for datasets, models, synthetic data, and exports.
 """
 
+# Standard library
+import logging
 import os
 import uuid
-import logging
 from datetime import datetime
-from typing import BinaryIO, Optional, List, Dict, Any
 from pathlib import Path
+from typing import Any, BinaryIO, Dict, List, Optional
 
+# Third-party
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
 from botocore.config import Config
+from botocore.exceptions import ClientError, NoCredentialsError
 
 logger = logging.getLogger(__name__)
 

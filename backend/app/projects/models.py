@@ -1,8 +1,12 @@
-from typing import Optional
-import uuid
-import datetime
+"""Database models for projects."""
 
-from sqlmodel import SQLModel, Field
+# Standard library
+import datetime
+import uuid
+from typing import Optional
+
+# Third-party
+from sqlmodel import Field, SQLModel
 
 
 class Project(SQLModel, table=True):

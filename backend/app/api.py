@@ -4,13 +4,16 @@ This module attempts to import APIRouter and submodule routers when
 FastAPI is available; otherwise it provides a safe placeholder.
 """
 
+# Standard library
 import logging
 import os
+
+# Third-party
+from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 
 try:
-    from fastapi import APIRouter
 
     router = APIRouter()
 

@@ -5,13 +5,16 @@ Stores the TOTP secret encrypted at rest.
 
 from __future__ import annotations
 
+# Standard library
 import base64
 import hashlib
 from typing import Optional
 
+# Third-party
 import pyotp
 from cryptography.fernet import Fernet
 
+# Internal
 from app.core.config import settings
 
 

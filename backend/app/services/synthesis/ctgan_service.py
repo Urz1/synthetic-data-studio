@@ -5,12 +5,15 @@ Implements ML-based synthetic data generation using CTGAN from SDV library.
 CTGAN is ideal for complex tabular data with mixed data types and correlations.
 """
 
+# Standard library
 import logging
-from typing import Dict, Any, Optional, List
-import pandas as pd
+from typing import Any, Dict, List, Optional
+
+# Third-party
 import numpy as np
-from sdv.single_table import CTGANSynthesizer
+import pandas as pd
 from sdv.metadata import SingleTableMetadata
+from sdv.single_table import CTGANSynthesizer
 
 logger = logging.getLogger(__name__)
 

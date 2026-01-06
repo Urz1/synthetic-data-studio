@@ -3,13 +3,16 @@ Production-grade HTTP caching middleware
 Implements Vercel/GitHub/Cloudflare caching patterns
 """
 
+# Standard library
 import hashlib
 import logging
 from typing import Callable
+
+# Third-party
+from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse, FileResponse
-from starlette.datastructures import MutableHeaders
+from starlette.responses import FileResponse, Response, StreamingResponse
 
 logger = logging.getLogger(__name__)
 

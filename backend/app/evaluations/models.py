@@ -1,12 +1,16 @@
 """Evaluations model."""
 
-from typing import Optional
-import uuid
+# Standard library
 import datetime
 import hashlib
 import json
+import uuid
+from typing import Optional
 
-from sqlmodel import SQLModel, Field, Column
+# Third-party
+from sqlmodel import Column, Field, SQLModel
+
+# Internal
 from app.database.database import JSONType
 
 

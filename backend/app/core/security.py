@@ -5,9 +5,11 @@ Provides reusable security functions for resource ownership verification,
 access control, and security middleware.
 """
 
+# Standard library
 import uuid
 from typing import Any, Callable, Optional
 
+# Third-party
 from fastapi import HTTPException, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 

@@ -5,24 +5,30 @@ This is the main entry point for the FastAPI application.
 It initializes the app, includes all routers, and sets up middleware.
 """
 
+# Standard library
+import importlib.util
 import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# Third-party
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from app.core.config import settings
+# Internal - Core
 from app.core.audit_middleware import AuditMiddleware
+from app.core.cache_middleware import CacheControlMiddleware, CookieOptimizationMiddleware, TrailingSlashMiddleware
+from app.core.config import settings
 from app.core.rate_limiter import RateLimitMiddleware
-from app.core.security import SecurityHeadersMiddleware, RequestIDMiddleware
-from app.core.cache_middleware import CacheControlMiddleware, TrailingSlashMiddleware, CookieOptimizationMiddleware
+from app.core.security import RequestIDMiddleware, SecurityHeadersMiddleware
+
+# Internal - Observability
+from app.observability import health_router, MetricsMiddleware
 
 # Import observability
 try:
-    from app.observability import MetricsMiddleware, health_router
     OBSERVABILITY_AVAILABLE = True
 except ImportError:
     OBSERVABILITY_AVAILABLE = False
@@ -32,7 +38,6 @@ except ImportError:
 
 # Explicitly import the api.py module to avoid conflict with api/ package
 # We need to access app.api.router where api is the api.py file, not the api/ folder
-import importlib.util
 spec = importlib.util.spec_from_file_location("app_api_routes", Path(__file__).parent / "api.py")
 api_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(api_module)

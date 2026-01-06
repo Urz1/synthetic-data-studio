@@ -5,51 +5,51 @@
 # ============================================================================
 
 # Standard library
+import datetime
+import json
 import logging
 import shutil
 import uuid
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-import shutil
-import uuid
-import datetime
-import json
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Third-party
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, BackgroundTasks, Form, status
+from fastapi import (
+    APIRouter, BackgroundTasks, Depends, File, Form, HTTPException,
+    UploadFile, status
+)
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from sqlmodel import Session, select
 
-
-# Local - Core
-from app.core.dependencies import get_db, get_current_user
+# Internal - Core
+from app.core.config import settings
+from app.core.dependencies import get_current_user, get_db
 from app.core.security import check_resource_ownership
-from app.core.validators import validate_uuid, validate_filename, validate_file_extension
+from app.core.validators import validate_file_extension, validate_filename, validate_uuid
 
-# Local - Services
+# Internal - Services
+from app.generators.models import Generator
+from app.projects.repositories import get_project_by_id
 from app.services.llm.enhanced_pii_detector import EnhancedPIIDetector
 
-# Local - Storage
+# Internal - Storage
 from app.storage.s3 import (
-    get_storage_service,
     S3ConfigurationError,
     S3StorageError,
+    get_storage_service,
 )
 
-# Local - Module
+# Internal - Module
 from .models import Dataset
-from .repositories import get_dataset_by_id, delete_dataset as delete_dataset_repo
-from .schemas import DatasetResponse, DatasetDeleteResponse
+from .repositories import delete_dataset as delete_dataset_repo, get_dataset_by_id
+from .schemas import DatasetDeleteResponse, DatasetResponse
 from .services import (
+    detect_dataset_pii,
     get_all_datasets,
     process_uploaded_file,
     profile_uploaded_dataset,
-    detect_dataset_pii
 )
-from app.projects.repositories import get_project_by_id
-from app.generators.models import Generator
 
 
 # ============================================================================
@@ -59,7 +59,6 @@ from app.generators.models import Generator
 logger = logging.getLogger(__name__)
 
 # Use absolute path from settings or default to backend/uploads
-from app.core.config import settings
 UPLOAD_DIR = Path(settings.upload_dir).absolute()
 UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
 

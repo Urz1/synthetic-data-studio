@@ -5,10 +5,10 @@
 # ============================================================================
 
 # Standard library
-from typing import Optional
-import os
-import uuid
 from datetime import datetime
+import os
+from typing import Optional
+import uuid
 
 # Third-party
 import bcrypt

@@ -6,17 +6,21 @@ Differential Privacy via Opacus library. This ensures epsilon-delta privacy
 guarantees for HIPAA, GDPR, and other compliance requirements.
 """
 
+# Standard library
 import logging
-from typing import Dict, Any, Optional, List, Tuple
-import pandas as pd
+from typing import Any, Dict, List, Optional, Tuple
+
+# Third-party
 import numpy as np
+import pandas as pd
 import torch
 from opacus import PrivacyEngine
-from opacus.validators import ModuleValidator
 from opacus.accountants.rdp import RDPAccountant
-from sdv.single_table import CTGANSynthesizer
+from opacus.validators import ModuleValidator
 from sdv.metadata import SingleTableMetadata
+from sdv.single_table import CTGANSynthesizer
 
+# Internal
 from app.services.privacy.dp_config_validator import DPConfigValidator
 
 logger = logging.getLogger(__name__)

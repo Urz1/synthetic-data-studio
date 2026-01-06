@@ -67,9 +67,10 @@ export default async function VerifyEmailPage({
               )}
 
               {sent && (
-                <Alert className="mb-4">
-                  <AlertDescription>
-                    If an account exists for that email, we sent a verification link.
+                <Alert className="mb-4 bg-success/10 border-success/30">
+                  <AlertDescription className="text-success">
+                    <strong>Check your email!</strong> We've sent a verification link to <strong>{email}</strong>. 
+                    Click the link in the email to verify your account and start using Synth Studio.
                   </AlertDescription>
                 </Alert>
               )}

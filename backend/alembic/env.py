@@ -5,15 +5,15 @@ Keep this file safe to import in CI/local environments:
 - Prefer DATABASE_URL when present; otherwise fall back to alembic.ini.
 """
 
-from logging.config import fileConfig
+# Standard library
 import os
 import sys
+from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+# Third-party
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Signal to app modules (config/database) that we're running migrations.
 os.environ.setdefault("ALEMBIC_RUNNING", "1")
@@ -21,6 +21,7 @@ os.environ.setdefault("ALEMBIC_RUNNING", "1")
 # Add backend/ to sys.path so we can import `app.*`
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Third-party (after path setup)
 from sqlmodel import SQLModel
 
 # Import model modules so SQLModel.metadata is populated.

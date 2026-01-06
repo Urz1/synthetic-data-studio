@@ -1,11 +1,14 @@
 """Health check endpoints for monitoring and load balancers."""
 
+# Standard library
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
+# Third-party
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, text
 
+# Internal
 from app.core.dependencies import get_db
 
 

@@ -4,9 +4,12 @@ Projects schemas: Pydantic models for API requests/responses.
 Separated from database models to follow Clean Architecture.
 """
 
-from typing import Optional
-import uuid
+# Standard library
 import datetime
+import uuid
+from typing import Optional
+
+# Third-party
 from pydantic import BaseModel, ConfigDict, Field
 
 

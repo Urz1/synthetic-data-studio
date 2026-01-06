@@ -5,12 +5,14 @@ We store only hashed tokens server-side (never the raw token).
 
 from __future__ import annotations
 
+# Standard library
 import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta
 from typing import Tuple
 
+# Internal
 from app.core.config import settings
 
 
