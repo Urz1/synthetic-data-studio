@@ -374,64 +374,37 @@ curl -X POST "http://localhost:8000/llm/chat" \
 
 ## Feature Configuration
 
-### AI Model Selection
+### AI Model Configuration
 
-Configure which AI models to use:
-
-```env
-# Primary AI provider
-USE_GEMINI=true
-GEMINI_API_KEY=your-key
-GEMINI_MODEL=gemini-1.5-flash
-
-# Fallback provider
-USE_GROQ=true
-GROQ_API_KEY=your-key
-GROQ_MODEL=llama-3.1-70b-versatile
-
-# Response settings
-AI_TEMPERATURE=0.7
-AI_MAX_TOKENS=2048
-```
-
-### Feature Toggles
-
-Enable/disable specific AI features:
+AI features are configured through environment variables. See your `.env` file for these settings:
 
 ```env
-# Chat features
-ENABLE_AI_CHAT=true
-ENABLE_CONTEXT_AWARE_RESPONSES=true
+# Gemini AI (Primary)
+GEMINI_API_KEY=your-gemini-api-key
 
-# Suggestions
-ENABLE_SMART_SUGGESTIONS=true
-ENABLE_AUTOMATED_IMPROVEMENTS=true
-
-# Documentation
-ENABLE_AUTO_MODEL_CARDS=true
-ENABLE_COMPLIANCE_REPORTS=true
-
-# Detection
-ENABLE_ENHANCED_PII_DETECTION=true
+# Groq AI (Alternative/Fallback)
+GROQ_API_KEY=your-groq-api-key
 ```
+
+> **Note**: At least one AI provider API key must be configured for AI features to work. All AI features are automatically enabled when valid API keys are present.
+
+### Supported AI Providers
+
+| Provider      | Environment Variable | Models                           |
+| ------------- | -------------------- | -------------------------------- |
+| Google Gemini | `GEMINI_API_KEY`     | gemini-1.5-flash, gemini-1.5-pro |
+| Groq          | `GROQ_API_KEY`       | llama-3.1-70b-versatile          |
+
+For detailed configuration, see the [Installation Guide](../getting-started/installation.md).
 
 ## Usage Analytics
 
-### AI Feature Usage Tracking
+AI feature usage is tracked through the standard audit logging system. Monitor these metrics through the dashboard:
 
-Monitor AI feature adoption and effectiveness:
-
-```bash
-# Get AI usage statistics
-curl http://localhost:8000/admin/ai-usage-stats
-```
-
-**Tracking Metrics:**
-
-- Chat conversation volume and satisfaction
+- Chat conversation volume
 - Suggestion acceptance rates
 - Documentation generation frequency
-- PII detection accuracy improvements
+- PII detection accuracy
 
 ## Privacy & Security
 

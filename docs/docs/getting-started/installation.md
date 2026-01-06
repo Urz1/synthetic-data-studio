@@ -204,13 +204,13 @@ After installation, your project should look like this:
 synthetic-data-studio/
 ├── backend/
 │   ├── app/                 # Main application code
-│   ├── docs/                # Documentation
 │   ├── tests/               # Test files
 │   ├── uploads/             # Uploaded datasets
 │   ├── .env                 # Environment configuration
 │   ├── requirements.txt     # Python dependencies
 │   └── synth_studio.db      # SQLite database (if using SQLite)
-├── docker/
+├── frontend/                # Next.js frontend
+├── docs/                    # Documentation site
 └── README.md
 ```
 

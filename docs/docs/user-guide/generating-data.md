@@ -51,6 +51,8 @@ Learn how to generate high-quality synthetic data using various synthesis method
 
 ## Basic Synthesis Workflow
 
+> **Note**: All API requests require authentication. Include `Authorization: Bearer YOUR_ACCESS_TOKEN` header.
+
 ### Step 1: Prepare Your Dataset
 
 First, ensure you have uploaded and profiled your dataset:
@@ -58,10 +60,12 @@ First, ensure you have uploaded and profiled your dataset:
 ```bash
 # Upload dataset
 curl -X POST "http://localhost:8000/datasets/upload" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -F "file=@your-data.csv"
 
 # Profile it
-curl -X POST "http://localhost:8000/datasets/{dataset_id}/profile"
+curl -X POST "http://localhost:8000/datasets/{dataset_id}/profile" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Step 2: Choose Synthesis Method
@@ -72,6 +76,7 @@ Select the appropriate method based on your needs:
 
 ```bash
 curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "generator_type": "ctgan",
@@ -91,6 +96,7 @@ curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
 
 ```bash
 curl -X POST "http://localhost:8000/generators/dataset/{dataset_id}/generate" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "generator_type": "tvae",

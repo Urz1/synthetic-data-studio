@@ -32,7 +32,9 @@ Synthetic Data Studio supports multiple data formats:
 
 ### Upload Methods
 
-#### Method 1: Web Interface (Recommended)
+> **Note**: All API requests require authentication. Include your JWT token in the `Authorization` header.
+
+#### Method 1: Swagger UI (Interactive Testing)
 
 1. Navigate to the API documentation: http://localhost:8000/docs
 2. Find `POST /datasets/upload`
@@ -44,6 +46,7 @@ Synthetic Data Studio supports multiple data formats:
 
 ```bash
 curl -X POST "http://localhost:8000/datasets/upload" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@your-dataset.csv"
@@ -55,8 +58,9 @@ curl -X POST "http://localhost:8000/datasets/upload" \
 import requests
 
 url = "http://localhost:8000/datasets/upload"
+headers = {"Authorization": "Bearer YOUR_ACCESS_TOKEN"}
 files = {"file": open("your-dataset.csv", "rb")}
-response = requests.post(url, files=files)
+response = requests.post(url, headers=headers, files=files)
 print(response.json())
 ```
 
