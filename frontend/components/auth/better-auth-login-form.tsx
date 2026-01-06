@@ -47,15 +47,9 @@ export function BetterAuthLoginForm({
     setLoadingProvider("email");
 
     try {
-      console.log("[Login] Starting sign in...");
       const result = await signInWithEmail(email, password, callbackURL);
       
-      console.log("[Login] Sign in result:", result);
-      console.log("[Login] Result error:", result.error);
-      console.log("[Login] Result data:", result.data);
-      
       if (result.error) {
-        console.log("[Login] Error detected:", result.error.message);
         setError(result.error.message || "Sign in failed");
         setIsLoading(false);
         setLoadingProvider(null);
@@ -63,7 +57,6 @@ export function BetterAuthLoginForm({
       }
 
       // Success - redirect to dashboard
-      console.log("[Login] Success! Redirecting to:", callbackURL);
       window.location.href = callbackURL;
     } catch (err) {
       console.error("[Login] Exception:", err);
