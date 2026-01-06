@@ -1,41 +1,35 @@
-# Website
+# 📚 Synth Studio Documentation
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This folder contains the source code for the **Synth Studio** documentation site, built with Docusaurus.
 
-## Installation
+## 🚀 Quick Start
 
-```bash
-yarn
-```
+1.  **Install dependencies**:
 
-## Local Development
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
-```bash
-yarn start
-```
+2.  **Start the dev server**:
+    ```bash
+    npm start
+    ```
+    Opens [http://localhost:3000](http://localhost:3000).
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+## 📂 Structure
 
-## Build
+- `docs/` - **Markdown Content**: The actual documentation files (guides, API ref).
+- `src/` - **Custom Code**: React pages (Homepage) and Global CSS.
+- `static/` - **Assets**: Images and public files.
+- `docusaurus.config.ts` - **Configuration**: Site navigation, footer, and plugins.
+- `sidebars.ts` - **Navigation Logic**: Defines the sidebar structure.
 
-```bash
-yarn build
-```
+## 🛠️ Commands
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+| Command         | Description                            |
+| :-------------- | :------------------------------------- |
+| `npm start`     | Starts the development server.         |
+| `npm run build` | Builds the static site for production. |
+| `npm run serve` | Serves the built static site locally.  |

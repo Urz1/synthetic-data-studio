@@ -42,7 +42,6 @@ from sqlmodel import select, Session, SQLModel
 from app.database.database import engine
 
 # Internal - Models
-from app.artifacts.models import Artifact
 from app.audit.models import AuditLog
 from app.auth.models import APIKey, User
 from app.billing.models import Quota, UsageRecord
@@ -629,63 +628,11 @@ def seed_exports(session: Session, generators: list[Generator], users: list[User
     return exports
 
 
-def seed_artifacts(session: Session, jobs: list[Job], projects: list[Project]) -> list[Artifact]:
-    """Create artifacts for completed jobs."""
-    print("Creating artifacts...")
-    
-    artifacts = []
-    completed_jobs = [j for j in jobs if j.status == "completed"]
-    
-    artifact_types = ["model", "evaluation_report", "synthetic_data", "model_card", "dp_report"]
-    
-    for job in completed_jobs[:15]:  # Limit to 15 artifacts
-        artifact_type = random.choice(artifact_types)
-        
-        if artifact_type == "model":
-            file_ext = ".pkl"
-            size = random.randint(1_000_000, 50_000_000)  # 1-50MB
-        elif artifact_type in ["evaluation_report", "model_card", "dp_report"]:
-            file_ext = ".pdf"
-            size = random.randint(50_000, 500_000)  # 50-500KB
-        else:
-            file_ext = ".csv"
-            size = random.randint(100_000, 5_000_000)  # 100KB-5MB
-        
-        file_path = f"artifacts/{job.project_id}/{artifact_type}_{uuid.uuid4()}{file_ext}"
-        
-        artifact = Artifact(
-            project_id=job.project_id,
-            job_id=job.id,
-            artifact_type=artifact_type,
-            file_path=file_path,
-            size_bytes=size,
-            checksum=hashlib.md5(str(uuid.uuid4()).encode()).hexdigest(),
-            meta={
-                "job_type": job.type,
-                "created_by": str(job.initiated_by),
-                "framework": "synthstudio",
-                "version": "1.0.0"
-            },
-            created_at=job.completed_at or job.started_at or job.created_at
-        )
-        session.add(artifact)
-        artifacts.append(artifact)
-    
-    session.commit()
-    print(f"✓ Created {len(artifacts)} artifacts")
-    return artifacts
-
-
-def seed_compliance_reports(session: Session, projects: list[Project], datasets: list[Dataset], artifacts: list[Artifact]) -> list[ComplianceReport]:
-    """Create compliance reports linking projects, datasets, and artifacts."""
+def seed_compliance_reports(session: Session, projects: list[Project], datasets: list[Dataset]) -> list[ComplianceReport]:
+    """Create compliance reports linking projects and datasets."""
     print("Creating compliance reports...")
     
     reports = []
-    
-    # Get artifact IDs by type for linking
-    model_card_artifacts = [a for a in artifacts if a.artifact_type == "model_card"]
-    evaluation_artifacts = [a for a in artifacts if a.artifact_type == "evaluation_report"]
-    dp_report_artifacts = [a for a in artifacts if a.artifact_type == "dp_report"]
     
     # Create compliance reports for some datasets
     for dataset in datasets[:8]:  # First 8 datasets
@@ -696,9 +643,9 @@ def seed_compliance_reports(session: Session, projects: list[Project], datasets:
         report = ComplianceReport(
             project_id=project.id,
             synthetic_dataset_id=dataset.id,
-            model_card_artifact_id=model_card_artifacts[0].id if model_card_artifacts else None,
-            evaluation_artifact_id=evaluation_artifacts[0].id if evaluation_artifacts else None,
-            dp_report_artifact_id=dp_report_artifacts[0].id if dp_report_artifacts else None,
+            model_card_artifact_id=None,
+            evaluation_artifact_id=None,
+            dp_report_artifact_id=None,
             created_at=fake.date_time_between(start_date="-7d", end_date="now")
         )
         session.add(report)
@@ -772,8 +719,7 @@ def main():
         audit_logs = seed_audit_logs(session, users, projects, datasets, generators)
         usage_records, quotas = seed_billing(session, projects, users)
         exports = seed_exports(session, generators, users)
-        artifacts = seed_artifacts(session, jobs, projects)
-        compliance_reports = seed_compliance_reports(session, projects, datasets, artifacts)
+        compliance_reports = seed_compliance_reports(session, projects, datasets)
         
         print("\n" + "=" * 50)
         print("✅ Database seeding complete!")
@@ -789,7 +735,6 @@ Summary:
   - Usage Records: {len(usage_records)}
   - Quotas: {len(quotas)}
   - Exports: {len(exports)}
-  - Artifacts: {len(artifacts)}
   - Compliance Reports: {len(compliance_reports)}
 
 Demo Credentials:

@@ -13,20 +13,6 @@ const handler = toNextJsHandler(auth);
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[AUTH] POST request to:", request.nextUrl.pathname);
-    console.log(
-      "[AUTH] Environment check - DATABASE_URL exists:",
-      !!process.env.DATABASE_URL
-    );
-    console.log(
-      "[AUTH] Environment check - BETTER_AUTH_SECRET exists:",
-      !!process.env.BETTER_AUTH_SECRET
-    );
-    console.log(
-      "[AUTH] Environment check - BETTER_AUTH_URL:",
-      process.env.BETTER_AUTH_URL
-    );
-
     return await handler.POST(request);
   } catch (error) {
     console.error("[AUTH ERROR] POST request failed:", error);
@@ -50,7 +36,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[AUTH] GET request to:", request.nextUrl.pathname);
     return await handler.GET(request);
   } catch (error) {
     console.error("[AUTH ERROR] GET request failed:", error);

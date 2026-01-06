@@ -58,7 +58,9 @@ You'll see the FastAPI interactive documentation. This is your playground for te
 
 Let's use the sample customer data that comes with the project.
 
-### Option A: Use the API (Recommended)
+> **Note**: All API requests require authentication. First, register/login to get your JWT token.
+
+### Option A: Use the Swagger UI
 
 1. In the API docs, find the `POST /datasets/upload` endpoint
 2. Click "Try it out"
@@ -69,6 +71,7 @@ Let's use the sample customer data that comes with the project.
 ```bash
 # Upload your dataset
 curl -X POST "http://localhost:8000/datasets/upload" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@your-dataset.csv"

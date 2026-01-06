@@ -104,23 +104,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
     setIsComplete(false) // Allow continued auto-rotation
   }, [])
 
-  // Allow scroll/wheel to advance scenes
-  const lastScrollTime = useRef(0)
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    const now = Date.now()
-    // Debounce: only advance once per 600ms for smoother feel
-    if (now - lastScrollTime.current < 600) return
-    
-    if (e.deltaY > 0 && currentScene < 2) {
-      // Scrolling down - go to next scene
-      lastScrollTime.current = now
-      navigateToScene(currentScene + 1)
-    } else if (e.deltaY < 0 && currentScene > 0) {
-      // Scrolling up - go to previous scene
-      lastScrollTime.current = now
-      navigateToScene(currentScene - 1)
-    }
-  }, [currentScene, navigateToScene])
+
 
   const handleReplay = useCallback(() => {
     setIsComplete(false)
@@ -137,7 +121,6 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
       className={`${styles.heroStory} relative pt-24 md:pt-32 pb-16 md:pb-24 overflow-hidden`}
       role="region"
       aria-label="Synth Studio features showcase"
-      onWheel={handleWheel}
     >
       {/* Background gradients */}
       <div className="absolute inset-0 pointer-events-none">
@@ -160,9 +143,9 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
         {/* Main Hero - Side by Side */}
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
           
-          {/* LEFT: Animation Pane */}
+          {/* LEFT: Animation Pane -> Now RIGHT */}
           <div 
-            className={`${styles.animationPane} relative order-2 lg:order-1`}
+            className={`${styles.animationPane} relative order-2 lg:order-2`}
             onMouseEnter={handleReplay}
           >
             <div className={`${styles.animationContainer} bg-card/50 border border-border rounded-2xl p-4 sm:p-6 md:p-8 min-h-[280px] sm:min-h-[320px] flex items-center justify-center overflow-hidden`}>
@@ -188,8 +171,8 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
             </div>
           </div>
 
-          {/* RIGHT: Text + CTA Pane */}
-          <div className={`${styles.textPane} order-1 lg:order-2 text-center lg:text-left`}>
+          {/* RIGHT: Text + CTA Pane -> Now LEFT */}
+          <div className={`${styles.textPane} order-1 lg:order-1 text-center lg:text-left`}>
             {/* Headline */}
             <h1
               key={`h-${currentScene}`}
