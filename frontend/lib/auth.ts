@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { Pool } from "pg";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 /**
  * Better Auth server-side configuration
@@ -87,6 +88,8 @@ export const auth = betterAuth({
     // Disable __Secure- cookie prefix for HTTP development
     // In production (HTTPS), this is automatically true
     useSecureCookies: process.env.NODE_ENV === "production",
+    // Use UUIDs for IDs to match backend requirements
+    generateId: () => crypto.randomUUID(),
   },
 
   // Plugins for extended functionality
