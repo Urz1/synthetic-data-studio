@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { Shield, FileJson, FileCheck, Lock, Download, ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AuthIntentLink } from "@/components/auth/auth-intent-link"
 import Link from "next/link"
+import { AuthIntentLink } from "@/components/auth/auth-intent-link"
 import styles from "./HeroStory.module.css"
 
 interface HeroStoryProps {
@@ -124,8 +124,8 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
     >
       {/* Background gradients */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -left-24 top-10 h-96 w-96 bg-primary/10 blur-[120px] rounded-full" />
-        <div className="absolute right-[-12%] bottom-0 h-[420px] w-[420px] bg-primary/5 blur-[120px] rounded-full" />
+        {/* Retain one subtle blob for color depth, but reduced */}
+        <div className="absolute -left-24 top-10 h-96 w-96 bg-primary/5 blur-[120px] rounded-full" />
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
