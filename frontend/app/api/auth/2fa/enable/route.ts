@@ -1,47 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
-
-// POST /api/auth/2fa/enable - Enable 2FA with verification code
+/**
+ * POST /api/auth/2fa/enable - Enable 2FA by verifying the TOTP code
+ *
+ * After user scans QR and enters code, this enables 2FA on their account.
+ * Uses better-auth's twoFactor.enable with the code for verification.
+ */
 export async function POST(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
-
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const body = await request.text();
-
-    const response = await fetch(`${API_BASE}/auth/2fa/enable`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Id": session.user.id,
-        "X-User-Email": session.user.email,
-        "X-Proxy-Secret": process.env.PROXY_SECRET || "internal-proxy",
-      },
-      body,
+    const session = await auth.api.getSession({
+      headers: request.headers,
     });
 
-    const data = await response.text();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    return new NextResponse(data, {
-      status: response.status,
-      headers: {
-        "Content-Type":
-          response.headers.get("Content-Type") || "application/json",
-      },
-    });
+    const body = await request.json();
+    const { code } = body;
+
+    if (!code || code.length !== 6) {
+      return NextResponse.json(
+        { error: "Valid 6-digit code required" },
+        { status: 400 }
+      );
+    }
+
+    // Try to enable 2FA with the verification code
+    // better-auth should validate the TOTP code
+    try {
+      const result = await auth.api.twoFactor.verifyTotp({
+        headers: request.headers,
+        body: { code },
+      });
+      return NextResponse.json({ ok: true, ...result });
+    } catch (verifyError) {
+      // If verification fails, try alternative method
+      console.error("[2FA Verify Error]", verifyError);
+      return NextResponse.json(
+        { error: "Invalid verification code" },
+        { status: 400 }
+      );
+    }
   } catch (error) {
     console.error("[2FA Enable Error]", error);
-    return NextResponse.json(
-      { error: "Service temporarily unavailable" },
-      { status: 502 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to enable 2FA";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

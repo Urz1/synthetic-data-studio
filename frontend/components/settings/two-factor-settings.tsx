@@ -1,14 +1,15 @@
 "use client"
+// Cache bust: 2026-01-07T23:16:00 - Password step should show on button click
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
+import { twoFactor } from "@/lib/auth-client"
 import { useToast } from "@/hooks/use-toast"
-import { Shield, ShieldCheck, ShieldOff, Copy, Check, Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { Shield, ShieldCheck, ShieldOff, Copy, Check, Loader2, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react"
 
 interface TwoFactorSettingsProps {
   is2FAEnabled: boolean
@@ -17,20 +18,38 @@ interface TwoFactorSettingsProps {
 
 export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSettingsProps) {
   const { toast } = useToast()
-  const [step, setStep] = useState<"idle" | "setup" | "verify" | "disable">("idle")
+  const [step, setStep] = useState<"idle" | "password" | "verify" | "disable">("idle")
   const [isLoading, setIsLoading] = useState(false)
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [secret, setSecret] = useState("")
   const [otpauthUrl, setOtpauthUrl] = useState("")
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [verificationCode, setVerificationCode] = useState("")
   const [copied, setCopied] = useState(false)
   const [showManualEntry, setShowManualEntry] = useState(false)
 
+  const handleStartSetup = () => {
+    setStep("password")
+  }
+
   const handleSetup = async () => {
+    if (!password) {
+      toast({
+        title: "Password Required",
+        description: "Please enter your password to continue",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
-      const result = await api.setup2FA()
+      const result = await api.setup2FA(password)
       setSecret(result.secret)
       setOtpauthUrl(result.otpauth_url)
+      setBackupCodes(result.backupCodes || [])
+      setPassword("") // Clear password for security
       setStep("verify")
     } catch (error) {
       toast({
@@ -55,7 +74,15 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
 
     setIsLoading(true)
     try {
-      await api.enable2FA(verificationCode)
+      // Use client-side twoFactor.verifyTotp from better-auth
+      const result = await twoFactor.verifyTotp({
+        code: verificationCode,
+      })
+      
+      if (result.error) {
+        throw new Error(result.error.message || "Verification failed")
+      }
+      
       toast({
         title: "2FA Enabled",
         description: "Two-factor authentication is now active on your account",
@@ -74,10 +101,10 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
   }
 
   const handleDisable = async () => {
-    if (!verificationCode || verificationCode.length !== 6) {
+    if (!password) {
       toast({
-        title: "Invalid Code",
-        description: "Please enter a 6-digit code to disable 2FA",
+        title: "Password Required",
+        description: "Please enter your password to disable 2FA",
         variant: "destructive",
       })
       return
@@ -85,7 +112,7 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
 
     setIsLoading(true)
     try {
-      await api.disable2FA(verificationCode)
+      await api.disable2FA(password)
       toast({
         title: "2FA Disabled",
         description: "Two-factor authentication has been disabled",
@@ -95,7 +122,7 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
     } catch (error) {
       toast({
         title: "Failed",
-        description: error instanceof Error ? error.message : "Invalid code",
+        description: error instanceof Error ? error.message : "Incorrect password",
         variant: "destructive",
       })
     } finally {
@@ -112,9 +139,11 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
 
   const resetState = () => {
     setStep("idle")
+    setPassword("")
     setVerificationCode("")
     setSecret("")
     setOtpauthUrl("")
+    setBackupCodes([])
     setShowManualEntry(false)
   }
 
@@ -136,21 +165,28 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
         <CardContent className="space-y-4">
           {step === "disable" ? (
             <div className="space-y-4 p-4 rounded-lg border border-destructive/20 bg-destructive/5">
-              <p className="text-sm font-medium">Enter your authenticator code to disable 2FA:</p>
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
-                className="text-center text-2xl tracking-[0.5em] font-mono"
-              />
+              <p className="text-sm font-medium">Enter your password to disable 2FA:</p>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={resetState} disabled={isLoading} className="flex-1">
                   Cancel
                 </Button>
-                <Button variant="destructive" onClick={handleDisable} disabled={isLoading} className="flex-1">
+                <Button variant="destructive" onClick={handleDisable} disabled={isLoading || !password} className="flex-1">
                   {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Disable 2FA
                 </Button>
@@ -187,15 +223,64 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
             <p className="text-sm text-muted-foreground">
               Protect your account by requiring a verification code from your authenticator app in addition to your password.
             </p>
-            <Button type="button" onClick={handleSetup} disabled={isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+            <Button type="button" onClick={handleStartSetup} disabled={isLoading}>
+              <Shield className="h-4 w-4 mr-2" />
               Set up two-factor authentication
             </Button>
           </>
         )}
 
+        {step === "password" && (
+          <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+            <p className="text-sm font-medium">Enter your password to continue:</p>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={resetState} disabled={isLoading}>
+                Cancel
+              </Button>
+              <Button onClick={handleSetup} disabled={isLoading || !password} className="flex-1">
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
         {step === "verify" && (
           <div className="space-y-6">
+            {/* Backup Codes Alert */}
+            {backupCodes.length > 0 && (
+              <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400 mb-2">
+                  ⚠️ Save your backup codes
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Store these in a safe place. You can use them to access your account if you lose your device.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {backupCodes.map((code, i) => (
+                    <code key={i} className="text-xs p-1 bg-background rounded border">{code}</code>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Step 1: Scan QR Code */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -269,4 +354,3 @@ export function TwoFactorSettings({ is2FAEnabled, onStatusChange }: TwoFactorSet
     </Card>
   )
 }
-

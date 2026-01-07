@@ -13,80 +13,14 @@ Complete guide for integrating third-party applications with Synthetic Data Stud
 
 ## Authentication
 
-### JWT Token Authentication
+### Session-Based Authentication
 
-All API requests require authentication using JWT tokens.
+The API is currently designed to typically work behind the Next.js frontend proxy, which handles authentication via [Better Auth](https://better-auth.com).
 
-#### Obtaining Access Tokens
+- **Browser Clients**: Automatically authenticated via secure, HTTP-only cookies managed by the frontend.
+- **Direct API Access**: Currently requires a valid session cookie or trusted proxy headers.
 
-```bash
-# Register a new user
-curl -X POST "http://localhost:8000/auth/register" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "api-user@example.com",
-    "password": "secure-password"
-  }'
-
-# Login to get tokens
-curl -X POST "http://localhost:8000/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "api-user@example.com",
-    "password": "secure-password"
-  }'
-```
-
-**Response:**
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "expires_in": 1800
-}
-```
-
-#### Using Tokens in Requests
-
-```bash
-# Include token in Authorization header
-curl -X GET "http://localhost:8000/datasets/" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
-
-### Token Management
-
-#### Token Expiration
-
-- Access tokens expire in 30 minutes by default
-- Implement automatic token refresh for long-running integrations
-
-#### Refresh Tokens (Optional)
-
-```bash
-# Use refresh token to get new access token
-curl -X POST "http://localhost:8000/auth/refresh" \
-  -H "Authorization: Bearer refresh_token_here"
-```
-
-### Authentication Errors
-
-```json
-{
-  "detail": "Not authenticated",
-  "type": "authentication_error",
-  "status_code": 401
-}
-```
-
-```json
-{
-  "detail": "Token has expired",
-  "type": "token_expired",
-  "status_code": 401
-}
-```
+> **Note**: Direct `username/password` login via the API (`/auth/login`) has been replaced by the frontend's authentication flow. External programmatic access should await the upcoming API Key implementation.
 
 ## Client Libraries
 

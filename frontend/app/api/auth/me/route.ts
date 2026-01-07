@@ -18,14 +18,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Return user in the format expected by the frontend
+    // Map better-auth fields to frontend expected names
     return NextResponse.json({
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
+      full_name: session.user.name, // Alias for compatibility
       image: session.user.image,
       emailVerified: session.user.emailVerified,
       createdAt: session.user.createdAt,
       updatedAt: session.user.updatedAt,
+      // 2FA status - map from better-auth field name
+      is_2fa_enabled: (session.user as any).twoFactorEnabled ?? false,
     });
   } catch (error) {
     console.error("[AUTH_ME_ERROR]", error);

@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
-import { signInWithEmail, signInWithProvider, type SocialProvider } from "@/lib/auth-client";
+import { Loader2, ShieldCheck } from "lucide-react";
+import { signIn, twoFactor } from "@/lib/auth-client";
 
 interface BetterAuthLoginFormProps {
   /** URL to redirect to after successful login */
@@ -19,14 +19,10 @@ interface BetterAuthLoginFormProps {
   externalError?: string;
 }
 
+type SocialProvider = "google" | "github";
+
 /**
- * Better Auth Login Form
- * 
- * A client component that handles:
- * - Email/password login via Better Auth
- * - Google OAuth login
- * - GitHub OAuth login
- * - Error handling and loading states
+ * Better Auth Login Form with 2FA Support
  */
 export function BetterAuthLoginForm({ 
   callbackURL = "/dashboard",
@@ -36,9 +32,11 @@ export function BetterAuthLoginForm({
   const router = useRouter();
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState(externalError);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | "email" | null>(null);
+  const [requires2FA, setRequires2FA] = useState(false);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +45,40 @@ export function BetterAuthLoginForm({
     setLoadingProvider("email");
 
     try {
-      const result = await signInWithEmail(email, password, callbackURL);
+      const result = await signIn.email({
+        email,
+        password,
+        callbackURL,
+      });
       
+      console.log("[Login] Result:", result);
+      
+      // Check if 2FA is required - better-auth returns twoFactorRedirect: true
+      if ((result.data as any)?.twoFactorRedirect === true) {
+        console.log("[Login] 2FA required, showing OTP input");
+        setRequires2FA(true);
+        setIsLoading(false);
+        setLoadingProvider(null);
+        return;
+      }
+      
+      // Check for errors
       if (result.error) {
+        const errorMessage = result.error.message || "";
+        
+        // Fallback: also check error message for 2FA indicators
+        if (
+          errorMessage.toLowerCase().includes("two factor") ||
+          errorMessage.toLowerCase().includes("2fa") ||
+          errorMessage.toLowerCase().includes("otp") ||
+          errorMessage.toLowerCase().includes("totp")
+        ) {
+          setRequires2FA(true);
+          setIsLoading(false);
+          setLoadingProvider(null);
+          return;
+        }
+        
         setError(result.error.message || "Sign in failed");
         setIsLoading(false);
         setLoadingProvider(null);
@@ -66,15 +95,46 @@ export function BetterAuthLoginForm({
     }
   };
 
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+    setLoadingProvider("email");
+
+    try {
+      // Verify the TOTP code
+      const result = await twoFactor.verifyTotp({
+        code: otpCode,
+      });
+
+      if (result.error) {
+        setError(result.error.message || "Invalid verification code");
+        setIsLoading(false);
+        setLoadingProvider(null);
+        return;
+      }
+
+      // Success - redirect
+      window.location.href = callbackURL;
+    } catch (err) {
+      console.error("[2FA Verify] Exception:", err);
+      setError(err instanceof Error ? err.message : "Verification failed");
+      setIsLoading(false);
+      setLoadingProvider(null);
+    }
+  };
+
   const handleSocialLogin = async (provider: SocialProvider) => {
     setError("");
     setIsLoading(true);
     setLoadingProvider(provider);
 
     try {
-      // This will redirect to the OAuth provider
-      await signInWithProvider(provider, callbackURL);
-      // Note: The page will redirect, so we don't need to handle success here
+      await signIn.social({
+        provider,
+        callbackURL,
+        errorCallbackURL: "/login?error=oauth_failed",
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "OAuth sign in failed");
       setIsLoading(false);
@@ -82,6 +142,75 @@ export function BetterAuthLoginForm({
     }
   };
 
+  // 2FA verification step
+  if (requires2FA) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/10 border border-primary/20">
+          <ShieldCheck className="h-6 w-6 text-primary" />
+          <div>
+            <p className="font-medium">Two-Factor Authentication</p>
+            <p className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app</p>
+          </div>
+        </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <form onSubmit={handleOtpSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="otp">Verification Code</Label>
+            <Input
+              id="otp"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              disabled={isLoading}
+              required
+              autoFocus
+              className="text-center text-2xl tracking-[0.5em] font-mono"
+            />
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full min-h-[44px]"
+            disabled={isLoading || otpCode.length !== 6}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify and Sign In"
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setRequires2FA(false);
+              setOtpCode("");
+              setError("");
+            }}
+          >
+            Use a different account
+          </Button>
+        </form>
+      </div>
+    );
+  }
+
+  // Normal login form
   return (
     <div className="space-y-4">
       {error && (

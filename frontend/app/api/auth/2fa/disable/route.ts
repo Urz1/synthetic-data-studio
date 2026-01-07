@@ -1,47 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
-
-// POST /api/auth/2fa/disable - Disable 2FA with verification code
+/**
+ * POST /api/auth/2fa/disable - Disable 2FA
+ *
+ * Requires password for security verification.
+ */
 export async function POST(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
-
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const body = await request.text();
-
-    const response = await fetch(`${API_BASE}/auth/2fa/disable`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Id": session.user.id,
-        "X-User-Email": session.user.email,
-        "X-Proxy-Secret": process.env.PROXY_SECRET || "internal-proxy",
-      },
-      body,
+    const session = await auth.api.getSession({
+      headers: request.headers,
     });
 
-    const data = await response.text();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    return new NextResponse(data, {
-      status: response.status,
-      headers: {
-        "Content-Type":
-          response.headers.get("Content-Type") || "application/json",
-      },
+    const body = await request.json();
+    const { password } = body;
+
+    if (!password) {
+      return NextResponse.json(
+        { error: "Password required to disable 2FA" },
+        { status: 400 }
+      );
+    }
+
+    // Use correct better-auth API: disableTwoFactor
+    const result = await auth.api.disableTwoFactor({
+      headers: request.headers,
+      body: { password },
     });
+
+    return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error("[2FA Disable Error]", error);
-    return NextResponse.json(
-      { error: "Service temporarily unavailable" },
-      { status: 502 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to disable 2FA";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

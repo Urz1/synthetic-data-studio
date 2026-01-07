@@ -1,5 +1,11 @@
-"""Authentication module package."""
+"""Auth module with better-auth integration.
 
-from . import models, repositories, schemas, services, routes
+All authentication is handled by better-auth on the frontend.
+This module provides:
+- API key management for programmatic access
+- GDPR compliance endpoints
+"""
 
-__all__ = ["models", "repositories", "schemas", "services", "routes"]
+from .routes import router
+
+__all__ = ["router"]

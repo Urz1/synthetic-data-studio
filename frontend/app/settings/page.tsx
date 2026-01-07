@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { TwoFactorSettings } from "@/components/settings/two-factor-settings"
+import { PasswordRequirements } from "@/components/auth/password-requirements"
 import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -95,10 +96,17 @@ export default function SettingsPage() {
 
     setIsPasswordSaving(true)
     try {
-      await api.changePassword({
-        current_password: currentPassword,
-        new_password: newPassword,
+      // Use better-auth changePassword client method
+      const { changePassword } = await import("@/lib/auth-client")
+      const result = await changePassword({
+        currentPassword: currentPassword,
+        newPassword: newPassword,
       })
+      
+      if (result.error) {
+        throw new Error(result.error.message || "Failed to change password")
+      }
+      
       toast({
         title: "Password changed",
         description: "Your password has been updated successfully.",
@@ -232,32 +240,10 @@ export default function SettingsPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
-                    {/* Password strength indicator */}
-                    {newPassword && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all ${
-                              newPassword.length < 8 ? 'w-1/4 bg-destructive' :
-                              newPassword.length < 12 ? 'w-1/2 bg-warning' :
-                              /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) && /[^a-zA-Z0-9]/.test(newPassword) ? 'w-full bg-success' :
-                              'w-3/4 bg-primary'
-                            }`}
-                          />
-                        </div>
-                        <span className={`text-xs ${
-                          newPassword.length < 8 ? 'text-destructive' :
-                          newPassword.length < 12 ? 'text-warning' :
-                          /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) && /[^a-zA-Z0-9]/.test(newPassword) ? 'text-success' :
-                          'text-primary'
-                        }`}>
-                          {newPassword.length < 8 ? 'Weak' :
-                           newPassword.length < 12 ? 'Fair' :
-                           /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) && /[^a-zA-Z0-9]/.test(newPassword) ? 'Strong' :
-                           'Good'}
-                        </span>
-                      </div>
-                    )}
+                    {/* Password requirements */}
+                    <div className="mt-2">
+                       <PasswordRequirements password={newPassword} />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>

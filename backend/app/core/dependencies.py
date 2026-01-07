@@ -1,4 +1,10 @@
-"""Dependency injection helpers (DB session, auth, etc.)."""
+"""Dependency injection helpers (DB session, auth, etc.).
+
+Authentication flow:
+1. User authenticates via better-auth on the frontend
+2. Next.js proxy sends user info via trusted headers
+3. get_current_user validates headers and syncs user to local DB
+"""
 
 # Standard library
 import os
@@ -7,15 +13,10 @@ from typing import Optional
 
 # Third-party
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 # Internal
-from app.auth.repositories import get_user_by_email, get_user_by_id
-from app.auth.services import verify_token
 from app.database.database import engine
-
-security = HTTPBearer(auto_error=False)
 
 # Secret for validating proxy requests from Next.js frontend
 PROXY_SECRET = os.getenv("PROXY_SECRET", "internal-proxy")
@@ -29,79 +30,75 @@ def get_db():
 
 def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
-    Get current user from JWT token OR from trusted proxy headers.
+    Get current user from trusted proxy headers.
     
-    This supports two authentication methods:
-    1. Standard JWT Bearer token in Authorization header
-    2. Trusted proxy headers (X-User-Id, X-User-Email) from Next.js frontend
+    better-auth handles all authentication on the frontend.
+    The Next.js proxy forwards user info via trusted headers.
     
-    The proxy method is used when Better Auth handles authentication on the
-    frontend and passes user info via headers.
+    Headers expected:
+    - X-Proxy-Secret: Shared secret to verify request is from our proxy
+    - X-User-Id: User UUID from better-auth session
+    - X-User-Email: User email from better-auth session
+    - X-User-Name: User name (optional)
+    
+    If the user doesn't exist in our local DB, they are auto-created
+    (synced from better-auth).
     """
-    # Method 1: Check for proxy headers (from Next.js frontend)
+    from app.auth.models import User
+    
+    # Validate proxy secret
     proxy_secret = request.headers.get("X-Proxy-Secret")
     user_id = request.headers.get("X-User-Id")
     user_email = request.headers.get("X-User-Email")
     
-    if proxy_secret == PROXY_SECRET and user_id:
-        # Trusted proxy request - look up user by ID
-        try:
-            user_uuid = uuid.UUID(user_id)
-            user = get_user_by_id(db, user_uuid)
-            if user:
-                return user
-        except (ValueError, TypeError):
-            pass
-        
-        # Fallback: try by email if ID lookup failed
-        if user_email:
-            user = get_user_by_email(db, user_email)
-            if user:
-                return user
-            
-            # User exists in Better Auth but not in FastAPI users table
-            # Auto-create the user record for seamless sync
-            from app.auth.models import User
-            user_name = request.headers.get("X-User-Name", "")
-            new_user = User(
-                id=uuid.UUID(user_id) if user_id else uuid.uuid4(),
-                email=user_email,
-                name=user_name or user_email.split("@")[0],
-                hashed_password=None,  # OAuth/Better Auth user - no local password
-                is_email_verified=True,  # Already verified via Better Auth
-            )
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
-            return new_user
-        
+    if proxy_secret != PROXY_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    if not user_id or not user_email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
     
-    # Method 2: Standard JWT Bearer token
-    if credentials:
-        token = credentials.credentials
-        email = verify_token(token)
-        if email:
-            user = get_user_by_email(db, email)
-            if user:
-                return user
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
-            )
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID"
+        )
     
-    # No valid authentication provided
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required"
+    # Try to find user by ID
+    user = db.exec(select(User).where(User.id == user_uuid)).first()
+    
+    if user:
+        return user
+    
+    # Try to find user by email (ID might differ)
+    user = db.exec(select(User).where(User.email == user_email)).first()
+    
+    if user:
+        return user
+    
+    # User doesn't exist - auto-create from better-auth session
+    user_name = request.headers.get("X-User-Name", "")
+    new_user = User(
+        id=user_uuid,
+        email=user_email,
+        name=user_name or user_email.split("@")[0],
+        hashed_password=None,  # OAuth/Better Auth user - no local password
+        is_email_verified=True,  # Already verified via Better Auth
     )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 
 def get_admin_user(current_user = Depends(get_current_user)):
@@ -112,3 +109,7 @@ def get_admin_user(current_user = Depends(get_current_user)):
             detail="Admin access required"
         )
     return current_user
+
+
+# Alias for backward compatibility
+BetterAuthUser = "User"  # Placeholder type hint
