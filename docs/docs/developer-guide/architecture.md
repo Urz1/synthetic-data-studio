@@ -21,23 +21,23 @@ Synthetic Data Studio is built as a modern, scalable web application using FastA
 +-------------------------------------------------------------+
 |                    SYNTHETIC DATA STUDIO                    |
 +-------------------------------------------------------------|
-|  +-------------+ +-------------+ +-------------+ +---------+ |
-|  |   Web API   | | Background  | |   AI/LLM   | | Storage | |
-|  |  (FastAPI)  | |  Workers    | |  Services  | | Service | |
-|  |             | | (Celery)    | | (Gemini)   | | (S3)    | |
-|  +-------------+ +-------------+ +-------------+ +---------+ |
+|  +-------------+  +-------------+  +-------------+          |
+|  |  Frontend   |  |   Web API   |  | Background  |          |
+|  |  (Next.js)  |->|  (FastAPI)  |  |  Workers    |          |
+|  | [BetterAuth]|  | [ProxyAuth] |  | (Celery)    |          |
+|  +-------------+  +-------------+  +-------------+          |
 +-------------------------------------------------------------|
 |  +-------------+ +-------------+ +-------------+ +---------+ |
-|  |  Business   | |   Data      | | Repository | |  Core   | |
+|  |   AI/LLM    | |   Data      | | Repository | |  Core   | |
 |  |  Services   | |   Models    | |   Layer    | | Services| |
-|  |             | | (SQLModel)  | | (CRUD)     | |         | |
+|  | (Gemini)    | | (SQLModel)  | | (CRUD)     | |         | |
 |  +-------------+ +-------------+ +-------------+ +---------+ |
 +-------------------------------------------------------------|
 |  +---------------------------------------------------------+ |
 |  |                 DATABASE LAYER                          | |
 |  |  +-------------+ +-------------+ +-------------+        | |
-|  |  | PostgreSQL  | |  SQLite    | |   Redis     |        | |
-|  |  | (Primary)   | | (Dev/Test) | | (Caching)   |        | |
+|  |  | PostgreSQL  | | BetterAuth | |   Redis     |        | |
+|  |  | (Primary)   | | Tables     | | (Caching)   |        | |
 |  |  +-------------+ +-------------+ +-------------+        | |
 |  +---------------------------------------------------------+ |
 +-------------------------------------------------------------+
@@ -142,7 +142,8 @@ app = FastAPI(
 
 # Middleware stack
 app.add_middleware(CORSMiddleware, ...)
-app.add_middleware(AuthenticationMiddleware, ...)
+# Auth handled by dependency injection, not middleware
+
 
 # Router inclusion
 app.include_router(api.router)
@@ -309,44 +310,29 @@ class JobManager:
 
 ### Authentication & Authorization
 
-#### JWT-Based Auth
+#### Better Auth Integration
+
+The system uses [Better Auth](https://better-auth.com) for comprehensive user authentication:
+
+- **Frontend**: Handles login, registration, and session management via `better-auth` client.
+- **Backend (FastAPI)**: Trusts requests proxied from the Next.js frontend via securely signed headers (`X-Proxy-Secret`, `X-User-Id`).
+- **User Synchronization**: Users created in Better Auth are automatically synced to the local PostgreSQL `user` table for relationship integrity.
+
+#### 2FA & Security
+
+- **Two-Factor Authentication**: TOTP-based 2FA implemented via `better-auth` plugin.
+- **Password Security**: Handled by `better-auth` (bcrypt hashing).
+- **Session Management**: Secure, HTTP-only cookies managed by `better-auth` server.
+- **RBAC**: Role-based access control persists in the local `user` table (admin/user roles).
 
 ```python
-class AuthService:
-    def __init__(self, secret_key: str, algorithm: str):
-        self.secret_key = secret_key
-        self.algorithm = algorithm
-
-    def create_access_token(self, data: dict) -> str:
-        to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=30)
-        to_encode.update({"exp": expire})
-        return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-
-    def verify_token(self, token: str) -> dict:
-        try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            return payload
-        except JWTError:
-            raise HTTPException(status_code=401, detail="Invalid token")
-```
-
-#### Role-Based Access Control
-
-```python
-class PermissionChecker:
-    def __init__(self, user: User):
-        self.user = user
-
-    def can_access_dataset(self, dataset: Dataset) -> bool:
-        """Check if user can access dataset."""
-        if self.user.role == "admin":
-            return True
-        return dataset.created_by == self.user.id
-
-    def can_modify_generator(self, generator: Generator) -> bool:
-        """Check if user can modify generator."""
-        return generator.created_by == self.user.id or self.user.role == "admin"
+# Backend Dependency (app/core/dependencies.py)
+def get_current_user(request: Request):
+    """
+    Validates trusted headers from Next.js proxy.
+    Syncs user from Better Auth session if needed.
+    """
+    # ... implementation details ...
 ```
 
 ### Privacy & Compliance

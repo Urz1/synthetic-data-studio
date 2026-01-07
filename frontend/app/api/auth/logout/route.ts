@@ -77,23 +77,7 @@ export async function POST(request: NextRequest) {
       maxAge: 0,
     });
 
-    // Also clear legacy cookies just in case
-    response.cookies.set({
-      name: "ss_jwt",
-      value: "",
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
-    response.cookies.set({
-      name: "ss_refresh",
-      value: "",
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
+    // Legacy cookies removed; Better Auth manages only its own cookies now
 
     return response;
   } catch (error) {

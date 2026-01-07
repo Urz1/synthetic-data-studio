@@ -1,6 +1,7 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
+import { twoFactorClient } from "better-auth/client/plugins";
 
 /**
  * Better Auth client-side configuration
@@ -11,13 +12,15 @@ import { createAuthClient } from "better-auth/react";
  * - signUp.email() - Registration
  * - signOut() - Logout
  * - useSession() - Get current session
+ * - twoFactor.* - Two-factor authentication methods
  */
 
-// Create the auth client
+// Create the auth client with plugins
 const authClient = createAuthClient({
   // Base URL is optional if the auth server is on the same domain
   // This will use /api/auth/* routes
   baseURL: typeof window !== "undefined" ? window.location.origin : undefined,
+  plugins: [twoFactorClient()],
 });
 
 // Export commonly used methods
@@ -27,7 +30,8 @@ export const {
   signOut,
   useSession,
   getSession,
-  // Social providers
+  twoFactor,
+  changePassword,
 } = authClient;
 
 // Export the full client for advanced usage

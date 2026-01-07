@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { twoFactor } from "better-auth/plugins/two-factor";
 import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 
@@ -87,6 +88,18 @@ export const auth = betterAuth({
     // In production (HTTPS), this is automatically true
     useSecureCookies: process.env.NODE_ENV === "production",
   },
+
+  // Plugins for extended functionality
+  plugins: [
+    twoFactor({
+      issuer: "Synth Studio",
+      // TOTP settings
+      totpOptions: {
+        digits: 6,
+        period: 30,
+      },
+    }),
+  ],
 });
 
 // Export types for use in other files

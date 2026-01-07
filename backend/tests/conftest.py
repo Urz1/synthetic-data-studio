@@ -28,18 +28,10 @@ from app.core.dependencies import get_db
 from app.main import app
 
 # Local - Services
-from app.auth.services import create_access_token
+# No backend token issuance post-migration; tests use proxy headers instead
 
 # Local - Models
-from app.audit.models import AuditLog
 from app.auth.models import User
-from app.billing.models import UsageRecord, Quota
-from app.compliance.models import ComplianceReport
-from app.datasets.models import Dataset
-from app.evaluations.models import Evaluation
-from app.generators.models import Generator
-from app.jobs.models import Job
-from app.projects.models import Project
 
 # Test database URL (in-memory SQLite)
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -80,30 +72,29 @@ def client_fixture(session: Session) -> GeneratorType[TestClient, None, None]:
 @pytest.fixture(name="test_user")
 def test_user_fixture(session: Session) -> User:
     """Create a test user"""
-    from app.auth.repositories import create_user
-    from app.auth.schemas import UserCreate
-    
-    user_data = UserCreate(
+    # Create a basic user directly (Better Auth is upstream; local DB mirrors user)
+    user = User(
         email="test@example.com",
-        password="TestPassword123!",
-        username="testuser"
+        name="testuser",
+        is_email_verified=True,
+        hashed_password=None,
     )
-    user = create_user(session, user_data)
+    session.add(user)
     session.commit()
     session.refresh(user)
     return user
 
 
-@pytest.fixture(name="auth_token")
-def auth_token_fixture(test_user: User) -> str:
-    """Create authentication token for test user"""
-    return create_access_token(data={"sub": test_user.email})
-
-
 @pytest.fixture(name="auth_headers")
-def auth_headers_fixture(auth_token: str) -> Dict[str, str]:
-    """Create authentication headers"""
-    return {"Authorization": f"Bearer {auth_token}"}
+def auth_headers_fixture(test_user: User) -> Dict[str, str]:
+    """Create proxy authentication headers expected by backend"""
+    proxy_secret = os.getenv("PROXY_SECRET", "internal-proxy")
+    return {
+        "X-Proxy-Secret": proxy_secret,
+        "X-User-Id": str(test_user.id),
+        "X-User-Email": test_user.email,
+        "X-User-Name": test_user.name or "",
+    }
 
 
 @pytest.fixture(name="authenticated_client")
@@ -195,14 +186,16 @@ def assert_error_response(response, status_code: int, detail_contains: str = Non
 
 # Pytest hooks
 
-def pytest_configure(config):
+def pytest_configure(_config):
     """Configure pytest"""
     # Set environment variables for testing
     os.environ["TESTING"] = "1"
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+    # Ensure proxy secret set for tests
+    os.environ["PROXY_SECRET"] = os.environ.get("PROXY_SECRET", "internal-proxy")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(_config, items):
     """Modify test collection"""
     # Add markers based on test path
     for item in items:

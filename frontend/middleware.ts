@@ -4,8 +4,6 @@ import type { NextRequest } from "next/server";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.synthdata.studio";
 
-// Legacy cookie (old system)
-const SESSION_COOKIE_NAME = "ss_jwt";
 // Better Auth cookies
 const BETTER_AUTH_SESSION_COOKIE = "better-auth.session_token";
 const BETTER_AUTH_SECURE_COOKIE = "__Secure-better-auth.session_token";
@@ -49,30 +47,6 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
-function safeDecodeJwtPayload(token: string): any | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-
-    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
-    const binary = atob(b64 + pad);
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    const json = new TextDecoder().decode(bytes);
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-function isJwtNotExpired(token: string): boolean {
-  const payload = safeDecodeJwtPayload(token);
-  const exp = payload?.exp;
-  if (typeof exp !== "number") return true; // if unknown, don't block in dev
-  const now = Math.floor(Date.now() / 1000);
-  return exp > now;
-}
-
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -83,53 +57,17 @@ export async function middleware(request: NextRequest) {
   }
   // Server-side protection for app routes (only for non-public protected paths)
   else if (!isPublicPath(pathname) && isProtectedPath(pathname)) {
-    // Check for authentication - support both legacy JWT and Better Auth cookies
-    const legacyToken = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
+    // Check for authentication via Better Auth cookies only
     const betterAuthToken =
       request.cookies.get(BETTER_AUTH_SESSION_COOKIE)?.value || "";
     const betterAuthSecureToken =
       request.cookies.get(BETTER_AUTH_SECURE_COOKIE)?.value || "";
 
-    const hasAnyToken = legacyToken || betterAuthToken || betterAuthSecureToken;
-
+    const hasSession = Boolean(betterAuthToken || betterAuthSecureToken);
     const loginUrl = new URL("/login", request.url);
 
-    if (!hasAnyToken) {
+    if (!hasSession) {
       return NextResponse.redirect(loginUrl, 303);
-    }
-
-    // Only validate JWT expiration for legacy tokens
-    // Better Auth handles its own session validation
-    if (legacyToken && !betterAuthToken && !betterAuthSecureToken) {
-      if (!isJwtNotExpired(legacyToken)) {
-        // Token expired - clear cookies and redirect
-        const res = NextResponse.redirect(loginUrl, 303);
-        res.cookies.set({
-          name: SESSION_COOKIE_NAME,
-          value: "",
-          httpOnly: true,
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-        res.cookies.set({
-          name: "ss_access",
-          value: "",
-          httpOnly: true,
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-        res.cookies.set({
-          name: "ss_refresh",
-          value: "",
-          httpOnly: true,
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-        return res;
-      }
     }
   }
 

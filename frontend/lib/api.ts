@@ -260,8 +260,13 @@ class ApiClient {
   }
 
   // Two-Factor Authentication
-  async setup2FA(): Promise<{ secret: string; otpauth_url: string }> {
-    return this.request("/auth/2fa/setup", { method: "POST" });
+  async setup2FA(
+    password: string
+  ): Promise<{ secret: string; otpauth_url: string; backupCodes?: string[] }> {
+    return this.request("/auth/2fa/setup", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
   }
 
   async enable2FA(code: string): Promise<{ ok: boolean }> {
@@ -271,10 +276,10 @@ class ApiClient {
     });
   }
 
-  async disable2FA(code: string): Promise<{ ok: boolean }> {
+  async disable2FA(password: string): Promise<{ ok: boolean }> {
     return this.request("/auth/2fa/disable", {
       method: "POST",
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ password }),
     });
   }
 
