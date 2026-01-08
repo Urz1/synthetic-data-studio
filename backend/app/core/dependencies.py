@@ -9,7 +9,7 @@ Authentication flow:
 # Standard library
 import os
 import uuid
-from typing import Optional
+import logging
 
 # Third-party
 from fastapi import Depends, HTTPException, Request, status
@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 
 # Internal
 from app.database.database import engine
+from app.auth.models import User
 
 # Secret for validating proxy requests from Next.js frontend
 PROXY_SECRET = os.getenv("PROXY_SECRET", "internal-proxy")
@@ -47,20 +48,39 @@ def get_current_user(
     If the user doesn't exist in our local DB, they are auto-created
     (synced from better-auth).
     """
-    from app.auth.models import User
+   
+    logger = logging.getLogger(__name__)
     
     # Validate proxy secret
     proxy_secret = request.headers.get("X-Proxy-Secret")
     user_id = request.headers.get("X-User-Id")
     user_email = request.headers.get("X-User-Email")
     
+    # Debug logging for production troubleshooting
+    logger.info(  # noqa: G004
+        "[AUTH] Received headers - Proxy-Secret: %s, User-Id: %s, User-Email: %s",
+        "present" if proxy_secret else "MISSING",
+        "present" if user_id else "MISSING",
+        "present" if user_email else "MISSING",
+    )
+    
     if proxy_secret != PROXY_SECRET:
+        logger.warning(  # noqa: G004
+            "[AUTH] Proxy secret mismatch. Expected: %s, Got: %s",
+            PROXY_SECRET,
+            proxy_secret,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required"
         )
     
     if not user_id or not user_email:
+        logger.warning(  # noqa: G004
+            "[AUTH] Missing user info. user_id: %s, user_email: %s",
+            user_id,
+            user_email,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
@@ -97,7 +117,6 @@ def get_current_user(
         hashed_password=None,  # OAuth/Better Auth user - no local password
         is_email_verified=True,  # Already verified via Better Auth
         failed_login_attempts=0,  # Required field - default to 0
-        is_phone_verified=False,  # Required field - default to False
         oauth_provider="better_auth",
         oauth_id=source_user_id,
     )
