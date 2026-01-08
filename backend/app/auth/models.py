@@ -32,14 +32,28 @@ class User(SQLModel, table=True):
     hashed_password: Optional[str] = None  # May be null for OAuth users
     role: str = Field(default="user")
     is_active: bool = Field(default=True)
+    
+    # Email verification
     is_email_verified: bool = Field(default=False)
+    email_verified_at: Optional[datetime.datetime] = None
     
     # Timestamps
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     
-    # 2FA fields (handled by better-auth, but kept for compatibility)
+    # 2FA fields
     is_2fa_enabled: bool = Field(default=False)
+    totp_secret_encrypted: Optional[str] = None
+    last_2fa_verified_at: Optional[datetime.datetime] = None
+    
+    # Security fields
+    failed_login_attempts: int = Field(default=0)
+    locked_until: Optional[datetime.datetime] = None
+    
+    # Phone verification
+    phone_number: Optional[str] = None
+    is_phone_verified: bool = Field(default=False)
+    phone_verified_at: Optional[datetime.datetime] = None
     
     # OAuth fields
     oauth_provider: Optional[str] = None
