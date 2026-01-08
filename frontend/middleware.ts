@@ -57,17 +57,43 @@ export async function middleware(request: NextRequest) {
   }
   // Server-side protection for app routes (only for non-public protected paths)
   else if (!isPublicPath(pathname) && isProtectedPath(pathname)) {
-    // Check for authentication via Better Auth cookies only
+    // Check for authentication via Better Auth cookies
     const betterAuthToken =
       request.cookies.get(BETTER_AUTH_SESSION_COOKIE)?.value || "";
     const betterAuthSecureToken =
       request.cookies.get(BETTER_AUTH_SECURE_COOKIE)?.value || "";
 
-    const hasSession = Boolean(betterAuthToken || betterAuthSecureToken);
+    const hasSessionCookie = Boolean(betterAuthToken || betterAuthSecureToken);
     const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
 
-    if (!hasSession) {
+    // No session cookie at all → redirect immediately
+    if (!hasSessionCookie) {
       return NextResponse.redirect(loginUrl, 303);
+    }
+
+    // Validate session with Better Auth via internal API call
+    // This ensures the session is actually valid, not just that a cookie exists
+    try {
+      const baseUrl = request.nextUrl.origin;
+      const sessionResponse = await fetch(`${baseUrl}/api/auth/me`, {
+        headers: {
+          Cookie: request.headers.get("cookie") || "",
+        },
+        cache: "no-store",
+      });
+
+      // If session validation fails, redirect to login
+      if (!sessionResponse.ok) {
+        console.warn(
+          `[Middleware] Session validation failed for ${pathname}: ${sessionResponse.status}`
+        );
+        return NextResponse.redirect(loginUrl, 303);
+      }
+    } catch (error) {
+      // On error, allow through but log it (don't block on network issues)
+      console.error("[Middleware] Session validation error:", error);
+      // Fall through - let the page handle auth state
     }
   }
 
