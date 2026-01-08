@@ -89,7 +89,9 @@ export const auth = betterAuth({
     // In production (HTTPS), this is automatically true
     useSecureCookies: process.env.NODE_ENV === "production",
     // Use UUIDs for IDs to match backend requirements
-    generateId: () => crypto.randomUUID(),
+    database: {
+      generateId: () => crypto.randomUUID(),
+    },
   },
 
   // Plugins for extended functionality

@@ -68,11 +68,13 @@ def get_current_user(
     
     try:
         user_uuid = uuid.UUID(user_id)
+        source_user_id = user_id
     except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID"
-        )
+        # Better Auth may emit non-UUID identifiers (e.g., nanoid/ULID-like).
+        # Map them deterministically into a UUID namespace so we can store
+        # consistent user IDs locally while preserving the external ID.
+        user_uuid = uuid.uuid5(uuid.NAMESPACE_URL, user_id)
+        source_user_id = user_id
     
     # Try to find user by ID
     user = db.exec(select(User).where(User.id == user_uuid)).first()
@@ -94,6 +96,10 @@ def get_current_user(
         name=user_name or user_email.split("@")[0],
         hashed_password=None,  # OAuth/Better Auth user - no local password
         is_email_verified=True,  # Already verified via Better Auth
+        failed_login_attempts=0,  # Required field - default to 0
+        is_phone_verified=False,  # Required field - default to False
+        oauth_provider="better_auth",
+        oauth_id=source_user_id,
     )
     db.add(new_user)
     db.commit()
