@@ -37,7 +37,6 @@ import {
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useState, useEffect } from "react"
 import { AuthIntentLink } from "@/components/auth/auth-intent-link"
-import { HeroNetworkBackground } from "@/components/hero/HeroNetworkBackground"
 import { GitHubStarButton } from "@/components/github-star-button"
 import { HeroStory } from "@/components/sections/HeroStory"
 
@@ -177,9 +176,8 @@ export default function LandingPage() {
 
   return (
     <div
-      className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 textured-bg ${jakarta.variable}`}
+      className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 ${jakarta.variable}`}
     >
-      <HeroNetworkBackground />
       {/* Navbar */}
       <nav
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${
