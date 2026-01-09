@@ -24,6 +24,18 @@ async function proxyRequest(request: NextRequest, path: string) {
     headers: request.headers,
   });
 
+  // Debug logging for production troubleshooting (visible in Vercel logs)
+  console.log(`[Proxy] Path: /${path}`);
+  console.log(`[Proxy] Session found: ${session ? "YES" : "NO"}`);
+  if (session?.user) {
+    console.log(`[Proxy] User ID: ${session.user.id}`);
+    console.log(`[Proxy] User Email: ${session.user.email}`);
+  } else {
+    console.log(
+      `[Proxy] No session - request will be sent without user headers`
+    );
+  }
+
   // Build backend URL with query parameters from original request
   const url = new URL(request.url);
   const queryString = url.search;
