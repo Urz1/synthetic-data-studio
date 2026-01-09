@@ -49,11 +49,6 @@
   --chart-4: oklch(0.577 0.215 27);
   --chart-5: oklch(0.505 0.015 250);
 
-  /* Surface variants (Used for inset/raised components) */
-  --surface-1: oklch(0.995 0.001 250);
-  --surface-2: oklch(0.978 0.002 250);
-  --surface-3: oklch(0.958 0.003 250);
-
   --radius: 0.5rem;
 
   /* Sidebar */
@@ -107,11 +102,6 @@
   --chart-4: oklch(0.527 0.205 27);
   --chart-5: oklch(0.605 0.015 250);
 
-  /* Surface variants (Used for inset/raised components) */
-  --surface-1: oklch(0.165 0.015 250);
-  --surface-2: oklch(0.205 0.015 250);
-  --surface-3: oklch(0.255 0.015 250);
-
   --sidebar: oklch(0.175 0.015 250);
   --sidebar-foreground: oklch(0.945 0.005 250);
   --sidebar-primary: oklch(0.628 0.168 231);
@@ -155,9 +145,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-surface-1: var(--surface-1);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -211,100 +198,10 @@
 /* === Now use them safely in components === */
 @layer components {
 
-  /* App Canvas - Premium textured background */
+  /* App Canvas - Clean Minimalist Background */
   .app-canvas {
     position: relative;
-    background-color: var(--surface-1);
-    background-image:
-      radial-gradient(900px 520px at 12% -10%, oklch(from var(--accent) l c h / 0.55), transparent 62%),
-      radial-gradient(980px 520px at 88% -15%, oklch(from var(--primary) l c h / 0.20), transparent 60%);
-    background-attachment: fixed;
-  }
-
-  /* Dot matrix texture overlay - fades from edges to center */
-  .app-canvas::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* Dot matrix pattern - 16px grid, 1.5px dots at 8% opacity */
-    background-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.08) 1.5px, transparent 1.5px);
-    background-size: 16px 16px;
-    pointer-events: none;
-    z-index: 1;
-    /* Fade from edges to center - texture visible at edges, invisible at center */
-    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, black 100%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, black 100%);
-  }
-
-  /* Ensure content is above the texture layer */
-  .app-canvas>* {
-    position: relative;
-    z-index: 2;
-  }
-
-  .dark .app-canvas {
-    background-color: var(--surface-1);
-    background-image:
-      radial-gradient(900px 520px at 12% -10%, oklch(from var(--accent) l c h / 0.28), transparent 62%),
-      radial-gradient(980px 520px at 88% -15%, oklch(from var(--primary) l c h / 0.16), transparent 60%);
-  }
-
-  .dark .app-canvas::before {
-    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.10) 1.5px, transparent 1.5px);
-  }
-
-  /* Textured background - pure CSS dot matrix for landing/auth pages */
-  .textured-bg {
-    position: relative;
-  }
-
-  .textured-bg::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* Dot matrix - 16px grid, 1.5px dots at 8% opacity */
-    background-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.08) 1.5px, transparent 1.5px);
-    background-size: 16px 16px;
-    pointer-events: none;
-    z-index: 0;
-    /* Fade from edges to center */
-    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, black 100%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, black 100%);
-  }
-
-  .textured-bg>* {
-    position: relative;
-    z-index: 1;
-  }
-
-  .dark .textured-bg::before {
-    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.10) 1.5px, transparent 1.5px);
-  }
-
-  /* Minimal sidebar texture - very subtle for consistency */
-  [data-sidebar]::before,
-  .sidebar-texture::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-    background-size: 20px 20px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .dark [data-sidebar]::before,
-  .dark .sidebar-texture::before {
-    background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-color: var(--background);
   }
 
   /* Glassmorphism */
@@ -319,13 +216,6 @@
   .glass-strong {
     @apply bg-card/95 backdrop-blur-2xl border border-border/70 shadow-xl shadow-black/[0.05];
   }
-
-  /* Surfaces - relies on --surface variables */
-  .surface-inset {
-    @apply bg-surface-2 shadow-inner shadow-black/[0.02];
-  }
-
-
 
   @layer utilities {
     @keyframes fadeIn {

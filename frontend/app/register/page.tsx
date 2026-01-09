@@ -28,7 +28,7 @@ export default async function RegisterPage({
   const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login"
 
   return (
-    <div className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 textured-bg ${jakarta.variable}`}>
+    <div className={`min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 ${jakarta.variable}`}>
       {/* Prefetch dashboard while user types - zero visible impact */}
       <DashboardPrefetcher />
       <nav className="fixed top-0 w-full z-50 bg-background/85 backdrop-blur-xl border-b border-border/70">

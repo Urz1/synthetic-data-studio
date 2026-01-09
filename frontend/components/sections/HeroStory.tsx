@@ -124,8 +124,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
     >
       {/* Background gradients */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Retain one subtle blob for color depth, but reduced */}
-        <div className="absolute -left-24 top-10 h-96 w-96 bg-primary/5 blur-[120px] rounded-full" />
+        {/* Removed subtle blob for cleanest background possible */}
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
