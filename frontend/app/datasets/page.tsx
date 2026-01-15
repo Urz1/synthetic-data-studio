@@ -69,7 +69,52 @@ export default function DatasetsPage() {
       : datasetsData.datasets || [];
   }, [datasetsData]);
 
-  // ... (rest of the code)
+  // Client-side filtering, pagination and delete handlers
+  const filteredDatasets = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return datasets.filter((d) => {
+      const name = (d as any).name || "";
+      const status = ((d as any).status || "").toLowerCase();
+      const matchesSearch = !q || name.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [datasets, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDatasets.length / itemsPerPage));
+  const paginatedDatasets = React.useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredDatasets.slice(start, start + itemsPerPage);
+  }, [filteredDatasets, currentPage, itemsPerPage]);
+
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDeleteClick = (dataset: Dataset) => {
+    setDatasetToDelete(dataset);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!datasetToDelete) return;
+    try {
+      setIsDeleting(true);
+      // Call delete via ApiClient if available, otherwise fall back to request or fetch
+      if ((api as any).delete) {
+        await (api as any).delete(`/datasets/${datasetToDelete.id}`);
+      } else if ((api as any).request) {
+        await (api as any).request({ method: "DELETE", url: `/datasets/${datasetToDelete.id}` });
+      } else {
+        await fetch(`/datasets/${datasetToDelete.id}`, { method: "DELETE" });
+      }
+      setDatasetToDelete(null);
+      refetch?.();
+    } catch (err) {
+      console.error("Failed to delete dataset", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isGhostId = (id: any) => typeof id === "string" && id.startsWith("ghost-");
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
@@ -332,9 +377,7 @@ export default function DatasetsPage() {
                 </CardContent>
               </Card>
             )}
-          </>
-        )}
-
+        
         {/* Delete Confirmation Dialog */}
         <DeleteConfirmationDialog
           entityType="Dataset"
