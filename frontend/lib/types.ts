@@ -102,7 +102,7 @@ export interface ColumnProfile {
 export type ModelType =
   | "ctgan"
   | "tvae"
-  | "timegan"
+  // | "timegan"
   | "dp-ctgan"
   | "dp-tvae"
   | "schema";

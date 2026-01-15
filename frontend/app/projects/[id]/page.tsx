@@ -234,7 +234,7 @@ export default function ProjectDetailPage() {
                     {
                       key: "rows",
                       header: "Rows",
-                      accessor: (row: Dataset) => row.num_rows?.toLocaleString() || "—",
+                      accessor: (row: Dataset) => row.num_rows?.toLocaleString() || " ",
                     },
                     {
                       key: "size",
@@ -242,7 +242,7 @@ export default function ProjectDetailPage() {
                       accessor: (row: Dataset) => 
                         row.size_bytes 
                           ? `${(row.size_bytes / 1024 / 1024).toFixed(1)} MB` 
-                          : "—",
+                          : " ",
                     },
                     {
                       key: "uploaded",
@@ -386,7 +386,7 @@ export default function ProjectDetailPage() {
                           {row.risk_level}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground"> </span>
                       ),
                     },
                     {

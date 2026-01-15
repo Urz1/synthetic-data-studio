@@ -89,7 +89,7 @@ Generate high-quality synthetic data with **differential privacy** guarantees. B
 | Python      | 3.9+                               |
 | Node.js     | 18+                                |
 | PostgreSQL  | 13+                                |
-| Redis       | 7+ (optional, for background jobs) |
+| Redis       | 7+ (local Docker by default; set `REDIS_URL` for managed) |
 
 **Environment Variables:**
 
@@ -98,6 +98,7 @@ Generate high-quality synthetic data with **differential privacy** guarantees. B
 DATABASE_URL=postgresql://user:pass@localhost/synthstudio
 SECRET_KEY=your-jwt-secret
 AWS_S3_BUCKET=your-bucket  # optional
+REDIS_URL=redis://localhost:6379/0  # default local container; use rediss:// for hosted
 
 # Frontend (.env.local)
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -251,7 +252,7 @@ Report vulnerabilities privately: [halisadam391@gmail.com](mailto:halisadam391@g
 
 ## 📬 Contact
 
-**Sadam Husen** — [@Urz1](https://github.com/Urz1) — [halisadam391@gmail.com](mailto:halisadam391@gmail.com)
+**Sadam Husen** [@Urz1](https://github.com/Urz1) [halisadam391@gmail.com](mailto:halisadam391@gmail.com)
 
 [LinkedIn](https://www.linkedin.com/in/sadam-husen-16s/) • [GitHub](https://github.com/Urz1)
 

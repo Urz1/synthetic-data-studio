@@ -192,18 +192,15 @@ export default function LandingPage() {
             <span className="hidden sm:block">Synth Studio</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 text-sm">
+          <div className="hidden md:flex items-center gap-6 text-sm">
+            <Link href="/playground" className="text-primary font-medium hover:text-primary/80 transition-colors">
+              Try Playground
+            </Link>
             <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features
             </Link>
             <Link href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
               How it works
-            </Link>
-            <Link href="#security" className="text-muted-foreground hover:text-foreground transition-colors">
-              Security
-            </Link>
-            <Link href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">
-              FAQ
             </Link>
             <Link href="https://docs.synthdata.studio" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
               Docs
@@ -211,15 +208,12 @@ export default function LandingPage() {
             <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Toggle theme">
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            <AuthIntentLink href="/login" eventLocation="navbar" mode="login" className="text-muted-foreground hover:text-foreground transition-colors">
-              Sign in
-            </AuthIntentLink>
-            <Button asChild className="rounded-full px-5">
-              <AuthIntentLink href="/register" eventLocation="navbar" mode="register">Get Started</AuthIntentLink>
-            </Button>
             <div className="hidden lg:block">
               <GitHubStarButton />
             </div>
+            <Button asChild variant="outline" className="rounded-full px-4">
+              <AuthIntentLink href="/login" eventLocation="navbar" mode="login">Sign in</AuthIntentLink>
+            </Button>
           </div>
 
           <div className="md:hidden flex items-center gap-2">
@@ -238,26 +232,20 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             className="md:hidden absolute top-[72px] left-0 w-full bg-background border-b border-border p-6 flex flex-col gap-4"
           >
+            <Link href="/playground" className="text-primary font-medium" onClick={() => setMobileMenuOpen(false)}>
+              Try Playground
+            </Link>
             <Link href="#features" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
               Features
             </Link>
             <Link href="#how-it-works" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
               How it works
             </Link>
-            <Link href="#security" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
-              Security
-            </Link>
-            <Link href="#faq" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
-              FAQ
-            </Link>
             <Link href="https://docs.synthdata.studio" target="_blank" rel="noopener noreferrer" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
               Docs
             </Link>
-            <AuthIntentLink href="/login" eventLocation="mobile_nav" mode="login" className="text-foreground" onClick={() => setMobileMenuOpen(false)}>
-              Sign in
-            </AuthIntentLink>
-            <Button className="w-full rounded-full" asChild>
-              <AuthIntentLink href="/register" eventLocation="mobile_nav" mode="register" onClick={() => setMobileMenuOpen(false)}>Get Started</AuthIntentLink>
+            <Button className="w-full rounded-full" variant="outline" asChild>
+              <AuthIntentLink href="/login" eventLocation="mobile_nav" mode="login" onClick={() => setMobileMenuOpen(false)}>Sign in</AuthIntentLink>
             </Button>
             <div className="pt-2 flex justify-center">
               <GitHubStarButton />
@@ -282,14 +270,18 @@ export default function LandingPage() {
               <Github className="h-5 w-5" />
               <span className="text-sm font-medium">100% Open Source</span>
             </a>
-            <div className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              <span className="text-sm"><span className="font-semibold">Up to 1M Rows</span> — Per generation</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-primary" />
-              <span className="text-sm"><span className="font-semibold">MIT License</span> — 100% Open Source</span>
-            </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <span className="text-sm md:text-base"><span className="font-semibold">GDPR & HIPAA</span> Ready</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-primary" />
+                <span className="text-sm md:text-base"><span className="font-semibold">Up to 1M Rows</span> / gen</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-primary" />
+                <span className="text-sm md:text-base"><span className="font-semibold">MIT License</span></span>
+              </div>
           </div>
         </div>
       </section>
@@ -300,18 +292,18 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-6 text-center">
             <div className="p-4">
               <Database className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <h3 className="font-semibold mb-1">Upload Your Data</h3>
-              <p className="text-sm text-muted-foreground">CSV or JSON files with automatic schema detection</p>
+              <h3 className="font-semibold mb-2 text-lg">Upload Your Data</h3>
+              <p className="text-base text-muted-foreground">CSV or JSON files with automatic schema detection</p>
             </div>
             <div className="p-4">
               <Cpu className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <h3 className="font-semibold mb-1">Train Generators</h3>
-              <p className="text-sm text-muted-foreground">CTGAN, TVAE, or schema-based with DP options</p>
+              <h3 className="font-semibold mb-2 text-lg">Train Generators</h3>
+              <p className="text-base text-muted-foreground">CTGAN, TVAE, or schema-based with DP options</p>
             </div>
             <div className="p-4">
               <FileCheck className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <h3 className="font-semibold mb-1">Evaluate & Export</h3>
-              <p className="text-sm text-muted-foreground">Quality metrics and downloadable synthetic datasets</p>
+              <h3 className="font-semibold mb-2 text-lg">Evaluate & Export</h3>
+              <p className="text-base text-muted-foreground">Quality metrics and downloadable synthetic datasets</p>
             </div>
           </div>
         </div>
@@ -337,7 +329,7 @@ export default function LandingPage() {
               >
                 <div className="mb-4 inline-flex rounded-xl bg-primary/10 p-3">{feature.icon}</div>
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                <p className="text-muted-foreground leading-relaxed text-base">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -351,7 +343,7 @@ export default function LandingPage() {
             <p className="text-sm uppercase tracking-[0.2em] text-primary mb-2">How It Works</p>
             <h2 className="text-3xl md:text-4xl font-bold">Choose Your Path</h2>
             <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-              Two ways to generate synthetic data — pick what fits your needs
+              Two ways to generate synthetic data   pick what fits your needs
             </p>
           </div>
 
@@ -386,7 +378,7 @@ export default function LandingPage() {
             <p className="text-sm text-muted-foreground">
               {activeFlow === "data" 
                 ? "Train ML models on your existing data for realistic synthetic output"
-                : "Define columns and types — get instant data without uploads"}
+                : "Define columns and types   get instant data without uploads"}
             </p>
           </div>
 
@@ -399,7 +391,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold mb-1">{step.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{step.detail}</p>
+                  <p className="text-muted-foreground text-base leading-relaxed">{step.detail}</p>
                 </div>
               </div>
             ))}

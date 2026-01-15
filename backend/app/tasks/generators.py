@@ -74,20 +74,36 @@ def train_generator_task(self, generator_id: str, job_id: str):
         # 3. Run the entire generation pipeline (train + generate)
         # This uses the existing _generate_from_dataset function which handles:
         # - Loading the dataset
-        # - Training the model
+        # - Training the model (CLOSES DB SESSION internally to prevent timeout)
         # - Generating synthetic data
         # - Saving models and data
         # - Creating output dataset record
         logger.info(f"Running generation pipeline for {generator.type}...")
         output_dataset = _generate_from_dataset(generator, db)
 
-        # 4. Update Generator Status to COMPLETED
+        # 4. Refresh DB Session (Critical: previous session was closed during training)
+        self._db = None  # Force creation of new session
+        db = self.db
+        
+        # Re-fetch objects attached to new session
+        generator = db.get(Generator, generator_uuid)
+        job = db.get(Job, job_uuid)
+        
+        if not generator:
+            logger.error(f"Generator {generator_id} not found after training")
+            return
+            
+        if not job:
+            logger.error(f"Job {job_id} not found after training")
+            return
+
+        # 5. Update Generator Status to COMPLETED
         generator.status = "completed"
         if output_dataset:
             generator.output_dataset_id = output_dataset.id
         db.add(generator)
         
-        # 5. Update Job Status to COMPLETED
+        # 6. Update Job Status to COMPLETED
         job.status = "completed"
         job.completed_at = datetime.utcnow()
         db.add(job)

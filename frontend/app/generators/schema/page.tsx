@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Code, Sparkles, Plus, Trash2, Download, Zap, BrainCircuit } from "lucide-react"
+import { Code, Sparkles, Plus, Trash2, Download, Zap, BrainCircuit, GripVertical } from "lucide-react"
+import { Reorder } from "framer-motion"
 import { useAuth } from "@/lib/auth-context"
 import ProtectedRoute from "@/components/layout/protected-route"
 import { api } from "@/lib/api"
@@ -23,6 +24,7 @@ import { ProjectSelector } from "@/components/projects/project-selector"
 import type { Project } from "@/lib/types"
 
 interface SchemaColumn {
+  id: string
   name: string
   type: string
   format?: string
@@ -34,43 +36,43 @@ const templates = {
   customer: {
     name: "Customer Database",
     columns: [
-      { name: "customer_id", type: "uuid" },
-      { name: "first_name", type: "string" },
-      { name: "last_name", type: "string" },
-      { name: "email", type: "email" },
-      { name: "phone", type: "phone" },
-      { name: "created_at", type: "datetime" },
+      { id: "c-1", name: "customer_id", type: "uuid" },
+      { id: "c-2", name: "first_name", type: "string" },
+      { id: "c-3", name: "last_name", type: "string" },
+      { id: "c-4", name: "email", type: "email" },
+      { id: "c-5", name: "phone", type: "phone" },
+      { id: "c-6", name: "created_at", type: "datetime" },
     ],
   },
   ecommerce: {
     name: "E-commerce Orders",
     columns: [
-      { name: "order_id", type: "uuid" },
-      { name: "customer_id", type: "uuid" },
-      { name: "product_name", type: "string" },
-      { name: "quantity", type: "integer" },
-      { name: "price", type: "float" },
-      { name: "order_date", type: "datetime" },
+      { id: "e-1", name: "order_id", type: "uuid" },
+      { id: "e-2", name: "customer_id", type: "uuid" },
+      { id: "e-3", name: "product_name", type: "string" },
+      { id: "e-4", name: "quantity", type: "integer" },
+      { id: "e-5", name: "price", type: "float" },
+      { id: "e-6", name: "order_date", type: "datetime" },
     ],
   },
   healthcare: {
     name: "Healthcare Records",
     columns: [
-      { name: "patient_id", type: "uuid" },
-      { name: "name", type: "string" },
-      { name: "age", type: "integer" },
-      { name: "diagnosis", type: "string" },
-      { name: "admission_date", type: "date" },
+      { id: "h-1", name: "patient_id", type: "uuid" },
+      { id: "h-2", name: "name", type: "string" },
+      { id: "h-3", name: "age", type: "integer" },
+      { id: "h-4", name: "diagnosis", type: "string" },
+      { id: "h-5", name: "admission_date", type: "date" },
     ],
   },
   financial: {
     name: "Financial Transactions",
     columns: [
-      { name: "transaction_id", type: "uuid" },
-      { name: "account_number", type: "string" },
-      { name: "amount", type: "float" },
-      { name: "currency", type: "string" },
-      { name: "timestamp", type: "datetime" },
+      { id: "f-1", name: "transaction_id", type: "uuid" },
+      { id: "f-2", name: "account_number", type: "string" },
+      { id: "f-3", name: "amount", type: "float" },
+      { id: "f-4", name: "currency", type: "string" },
+      { id: "f-5", name: "timestamp", type: "datetime" },
     ],
   },
 }
@@ -80,7 +82,7 @@ export default function SchemaGeneratorPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [columns, setColumns] = useState<SchemaColumn[]>([
-    { name: "id", type: "uuid" },
+    { id: "1", name: "id", type: "uuid" },
   ])
   const [numRows, setNumRows] = useState(1000)
   const [schemaJson, setSchemaJson] = useState("")
@@ -123,7 +125,7 @@ export default function SchemaGeneratorPage() {
 
 
   const addColumn = () => {
-    setColumns([...columns, { name: "", type: "string" }])
+    setColumns([...columns, { id: crypto.randomUUID(), name: "", type: "string" }])
   }
 
   const removeColumn = (index: number) => {
@@ -138,7 +140,12 @@ export default function SchemaGeneratorPage() {
 
   const loadTemplate = (templateKey: keyof typeof templates) => {
     const template = templates[templateKey]
-    setColumns(template.columns)
+    // Generate fresh IDs to avoid potential conflicts
+    const freshColumns = template.columns.map(c => ({
+      ...c,
+      id: crypto.randomUUID()
+    }))
+    setColumns(freshColumns)
     toast({
       title: "Template Loaded",
       description: `Loaded ${template.name} template`,
@@ -154,6 +161,7 @@ export default function SchemaGeneratorPage() {
       
       // Convert JSON schema to columns array
       const newColumns: SchemaColumn[] = Object.entries(parsed.columns).map(([name, config]: [string, any]) => ({
+        id: crypto.randomUUID(),
         name,
         type: config.type || 'string',
         format: config.format,
@@ -352,46 +360,53 @@ export default function SchemaGeneratorPage() {
                 </TabsList>
 
                 <TabsContent value="builder" className="space-y-4">
-                  <div className="space-y-3">
+                  <Reorder.Group axis="y" values={columns} onReorder={setColumns} className="space-y-3">
                     {columns.map((column, index) => (
-                      <div key={index} className="flex gap-2 items-start">
-                        <div className="flex-1 grid grid-cols-2 gap-2">
-                          <div>
-                            <Input
-                              placeholder="Column name"
-                              value={column.name}
-                              onChange={(e) => updateColumn(index, "name", e.target.value)}
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Select
-                              value={column.type}
-                              onValueChange={(value) => updateColumn(index, "type", value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {columnTypeOptions.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeColumn(index)}
-                              disabled={columns.length === 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                      <Reorder.Item key={column.id} value={column}>
+                        <div className="flex gap-2 items-start bg-card">
+                          <div className="flex-1 flex gap-2">
+                             <div className="flex items-center justify-center pt-3 pl-1 cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors">
+                                <GripVertical className="h-4 w-4" />
+                             </div>
+                             <div className="flex-1 grid grid-cols-2 gap-2">
+                              <div>
+                                <Input
+                                  placeholder="Column name"
+                                  value={column.name}
+                                  onChange={(e) => updateColumn(index, "name", e.target.value)}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Select
+                                  value={column.type}
+                                  onValueChange={(value) => updateColumn(index, "type", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {columnTypeOptions.map((opt) => (
+                                      <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeColumn(index)}
+                                  disabled={columns.length === 1}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </Reorder.Item>
                     ))}
-                  </div>
+                  </Reorder.Group>
 
                   <Button variant="outline" onClick={addColumn} className="w-full">
                     <Plus className="mr-2 h-4 w-4" />

@@ -93,6 +93,9 @@ RATE_LIMITS = {
     "/auth/login": {"limit": 10, "window": 60},  # 10 per minute
     "/auth/register": {"limit": 5, "window": 60},  # 5 per minute
     
+    # Playground - anonymous, tight limits
+    "/playground/generate": {"limit": 3, "window": 3600},  # 3 per HOUR (strict for guests)
+    
     # Generation endpoints - resource intensive
     "/generators/*/generate": {"limit": 20, "window": 60},  # 20 per minute
     "/generators/dataset/*/generate": {"limit": 10, "window": 60},  # 10 per minute

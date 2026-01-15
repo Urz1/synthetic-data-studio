@@ -88,14 +88,39 @@ export default function EvaluationComparePage() {
     }
   }
 
-  // Extract metrics from evaluation report
+  // Extract metrics from evaluation report (robust to multiple shapes)
   const getMetrics = (evaluation: any) => {
-    const report = evaluation.report || {}
+    const report = evaluation?.report || {}
+
+    const fidelity =
+      report.statistical?.column_shapes ??
+      report.statistical_similarity ??
+      report.overall_score ??
+      0
+
+    const utility =
+      report.utility?.ml_efficacy ??
+      report.ml_utility ??
+      report.overall_score ??
+      0
+
+    const privacy =
+      report.privacy?.dcr_score ??
+      report.privacy_score ??
+      report.overall_score ??
+      0
+
+    const overall =
+      report.overall_score ??
+      (fidelity + utility + privacy) / 3
+
+    const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0)
+
     return {
-      fidelity: report.statistical_similarity || report.overall_score || 0,
-      utility: report.ml_utility || report.overall_score || 0,
-      privacy: report.privacy_score || report.overall_score || 0,
-      overall: report.overall_score || 0
+      fidelity: clamp01(fidelity),
+      utility: clamp01(utility),
+      privacy: clamp01(privacy),
+      overall: clamp01(overall),
     }
   }
 
@@ -140,6 +165,23 @@ export default function EvaluationComparePage() {
       if (getMetrics(e)[metricKey] > getMetrics(best)[metricKey]) best = e
     })
     return best.id
+  }
+
+  const renderValue = (value: any) => {
+    if (value === null || value === undefined) return "Not available"
+    if (Array.isArray(value)) return value.join(", ")
+    if (typeof value === "object") return JSON.stringify(value, null, 2)
+    return String(value)
+  }
+
+  const renderTextBlock = (value: any) => {
+    const rendered = renderValue(value)
+    const isJson = typeof value === "object" && value !== null
+    return isJson ? (
+      <pre className="text-sm bg-muted p-3 rounded whitespace-pre-wrap break-words">{rendered}</pre>
+    ) : (
+      <p className="text-sm">{rendered}</p>
+    )
   }
 
   if (loading) {
@@ -259,20 +301,20 @@ export default function EvaluationComparePage() {
                 <CardContent className="space-y-4">
                   <div>
                     <h4 className="font-semibold mb-2">Recommendation</h4>
-                    <p className="text-sm">{comparisonResult.recommendation}</p>
+                    {renderTextBlock(comparisonResult.recommendation)}
                   </div>
                   
                   {comparisonResult.best_for_analytics && (
                     <div>
                       <h4 className="font-semibold mb-2">Best for Analytics</h4>
-                      <p className="text-sm">{comparisonResult.best_for_analytics}</p>
+                      {renderTextBlock(comparisonResult.best_for_analytics)}
                     </div>
                   )}
                   
                   {comparisonResult.best_for_privacy && (
                     <div>
                       <h4 className="font-semibold mb-2">Best for Privacy</h4>
-                      <p className="text-sm">{comparisonResult.best_for_privacy}</p>
+                      {renderTextBlock(comparisonResult.best_for_privacy)}
                     </div>
                   )}
                 </CardContent>
@@ -325,6 +367,9 @@ export default function EvaluationComparePage() {
                       <TableHead className="w-[200px]">Metric</TableHead>
                       {selectedEvaluations.map((e, idx) => {
                         const evalNum = selectedIds.indexOf(e.id) + 1
+                          const dateLabel = e.completed_at
+                            ? new Date(e.completed_at).toLocaleDateString()
+                            : "Not available"
                         return (
                           <TableHead key={e.id} className="text-center">
                             <div className="flex flex-col items-center">
@@ -332,7 +377,7 @@ export default function EvaluationComparePage() {
                                 Evaluation {evalNum}
                               </span>
                               <span className="text-xs font-normal text-muted-foreground">
-                                {new Date(e.completed_at).toLocaleDateString()}
+                                  {dateLabel}
                               </span>
                             </div>
                           </TableHead>

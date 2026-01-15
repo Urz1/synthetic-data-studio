@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from fastapi import (
     APIRouter, BackgroundTasks, Depends, File, Form, HTTPException,
-    UploadFile, status
+    UploadFile, status, Query
 )
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from sqlmodel import Session, select
@@ -88,11 +88,29 @@ def is_s3_available() -> bool:
 @router.get("/", response_model=list[DatasetResponse])
 def list_datasets(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    sort_by: str = Query("created_at", description="Field to sort by (created_at, name, row_count, size_bytes)"),
+    sort_order: str = Query("desc", description="Sort order (asc, desc)")
 ) -> list[DatasetResponse]:
     """List all datasets for the current user."""
     # SECURITY: Filter to only return datasets uploaded by current user
     statement = select(Dataset).where(Dataset.uploader_id == current_user.id)
+    
+    # Apply sorting
+    if sort_by == "name":
+        sort_col = Dataset.name
+    elif sort_by == "row_count":
+        sort_col = Dataset.row_count
+    elif sort_by == "size_bytes":
+        sort_col = Dataset.size_bytes
+    else:
+        sort_col = Dataset.uploaded_at
+        
+    if sort_order.lower() == "asc":
+        statement = statement.order_by(sort_col.asc())
+    else:
+        statement = statement.order_by(sort_col.desc())
+        
     datasets = db.exec(statement).all()
     return [DatasetResponse.from_dataset(d) for d in datasets]
 

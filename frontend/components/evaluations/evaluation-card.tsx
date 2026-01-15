@@ -87,34 +87,38 @@ export function EvaluationCard({ evaluation, generatorName, onDelete, onExport, 
       </CardHeader>
       <CardContent>
         {hasReport ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <EvaluationScoreRing score={evaluation.report!.overall_assessment?.overall_score || 0} label="Quality" size="sm" />
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Statistical:</span>
-                  <span className="font-mono">
-                    {(evaluation.report!.evaluations.statistical_similarity?.summary.pass_rate || 0).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">ML Utility:</span>
-                  <span className="font-mono">
-                    {((evaluation.report!.evaluations.ml_utility?.summary.utility_ratio || 0) * 100).toFixed(0)}%
-                  </span>
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <EvaluationScoreRing score={evaluation.report!.overall_assessment?.overall_score || 0} label="Quality" size="sm" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Statistical:</span>
+                    <span className="font-mono">
+                      {(evaluation.report!.evaluations?.statistical_similarity?.summary?.pass_rate || 0).toFixed(0) + '%'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">ML Utility:</span>
+                    <span className="font-mono">
+                      {((evaluation.report!.evaluations?.ml_utility?.summary?.utility_ratio || 0) * 100).toFixed(0) + '%'}
+                    </span>
+                  </div>
                 </div>
               </div>
+              {/* Map privacy level (Good/Fair/Poor) to risk level (low/medium/high) */}
+              {evaluation.report!.evaluations?.privacy?.summary?.overall_privacy_level && (
+                <RiskIndicator 
+                  level={
+                    evaluation.report!.evaluations.privacy.summary.overall_privacy_level === "Good" ? "low" :
+                    evaluation.report!.evaluations.privacy.summary.overall_privacy_level === "Fair" ? "medium" : "high"
+                  } 
+                  size="sm" 
+                  showScore={false} 
+                />
+              )}
             </div>
-            {/* Map privacy level (Good/Fair/Poor) to risk level (low/medium/high) */}
-            <RiskIndicator 
-              level={
-                evaluation.report!.evaluations.privacy?.summary.overall_privacy_level === "Good" ? "low" :
-                evaluation.report!.evaluations.privacy?.summary.overall_privacy_level === "Fair" ? "medium" : "high"
-              } 
-              size="sm" 
-              showScore={false} 
-            />
-          </div>
+          </>
         ) : (
           <div className="flex items-center justify-center py-4">
             <StatusBadge status={evaluation.status as any} />

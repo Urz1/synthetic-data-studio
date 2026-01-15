@@ -1,190 +1,159 @@
-"use client"
-import * as React from "react"
-import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { AppShell } from "@/components/layout/app-shell"
-import { PageHeader } from "@/components/layout/page-header"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Download, Loader2, Database, Zap, BarChart3, Brain, Shield, Trash2 } from "lucide-react"
-import { api } from "@/lib/api"
-import type { Evaluation, Generator, Dataset } from "@/lib/types"
-import ProtectedRoute from "@/components/layout/protected-route"
-import { useToast } from "@/hooks/use-toast"
-import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
-import { DistributionChart } from "@/components/evaluations/distribution-chart"
-import { MetricsBreakdown } from "@/components/evaluations/metrics-breakdown"
+"use client";
+
+import * as React from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowLeft,
+  Download,
+  Trash2,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  BarChart3,
+  Shield,
+  Sparkles,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import type { Evaluation } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import ProtectedRoute from "@/components/layout/protected-route";
+import { EvaluationMetricsGrid } from "@/components/evaluations/evaluation-metrics-grid";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const statusConfig: Record<
+  string,
+  { icon: typeof CheckCircle2; className: string; label: string }
+> = {
+  completed: {
+    icon: CheckCircle2,
+    className: "text-success",
+    label: "Completed",
+  },
+  failed: {
+    icon: XCircle,
+    className: "text-destructive",
+    label: "Failed",
+  },
+  pending: {
+    icon: Clock,
+    className: "text-muted-foreground",
+    label: "Pending",
+  },
+  running: {
+    icon: Loader2,
+    className: "text-primary animate-spin",
+    label: "Running",
+  },
+};
 
 export default function EvaluationDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { user } = useAuth()
-  const id = params?.id as string
+  const { user } = useAuth();
+  const params = useParams();
+  const router = useRouter();
+  const evaluationId = params?.id as string;
+  const { toast } = useToast();
 
-  // State
-  const [evaluation, setEvaluation] = React.useState<Evaluation | null>(null)
-  const [generator, setGenerator] = React.useState<Generator | null>(null)
-  const [dataset, setDataset] = React.useState<Dataset | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-  const [isDeleting, setIsDeleting] = React.useState(false)
-  const { toast } = useToast()
-  const [loadingImprovements, setLoadingImprovements] = React.useState(false)
-  const [improvements, setImprovements] = React.useState<any>(null)
+  const [evaluation, setEvaluation] = React.useState<any>(null);
+  const [generator, setGenerator] = React.useState<any>(null);
+  const [dataset, setDataset] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
-  // Load data
   React.useEffect(() => {
-    if (!id) return
-    loadEvaluationDetails()
-
-    // Poll for updates if running
-    const interval = setInterval(() => {
-        if (evaluation && (evaluation.status === "running" || evaluation.status === "pending")) {
-            loadEvaluationDetails(true) // silent refresh
-        }
-    }, 3000)
-
-    return () => clearInterval(interval)
+    if (evaluationId) {
+      loadEvaluation();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, evaluation?.status])
+  }, [evaluationId]);
 
-  async function loadEvaluationDetails(silent = false) {
+  async function loadEvaluation() {
     try {
-      if (!silent) setLoading(true)
-      setError(null)
-
-      // OPTIMIZED: Single API call for evaluation + generator + dataset
-      const data = await api.getEvaluationDetails(id)
-      
-      setEvaluation(data.evaluation)
-      setGenerator(data.generator)
-      setDataset(data.dataset)
+      setLoading(true);
+      setError(null);
+      const data = await api.getEvaluationDetails(evaluationId);
+      setEvaluation(data.evaluation);
+      setGenerator(data.generator);
+      setDataset(data.dataset);
     } catch (err) {
-      console.error("Failed to load evaluation:", err)
-      setError(err instanceof Error ? err.message : "Failed to load evaluation")
+      console.error("Failed to load evaluation:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load evaluation"
+      );
     } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleExport() {
-    try {
-      const dataStr = JSON.stringify(evaluation?.report, null, 2)
-      const dataBlob = new Blob([dataStr], { type: 'application/json' })
-      const url = URL.createObjectURL(dataBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `evaluation-${id.slice(0, 8)}-report.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      
-      toast({
-        title: "Export Started",
-        description: "Report has been downloaded as JSON.",
-      })
-    } catch (err) {
-      toast({
-        title: "Export Failed",
-        description: err instanceof Error ? err.message : "Failed to export report",
-        variant: "destructive",
-      })
-    }
-  }
-
-  async function handleSuggestImprovements() {
-    try {
-      setLoadingImprovements(true)
-      const result = await api.suggestImprovements(id)
-      
-      if (!result || !result.suggestions || result.suggestions.length === 0) {
-        throw new Error("No suggestions generated. LLM service may not be configured.")
-      }
-      
-      setImprovements(result)
-      toast({
-        title: "Improvements Generated",
-        description: `Generated ${result.suggestions?.length || 0} AI-powered suggestions`,
-      })
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to generate improvements"
-      toast({
-        title: "LLM Service Unavailable",
-        description: "AI improvements require LLM integration. This is a premium feature that needs additional setup.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoadingImprovements(false)
+      setLoading(false);
     }
   }
 
   async function handleDelete() {
     try {
-      setIsDeleting(true)
-      
+      setIsDeleting(true);
+      await api.deleteEvaluation(evaluationId);
       toast({
-        title: `Deleting evaluation...`,
-        description: "Please wait while the evaluation is being removed.",
-      })
-      
-      await api.deleteEvaluation(id)
-      
-      toast({
-        title: "Evaluation deleted",
-        description: "The evaluation has been permanently removed.",
-      })
-      
-      router.push("/evaluations")
+        title: "Evaluation Deleted",
+        description: "The evaluation has been deleted successfully.",
+      });
+      router.push("/evaluations");
     } catch (err) {
       toast({
-        title: "Could not delete evaluation",
-        description: "Please try again.",
+        title: "Delete Failed",
+        description:
+          err instanceof Error ? err.message : "Failed to delete evaluation",
         variant: "destructive",
-      })
-    } finally {
-      setIsDeleting(false)
-      setDeleteDialogOpen(false)
+      });
+      setIsDeleting(false);
     }
   }
 
-  // Loading state
-  if (loading) {
-    return (
-      <ProtectedRoute>
-        <AppShell user={user || { full_name: "", email: "" }}>
-          <div className="flex items-center justify-center py-12" role="status" aria-live="polite" aria-busy="true">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="sr-only">Loading evaluation details</span>
-          </div>
-        </AppShell>
-      </ProtectedRoute>
-    )
+  function handleExport() {
+    if (evaluation?.report) {
+      const dataStr = JSON.stringify(evaluation.report, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `evaluation-${evaluationId}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Export Complete",
+        description: "Evaluation report has been downloaded",
+      });
+    }
   }
 
-  // Error state
-  if (error || !evaluation) {
-    return (
-      <ProtectedRoute>
-        <AppShell user={user || { full_name: "", email: "" }}>
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error || "Evaluation not found"}</AlertDescription>
-          </Alert>
-          <Button onClick={() => router.push("/evaluations")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Evaluations
-          </Button>
-        </AppShell>
-      </ProtectedRoute>
-    )
-  }
-
-  const report = evaluation.report
-  const qualityScore = report?.overall_assessment?.overall_score || 0
+  const status = evaluation?.status
+    ? statusConfig[evaluation.status] || statusConfig.pending
+    : statusConfig.pending;
+  const StatusIcon = status.icon;
 
   return (
     <ProtectedRoute>
@@ -192,340 +161,298 @@ export default function EvaluationDetailPage() {
         <div className="mb-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/evaluations">
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Back to Evaluations</span>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Evaluations
             </Link>
           </Button>
         </div>
 
-        <PageHeader
-          title={`Evaluation ${evaluation.id.slice(0, 8)}`}
-          description={`Quality assessment • Created ${evaluation.created_at ? new Date(evaluation.created_at).toLocaleDateString() : 'Unknown'}`}
-          actions={
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleSuggestImprovements}
-                disabled={loadingImprovements}
-                aria-live="polite"
-                aria-busy={loadingImprovements}
-              >
-                {loadingImprovements ? (
-                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-                ) : (
-                  <Brain className="h-4 w-4 sm:mr-2" />
-                )}
-                <span className="hidden sm:inline">AI Improvements</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Export Report</span>
-              </Button>
-            </div>
-          }
-        />
+        {evaluation && (
+          <PageHeader
+            title={`Evaluation Report`}
+            description={`ID: ${evaluationId.substring(0, 12)}... • Status: ${
+              evaluation.status?.charAt(0).toUpperCase() +
+              evaluation.status?.slice(1)
+            } • ${new Date(evaluation.created_at).toLocaleDateString()}`}
+            actions={
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  disabled={!evaluation.report}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export Report</span>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Delete</span>
+                </Button>
+              </div>
+            }
+          />
+        )}
+        {!evaluation && !loading && (
+          <PageHeader
+            title="Evaluation Report"
+            description="Loading evaluation data..."
+          />
+        )}
 
-        <div className="space-y-4 lg:space-y-0 lg:grid lg:gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Overall Quality Score */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Overall Quality Score</CardTitle>
-                <CardDescription>Comprehensive quality assessment</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <div className="text-4xl font-bold">
-                    {qualityScore ? (qualityScore * 100).toFixed(1) + "%" : "N/A"}
-                  </div>
-                  {qualityScore > 0 && (
-                    <Badge variant={qualityScore > 0.8 ? "default" : qualityScore > 0.6 ? "secondary" : "destructive"}>
-                      {qualityScore > 0.8 ? "Excellent" : qualityScore > 0.6 ? "Good" : "Needs Improvement"}
-                    </Badge>
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span>{error}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadEvaluation}
+                  className="ml-4"
+                >
+                  Retry
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : evaluation ? (
+          <div className="space-y-8">
+            {/* Status Overview - Compact, Minimal */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    {StatusIcon && <StatusIcon className={`h-5 w-5 ${status.className}`} />}
+                    Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{status.label}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {evaluation.created_at ? new Date(evaluation.created_at).toLocaleString() : "Unknown"}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Generator</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    href={`/generators/${evaluation.generator_id}`}
+                    className="text-sm font-semibold hover:text-primary transition-colors"
+                  >
+                    {generator?.name || evaluation.generator_id.substring(0, 12)}...
+                  </Link>
+                  {generator?.type && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Type: {generator.type}
+                    </p>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-             {/* Metrics Breakdown */}
-             {report?.evaluations ? (
-                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {/* Statistical */}
-                    {report.evaluations.statistical_similarity && (
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                    <BarChart3 className="h-4 w-4 text-primary"/> Statistical
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {((report.overall_assessment?.dimension_scores?.statistical || 0) * 100).toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Distribution similarity
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Dataset</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm font-semibold truncate">
+                    {dataset?.name || "Unknown"}
+                  </p>
+                  {dataset?.row_count && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {dataset.row_count.toLocaleString()} rows
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
-                    {/* ML Utility */}
-                    {report.evaluations.ml_utility && (
-                         <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                    <Brain className="h-4 w-4 text-success"/> ML Utility
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {((report.overall_assessment?.dimension_scores?.ml_utility || 0) * 100).toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Model performance
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
+            {/* Primary Action Cards - Key Functions */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Card className="group overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-primary/5 to-transparent hover:from-primary/10">
+                <Link href={`/evaluations/${evaluationId}/explain`} className="block h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-base group-hover:text-primary transition-colors">
+                      <div className="p-2 rounded-lg bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      AI Analysis
+                    </CardTitle>
+                    <CardDescription className="group-hover:text-foreground/70 transition-colors">
+                      Get LLM-powered insights and recommendations
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
 
-                     {/* Privacy */}
-                     {report.evaluations.privacy && (
-                         <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                    <Shield className="h-4 w-4 text-warning-foreground"/> Privacy
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {((report.overall_assessment?.dimension_scores?.privacy || 0) * 100).toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Resistance to attacks
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-             ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Processing Results...</CardTitle>
-                        <CardDescription>Metrics are being calculated.</CardDescription>
-                    </CardHeader>
-                </Card>
-             )}
+              <Card className="group overflow-hidden border-2 border-transparent hover:border-warning/50 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-warning/5 to-transparent hover:from-warning/10">
+                <Link href={`/evaluations/${evaluationId}/risk`} className="block h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-base group-hover:text-warning transition-colors">
+                      <div className="p-2 rounded-lg bg-warning/20 group-hover:bg-warning/30 transition-colors">
+                        <Shield className="h-5 w-5 text-warning" />
+                      </div>
+                      Risk Assessment
+                    </CardTitle>
+                    <CardDescription className="group-hover:text-foreground/70 transition-colors">
+                      View detailed privacy and disclosure risks
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
 
-            {/* AI Improvement Suggestions */}
-            {improvements && improvements.suggestions && improvements.suggestions.length > 0 && (
-              <Card className="border-primary/20">
+              <Card className="group overflow-hidden border-2 border-transparent hover:border-success/50 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-success/5 to-transparent hover:from-success/10">
+                <Link href={`/evaluations/compare?ids=${evaluationId}`} className="block h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-base group-hover:text-success transition-colors">
+                      <div className="p-2 rounded-lg bg-success/20 group-hover:bg-success/30 transition-colors">
+                        <BarChart3 className="h-5 w-5 text-success" />
+                      </div>
+                      Compare
+                    </CardTitle>
+                    <CardDescription className="group-hover:text-foreground/70 transition-colors">
+                      Compare with other evaluations
+                    </CardDescription>
+                  </CardHeader>
+                </Link>
+              </Card>
+            </div>
+
+            {/* Professional Metrics Grid - Use dedicated component */}
+            {evaluation.report && (
+              <EvaluationMetricsGrid report={evaluation.report} />
+            )}
+
+            {/* Evaluation Details - Metadata & Context */}
+            {evaluation && (
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-primary" />
-                    AI-Powered Improvement Suggestions
+                    <Shield className="h-5 w-5" />
+                    Evaluation Details
                   </CardTitle>
                   <CardDescription>
-                    {improvements.count || improvements.suggestions.length} suggestions to enhance data quality
+                    Complete metadata and evaluation context
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {improvements.suggestions.map((suggestion: any, idx: number) => {
-                      // Handle both string and object formats from backend
-                      const isString = typeof suggestion === 'string'
-                      const displayText = isString 
-                        ? suggestion 
-                        : (suggestion.suggestion || suggestion.message || suggestion.text || JSON.stringify(suggestion))
-                      const area = isString ? null : suggestion.area
-                      
-                      return (
-                        <div key={idx} className="border-l-2 border-primary pl-4 py-2">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm mb-1">
-                                {area || `Suggestion ${idx + 1}`}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {displayText}
-                              </p>
-                              {!isString && suggestion.implementation && (
-                                <div className="bg-muted p-2 rounded text-xs mt-2">
-                                  <span className="font-medium">Implementation: </span>
-                                  {suggestion.implementation}
-                                </div>
-                              )}
-                            </div>
-                            {!isString && suggestion.current_value !== undefined && suggestion.target_value !== undefined && (
-                              <div className="text-right">
-                                <div className="text-xs text-muted-foreground">Current</div>
-                                <div className="text-sm font-medium">{(suggestion.current_value * 100).toFixed(1)}%</div>
-                                <div className="text-xs text-muted-foreground mt-1">Target</div>
-                                <div className="text-sm font-medium text-primary">{(suggestion.target_value * 100).toFixed(1)}%</div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    {/* Generator Info */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Generator Type
+                      </p>
+                      <Badge variant="secondary" className="w-fit">
+                        {generator?.type || "Unknown"}
+                      </Badge>
+                    </div>
+
+                    {/* Report ID */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Evaluation ID
+                      </p>
+                      <code className="text-sm bg-muted px-2 py-1 rounded break-all">
+                        {evaluation.id?.substring(0, 16)}...
+                      </code>
+                    </div>
+
+                    {/* Evaluation Date */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Evaluated
+                      </p>
+                      <p className="text-sm font-medium">
+                        {new Date(evaluation.created_at).toLocaleDateString()} at{" "}
+                        {new Date(evaluation.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+
+                    {/* Duration */}
+                    {evaluation.completed_at && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Duration
+                        </p>
+                        <p className="text-sm font-medium">
+                          {Math.round(
+                            (new Date(evaluation.completed_at).getTime() -
+                              new Date(evaluation.created_at).getTime()) /
+                              1000
+                          )}{" "}
+                          seconds
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Dataset Info */}
+                    {dataset?.name && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Dataset
+                        </p>
+                        <p className="text-sm font-medium truncate">
+                          {dataset.name}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             )}
-
-            {/* Top Failing Columns (New) */}
-            {(report?.evaluations?.statistical_similarity?.distributions) && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                        Column Quality Analysis
-                    </CardTitle>
-                    <CardDescription>
-                        Analysis of individual column distributions and statistical similarity
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-8">
-                         {/* Metrics Grid */}
-                         <MetricsBreakdown 
-                            metrics={report.evaluations.statistical_similarity.column_tests} 
-                            distributions={report.evaluations.statistical_similarity.distributions} 
-                         />
-                         
-                         {/* Detailed Charts for Top Columns */}
-                         <div className="pt-4 border-t">
-                            <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-primary" />
-                                Distribution Comparison
-                            </h3>
-                            <div className="grid gap-6 md:grid-cols-2">
-                                {Object.keys(report.evaluations.statistical_similarity.distributions).slice(0, 4).map(col => (
-                                    <div key={col} className="border rounded-lg p-4 bg-card/50">
-                                        <DistributionChart 
-                                            data={report.evaluations.statistical_similarity.distributions[col]} 
-                                            columnName={col}
-                                            height={250}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                         </div>
-                    </div>
-                </CardContent>
-            </Card>
-            )}
-
-            {/* Detailed JSON Report (Hidden by default) */}
-            <details className="group">
-                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-primary transition-colors mb-2 list-none flex items-center gap-2 select-none">
-                     <Database className="h-4 w-4" />
-                     <span className="font-medium">View Raw Report Data</span>
-                </summary>
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="bg-muted p-4 rounded-md overflow-x-auto">
-                            <pre className="text-xs font-mono">
-                                {JSON.stringify(report, null, 2)}
-                            </pre>
-                        </div>
-                    </CardContent>
-                </Card>
-            </details>
           </div>
+        ) : null}
 
-          <div className="space-y-4">
-            {/* Related Resources */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Generator</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {generator ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-muted-foreground" />
-                      <Link href={`/generators/${generator.id}`} className="text-sm text-primary hover:underline">
-                        {generator.name}
-                      </Link>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Type: {generator.type}
-                    </div>
-                  </div>
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Evaluation</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this evaluation? This action
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Unknown generator</p>
+                  "Delete"
                 )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Dataset</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {dataset ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Database className="h-4 w-4 text-muted-foreground" />
-                      <Link href={`/datasets/${dataset.id}`} className="text-sm text-primary hover:underline">
-                        {dataset.name}
-                      </Link>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {dataset.row_count?.toLocaleString() || 0} rows
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Unknown dataset</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Evaluation Info</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ID</span>
-                  <code className="text-xs">{evaluation.id.slice(0, 12)}...</code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created</span>
-                  <span>{evaluation.created_at ? new Date(evaluation.created_at).toLocaleDateString() : 'Unknown'}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-destructive/20">
-              <CardHeader>
-                <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => setDeleteDialogOpen(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Evaluation
-                </Button>
-                
-                <DeleteConfirmationDialog
-                  entityType="Evaluation"
-                  entityName={`Evaluation ${evaluation.id.slice(0, 8)}`}
-                  open={deleteDialogOpen}
-                  onOpenChange={setDeleteDialogOpen}
-                  onConfirm={handleDelete}
-                  isDeleting={isDeleting}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AppShell>
     </ProtectedRoute>
-  )
+  );
 }

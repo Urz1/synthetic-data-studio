@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { Shield, FileJson, FileCheck, Lock, Download, ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { AnimatePresence, motion } from "framer-motion"
 import { AuthIntentLink } from "@/components/auth/auth-intent-link"
 import styles from "./HeroStory.module.css"
 
@@ -17,7 +18,7 @@ const scenes = [
   {
     id: "privacy",
     headline: "Your data stays private",
-    subtext: "We learn patterns from your data, but never copy actual records. Share synthetic data freely — it can't be traced back.",
+    subtext: "We learn patterns from your data, but never copy actual records. Share synthetic data freely   it can't be traced back.",
     cta: "See how it works",
     ctaHref: "#how-it-works",
     benefits: ["Safe to share externally", "No real records exposed", "Mathematically proven"],
@@ -25,7 +26,7 @@ const scenes = [
   {
     id: "schema",
     headline: "Describe it, we build it",
-    subtext: "Define your columns and types. Get realistic data in seconds — no uploads, no training, no waiting.",
+    subtext: "Define your columns and types. Get realistic data in seconds   no uploads, no training, no waiting.",
     cta: "Try schema generator",
     ctaHref: "/generators/schema",
     benefits: ["Instant results", "No data upload needed", "Perfect for prototyping"],
@@ -142,15 +143,25 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
         {/* Main Hero - Side by Side */}
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
           
-          {/* LEFT: Animation Pane -> Now RIGHT */}
+          {/* LEFT: Animation Pane */}
           <div 
             className={`${styles.animationPane} relative order-2 lg:order-2`}
-            onMouseEnter={handleReplay}
           >
             <div className={`${styles.animationContainer} bg-card/50 border border-border rounded-2xl p-4 sm:p-6 md:p-8 min-h-[280px] sm:min-h-[320px] flex items-center justify-center overflow-hidden`}>
-              {currentScene === 0 && <PrivacyAnimation animated={mounted && !prefersReducedMotion} />}
-              {currentScene === 1 && <SchemaAnimation animated={mounted && !prefersReducedMotion} />}
-              {currentScene === 2 && <ReportAnimation animated={mounted && !prefersReducedMotion} />}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentScene}
+                  initial={{ opacity: 0, x: prefersReducedMotion ? 0 : 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: prefersReducedMotion ? 0 : -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="w-full flex items-center justify-center"
+                >
+                  {currentScene === 0 && <PrivacyAnimation animated={mounted && !prefersReducedMotion} />}
+                  {currentScene === 1 && <SchemaAnimation animated={mounted && !prefersReducedMotion} />}
+                  {currentScene === 2 && <ReportAnimation animated={mounted && !prefersReducedMotion} />}
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Scene indicators */}
@@ -194,7 +205,7 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
               {scene.benefits.map((benefit, i) => (
                 <li
                   key={benefit}
-                  className={`${mounted && !prefersReducedMotion ? styles.slideIn : ""} flex items-center gap-3 justify-center lg:justify-start text-sm`}
+                  className={`${mounted && !prefersReducedMotion ? styles.slideIn : ""} flex items-center gap-3 justify-center lg:justify-start text-base`}
                   style={{ animationDelay: `${200 + i * 100}ms` }}
                 >
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
@@ -209,19 +220,19 @@ export function HeroStory({ theme = "dark", onReplay }: HeroStoryProps) {
               style={{ animationDelay: "500ms" }}
             >
               <Button size="lg" className="h-12 rounded-full px-6" asChild>
-                <AuthIntentLink href="/register" eventLocation="hero" mode="register">
-                  Get Started Free
+                <Link href="/playground">
+                  Try Now – No Sign Up
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </AuthIntentLink>
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className="h-12 rounded-full px-6" asChild>
-                <Link href={scene.ctaHref}>
-                  {scene.cta}
-                </Link>
+                <AuthIntentLink href="/register" eventLocation="hero" mode="register">
+                  Create Account
+                </AuthIntentLink>
               </Button>
             </div>
 
-            <p className="text-sm text-muted-foreground mt-6 text-center lg:text-left">
+            <p className="text-base text-muted-foreground mt-6 text-center lg:text-left">
               No credit card · No setup · Works in your browser
             </p>
           </div>
@@ -241,7 +252,12 @@ function PrivacyAnimation({ animated }: { animated: boolean }) {
       {/* Stack vertically on mobile, horizontal on larger screens */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
         {/* Real data card */}
-        <div className={`${styles.dataCard} ${animated ? styles.fadeInLeft : ""} bg-background border border-border rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[130px]`}>
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className={`${styles.dataCard} bg-background border border-border rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[130px]`}
+        >
           <div className="text-xs font-medium text-muted-foreground mb-2">Your Data</div>
           <div className="space-y-1.5 font-mono text-xs">
             <div className="flex gap-2">
@@ -257,21 +273,47 @@ function PrivacyAnimation({ animated }: { animated: boolean }) {
               <span>$85,000</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Shield in middle */}
-        <div className={`${styles.shieldPulse} ${animated ? styles.scaleIn : ""} relative`}>
-          <div className="bg-primary/10 rounded-full p-4">
+        <div className="relative">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ 
+              opacity: 1, 
+              scale: [0.5, 1, 1.05, 1],
+            }}
+            transition={{ 
+              opacity: { duration: 0.4, delay: 0.2 },
+              scale: { 
+                duration: 2,
+                times: [0, 0.3, 0.65, 1], // approximate entrance + pulse start
+                repeat: Infinity,
+                repeatDelay: 0
+              }
+            }}
+            className="bg-primary/10 rounded-full p-4"
+          >
             <Shield className={`h-10 w-10 text-primary ${animated ? styles.shieldGlow : ""}`} />
-          </div>
-          <div className={`${animated ? styles.checkAppear : ""} absolute -bottom-1 -right-1 bg-success rounded-full p-1`}>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.6, duration: 0.4, type: "spring" }}
+            className="absolute -bottom-1 -right-1 bg-success rounded-full p-1"
+          >
             <CheckCircle2 className="h-4 w-4 text-success-foreground" />
-          </div>
+          </motion.div>
         </div>
 
         {/* Synthetic data card */}
-        <div className={`${styles.dataCard} ${animated ? styles.fadeInRight : ""} bg-background border border-primary/50 rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[130px]`}
-             style={{ animationDelay: animated ? "800ms" : undefined }}>
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+          className={`${styles.dataCard} bg-background border border-primary/50 rounded-xl p-3 sm:p-4 w-full sm:w-auto sm:min-w-[130px]`}
+        >
           <div className="text-xs font-medium text-primary mb-2 flex items-center gap-1">
             <Sparkles className="h-3 w-3" />
             Safe to Share
@@ -290,13 +332,17 @@ function PrivacyAnimation({ animated }: { animated: boolean }) {
               <span>$82,400</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      <p className={`${animated ? styles.fadeInUp : ""} text-center text-sm text-muted-foreground mt-6`}
-         style={{ animationDelay: "1200ms" }}>
+      <motion.p 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.5 }}
+        className="text-center text-sm text-muted-foreground mt-6"
+      >
         Real patterns preserved · Real identities protected
-      </p>
+      </motion.p>
     </div>
   )
 }

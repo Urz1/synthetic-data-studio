@@ -12,8 +12,25 @@ from sqlmodel import Session, select
 from .models import Generator
 
 
-def get_generators(db: Session, skip: int = 0, limit: int = 100):
-    return db.exec(select(Generator).offset(skip).limit(limit)).all()
+def get_generators(db: Session, skip: int = 0, limit: int = 100, sort_by: str = "created_at", sort_order: str = "desc"):
+    statement = select(Generator)
+    
+    # Apply sorting
+    if sort_by == "name":
+        sort_col = Generator.name
+    elif sort_by == "status":
+        sort_col = Generator.status
+    elif sort_by == "type":
+        sort_col = Generator.type
+    else:
+        sort_col = Generator.created_at
+        
+    if sort_order.lower() == "asc":
+        statement = statement.order_by(sort_col.asc())
+    else:
+        statement = statement.order_by(sort_col.desc())
+        
+    return db.exec(statement.offset(skip).limit(limit)).all()
 
 
 def get_generator_by_id(db: Session, generator_id: str):

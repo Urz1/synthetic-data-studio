@@ -166,6 +166,10 @@ ALLOWED_TYPES = {
     'auto', 'automatic', 'default', 'calculated', 'derived',
     'computed', 'generated', 'synthetic',
 }
+
+# Maximum columns for main system (playground gets 1/3 of this = 10)
+MAX_COLUMNS_MAIN = 30
+
 class SchemaInput(BaseModel):
     """Schema definition for manual data generation."""
     columns: Union[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]  # Support both formats
@@ -175,8 +179,12 @@ class SchemaInput(BaseModel):
 
     @classmethod
     def validate_columns(cls, columns):
-        """Validate column definitions."""
+        """Validate column definitions including limit and uniqueness."""
+        # Collect column names for uniqueness check
+        column_names = []
+        
         if isinstance(columns, dict):
+            column_names = list(columns.keys())
             for col_name, col_config in columns.items():
                 if not isinstance(col_config, dict):
                     raise ValueError(f"Column '{col_name}' config must be a dict")
@@ -192,6 +200,7 @@ class SchemaInput(BaseModel):
                     raise ValueError(f"Column at index {i} must be a dict")
                 if "name" not in col:
                     raise ValueError(f"Column at index {i} missing 'name' field")
+                column_names.append(col.get("name"))
                 col_type = col.get("type", "string")
                 if col_type.lower() not in ALLOWED_TYPES:
                     raise ValueError(
@@ -200,6 +209,22 @@ class SchemaInput(BaseModel):
                     )
         else:
             raise ValueError("'columns' must be a dict or list")
+        
+        # Validate column count
+        if len(column_names) > MAX_COLUMNS_MAIN:
+            raise ValueError(
+                f"Maximum {MAX_COLUMNS_MAIN} columns allowed. You have {len(column_names)}."
+            )
+        
+        # Validate uniqueness (case-insensitive)
+        lowercase_names = [name.lower() for name in column_names]
+        duplicates = [name for name in column_names if lowercase_names.count(name.lower()) > 1]
+        if duplicates:
+            unique_duplicates = list(set(duplicates))
+            raise ValueError(
+                f"Duplicate column names not allowed: {', '.join(unique_duplicates)}"
+            )
+        
         return columns
     
     def model_post_init(self, __context) -> None:
@@ -209,6 +234,7 @@ class SchemaInput(BaseModel):
 
 class MLGenerationConfig(BaseModel):
     """Configuration for ML-based synthesis."""
+    name: str = Field(..., min_length=1, max_length=255, description="Name of the generator")
     model_type: str = Field(..., description="'ctgan', 'tvae', 'timegan', 'dp-ctgan', 'dp-tvae'")
     num_rows: int = Field(default=1000, ge=1)
     epochs: int = Field(default=300, ge=1)

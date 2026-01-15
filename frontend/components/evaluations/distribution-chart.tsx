@@ -61,8 +61,8 @@ export function DistributionChart({ data, height = 300, columnName }: Distributi
           <Info className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
           <span>
             {isIdentifier 
-              ? "Identifier column — synthetic values intentionally differ for privacy."
-              : "High-cardinality — many unique values, distribution differences expected."}
+              ? "Identifier column   synthetic values intentionally differ for privacy."
+              : "High-cardinality   many unique values, distribution differences expected."}
           </span>
         </div>
       )}

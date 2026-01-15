@@ -97,7 +97,9 @@ def _list_generators_impl(
     skip: int,
     limit: int,
     db: Session,
-    current_user
+    current_user,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
 ) -> list[GeneratorResponse]:
     """Implementation for listing generators."""
     # SECURITY: Filter to only return generators created by current user
@@ -107,6 +109,21 @@ def _list_generators_impl(
     if dataset_id:
         validate_uuid(dataset_id, "dataset_id")
         statement = statement.where(Generator.dataset_id == uuid.UUID(dataset_id))
+    
+    # Apply sorting
+    if sort_by == "name":
+        sort_col = Generator.name
+    elif sort_by == "status":
+        sort_col = Generator.status
+    elif sort_by == "type":
+        sort_col = Generator.type
+    else:
+        sort_col = Generator.created_at
+        
+    if sort_order.lower() == "asc":
+        statement = statement.order_by(sort_col.asc())
+    else:
+        statement = statement.order_by(sort_col.desc())
     
     # Apply pagination
     statement = statement.offset(skip).limit(limit)
@@ -122,10 +139,12 @@ def list_generators(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    sort_by: str = Query("created_at", description="Field to sort by (created_at, name, status, type)"),
+    sort_order: str = Query("desc", description="Sort order (asc, desc)")
 ) -> list[GeneratorResponse]:
     """List all generators for the current user."""
-    return _list_generators_impl(dataset_id, skip, limit, db, current_user)
+    return _list_generators_impl(dataset_id, skip, limit, db, current_user, sort_by, sort_order)
 
 
 @router.get("/{generator_id}", response_model=GeneratorResponse)
@@ -489,8 +508,37 @@ def generate_from_dataset(
         raise HTTPException(status_code=404, detail="Dataset not found")
     
     # =========================================================================
+    # MODEL-DP CONSISTENCY VALIDATION (CRITICAL FIX #2.2)
+    # =========================================================================
+    # Prevent contradictory states: non-DP model with DP enabled
+    is_dp_model = generator_type in ["dp-ctgan", "dp-tvae"]
+    
+    if config.use_differential_privacy and not is_dp_model:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Differential Privacy is only supported with dp-ctgan and dp-tvae models. "
+                   f"You selected {generator_type}. "
+                   f"Either enable DP (auto-switches to DP model) or select a non-DP model without privacy."
+        )
+    
+    if not config.use_differential_privacy and is_dp_model:
+        logger.warning(
+            f"Model {generator_type} supports DP but use_differential_privacy=false. "
+            f"This may indicate a frontend sync issue."
+        )
+    
+    # =========================================================================
     # STRICT VALIDATION - Safety Gates (return 400 if frontend validation bypassed)
     # =========================================================================
+    
+    # --- Minimum Row Count for ML Training ---
+    MIN_ROWS_FOR_ML_TRAINING = 100
+    if dataset.row_count and dataset.row_count < MIN_ROWS_FOR_ML_TRAINING:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dataset has {dataset.row_count} rows. Minimum {MIN_ROWS_FOR_ML_TRAINING} rows required for ML training. "
+                   f"Use schema-based generation for smaller datasets."
+        )
     
     # --- Epochs Validation ---
     if epochs < 1:
@@ -527,7 +575,7 @@ def generate_from_dataset(
     
     # --- DP Parameter Validation (when enabled) ---
     if config.use_differential_privacy:
-        # Epsilon validation
+        # CRITICAL FIX #4.2: Require explicit DP parameters (no defaults)
         if config.target_epsilon is None or config.target_epsilon <= 0:
             raise HTTPException(
                 status_code=400, 
@@ -578,7 +626,7 @@ def generate_from_dataset(
             "use_differential_privacy": config.use_differential_privacy,
             "max_grad_norm": config.max_grad_norm
         },
-        name=f"{dataset.name}_{generator_type}_{uuid.uuid4().hex[:4]}",
+        name=config.name,  # Use exact name from user request
         created_by=current_user.id
     )
 

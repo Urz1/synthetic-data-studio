@@ -35,6 +35,7 @@ try:
         "app.audit.routes",  # Enterprise audit logging
         "app.billing.routes",  # Usage tracking & quotas
         "app.exports.routes",  # Export storage & retrieval
+        "app.playground.router",  # Anonymous playground generation (NOT protected)
     ]
     
     # Routers that must be protected by proxy-based auth for all endpoints

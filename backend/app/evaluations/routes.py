@@ -8,6 +8,7 @@
 import math
 import logging
 import uuid
+import json
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -540,6 +541,7 @@ async def compare_evaluations(
     
     # Load all evaluations
     evaluations_data = []
+    normalized_metrics: Dict[str, Any] = {}
     for eval_id in evaluation_ids:
         evaluation = get_evaluation(db, eval_id)
         if not evaluation:
@@ -550,17 +552,66 @@ async def compare_evaluations(
         
         # Get generator info
         generator = get_generator_by_id(db, str(evaluation.generator_id))
+
+        report = evaluation.report or {}
+        # Normalize numeric metrics in a consistent 0-1 range when possible
+        fidelity = (
+            report.get("statistical", {}).get("column_shapes")
+            or report.get("statistical_similarity")
+            or report.get("overall_score")
+            or 0
+        )
+        utility = (
+            report.get("utility", {}).get("ml_efficacy")
+            or report.get("ml_utility")
+            or report.get("overall_score")
+            or 0
+        )
+        privacy = (
+            report.get("privacy", {}).get("dcr_score")
+            or report.get("privacy_score")
+            or report.get("overall_score")
+            or 0
+        )
+        overall = report.get("overall_score") or (fidelity + utility + privacy) / 3
+
+        def clamp01(v: float) -> float:
+            try:
+                return max(0.0, min(1.0, float(v)))
+            except Exception:
+                return 0.0
+
+        normalized_metrics[str(evaluation.id)] = {
+            "fidelity": clamp01(fidelity),
+            "utility": clamp01(utility),
+            "privacy": clamp01(privacy),
+            "overall": clamp01(overall),
+        }
         
         evaluations_data.append({
             "evaluation_id": str(evaluation.id),
             "generator_type": generator.type if generator else "unknown",
-            "metrics": evaluation.report
+            "metrics": report
         })
     
     try:
         # Generate comparison using LLM
         translator = ReportTranslator()
         comparison = await translator.compare_evaluations(evaluations_data)
+
+        def stringify(value: Any) -> str:
+            if value is None:
+                return "Not available"
+            if isinstance(value, (dict, list)):
+                return json.dumps(value, indent=2)
+            return str(value)
+
+        # Sanitize common fields so frontend never receives raw objects
+        for key in ["recommendation", "best_for_analytics", "best_for_privacy", "summary"]:
+            if key in comparison:
+                comparison[key] = stringify(comparison[key])
+        # Attach normalized metrics for consumers
+        comparison["normalized_metrics"] = normalized_metrics
         
         logger.info("✓ Comparison generated successfully")
         return comparison
