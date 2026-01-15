@@ -7,6 +7,7 @@ models trained on real data.
 
 # Standard library
 import logging
+import warnings
 from typing import Dict, Any, Optional, List, Tuple
 
 # Third-party
@@ -68,10 +69,25 @@ class MLUtilityEvaluator:
         
         # Check if target is numeric and has many unique values
         if pd.api.types.is_numeric_dtype(target):
-            unique_ratio = len(target.unique()) / len(target)
-            if unique_ratio > 0.05:  # More than 5% unique values
+            n_unique = len(target.unique())
+            n_samples = len(target)
+            unique_ratio = n_unique / n_samples
+            
+            # Regression if:
+            # 1. More than 50% unique values (sklearn's threshold - avoid warning)
+            # 2. OR more than 20 unique classes (too many for practical classification)
+            # 3. OR continuous float type with >5% unique
+            if unique_ratio > 0.5:
+                logger.info(f"Detected regression: {unique_ratio*100:.1f}% unique values ({n_unique}/{n_samples})")
+                return 'regression'
+            elif n_unique > 20:
+                logger.info(f"Detected regression: too many classes ({n_unique})")
+                return 'regression'
+            elif unique_ratio > 0.05 and target.dtype == 'float64':
+                logger.info(f"Detected regression: continuous float with {unique_ratio*100:.1f}% unique")
                 return 'regression'
         
+        logger.info(f"Detected classification: {len(target.unique())} classes")
         return 'classification'
     
     def _prepare_data(
@@ -89,32 +105,36 @@ class MLUtilityEvaluator:
         Returns:
             Tuple of (X_train, X_test, y_train, y_test)
         """
-        df = data.copy()
-        
-        # Separate features and target
-        y = df[self.target_column]
-        X = df.drop(columns=[self.target_column])
-        
-        # Handle categorical features
-        categorical_cols = X.select_dtypes(include=['object', 'category']).columns
-        for col in categorical_cols:
-            le = LabelEncoder()
-            X[col] = le.fit_transform(X[col].astype(str))
-        
-        # Handle missing values
-        X = X.fillna(X.mean())
-        
-        # Encode target if classification
-        if self.task_type == 'classification':
-            le = LabelEncoder()
-            y = le.fit_transform(y.astype(str))
-        
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=42
-        )
-        
-        return X_train, X_test, y_train, y_test
+        # Suppress sklearn warnings about classification/regression ambiguity
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+            
+            df = data.copy()
+            
+            # Separate features and target
+            y = df[self.target_column]
+            X = df.drop(columns=[self.target_column])
+            
+            # Handle categorical features
+            categorical_cols = X.select_dtypes(include=['object', 'category']).columns
+            for col in categorical_cols:
+                le = LabelEncoder()
+                X[col] = le.fit_transform(X[col].astype(str))
+            
+            # Handle missing values
+            X = X.fillna(X.mean())
+            
+            # Encode target if classification
+            if self.task_type == 'classification':
+                le = LabelEncoder()
+                y = le.fit_transform(y.astype(str))
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_size, random_state=42
+            )
+            
+            return X_train, X_test, y_train, y_test
     
     def train_on_real_test_on_real(self) -> Dict[str, Any]:
         """

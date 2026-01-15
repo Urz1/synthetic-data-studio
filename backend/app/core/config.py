@@ -77,10 +77,15 @@ class Settings:
         if self.allowed_origins is None:
             if self.debug:
                 # Development: Allow localhost origins explicitly (required for credentials)
+                # Include multiple ports as Next.js may use different ports if 3000 is busy
                 self.allowed_origins = [
                     "http://localhost:3000",
+                    "http://localhost:3001",
+                    "http://localhost:3002",
                     "http://localhost:8000",
                     "http://127.0.0.1:3000",
+                    "http://127.0.0.1:3001",
+                    "http://127.0.0.1:3002",
                     "http://127.0.0.1:8000"
                 ]
             else:

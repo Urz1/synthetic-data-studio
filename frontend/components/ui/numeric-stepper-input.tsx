@@ -1,50 +1,55 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
-import { Label } from "@/components/ui/label"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Minus, Plus, HelpCircle } from "lucide-react"
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Minus, Plus, HelpCircle } from "lucide-react";
 
 interface NumericStepperInputProps {
   /** Current value */
-  value: number
+  value: number;
   /** Callback when value changes */
-  onChange: (value: number) => void
+  onChange: (value: number) => void;
   /** Minimum allowed value */
-  min: number
+  min: number;
   /** Maximum allowed value */
-  max: number
+  max: number;
   /** Step for stepper buttons (default: 1) */
-  step?: number
+  step?: number;
   /** Step for slider (default: same as step) */
-  sliderStep?: number
+  sliderStep?: number;
   /** Label for the input */
-  label: string
+  label: string;
   /** Optional helper text */
-  helperText?: string
+  helperText?: string;
   /** Tooltip content */
-  tooltip?: string
+  tooltip?: string;
   /** Error message */
-  error?: string
+  error?: string;
   /** Warning message */
-  warning?: string
+  warning?: string;
   /** Whether to snap slider to powers of 2 */
-  powerOfTwo?: boolean
+  powerOfTwo?: boolean;
   /** Preset values to show as quick buttons */
-  presets?: number[]
+  presets?: number[];
   /** Whether the input is disabled */
-  disabled?: boolean
+  disabled?: boolean;
   /** Custom className */
-  className?: string
+  className?: string;
 }
 
 /**
  * NumericStepperInput - A triple-pattern input with slider + stepper + editable number.
- * 
+ *
  * Features:
  * - Slider for coarse control
  * - +/- stepper buttons for fine control
@@ -70,83 +75,86 @@ export function NumericStepperInput({
   disabled = false,
   className,
 }: NumericStepperInputProps) {
-  const [localValue, setLocalValue] = React.useState(value.toString())
+  const [localValue, setLocalValue] = React.useState(value.toString());
 
   // Sync local value when prop changes
   React.useEffect(() => {
-    setLocalValue(value.toString())
-  }, [value])
+    setLocalValue(value.toString());
+  }, [value]);
 
-  const effectiveSliderStep = sliderStep ?? step
+  const effectiveSliderStep = sliderStep ?? step;
 
   // Snap to nearest power of 2 for batch size sliders
-  const snapToPowerOfTwo = React.useCallback((val: number): number => {
-    if (!powerOfTwo) return val
-    const log = Math.log2(val)
-    const lower = Math.pow(2, Math.floor(log))
-    const upper = Math.pow(2, Math.ceil(log))
-    return val - lower < upper - val ? lower : upper
-  }, [powerOfTwo])
+  const snapToPowerOfTwo = React.useCallback(
+    (val: number): number => {
+      if (!powerOfTwo) return val;
+      const log = Math.log2(val);
+      const lower = Math.pow(2, Math.floor(log));
+      const upper = Math.pow(2, Math.ceil(log));
+      return val - lower < upper - val ? lower : upper;
+    },
+    [powerOfTwo]
+  );
 
   const handleIncrement = () => {
-    const newValue = powerOfTwo 
+    const newValue = powerOfTwo
       ? Math.min(max, value * 2)
-      : Math.min(max, value + step)
-    onChange(newValue)
-  }
+      : Math.min(max, value + step);
+    onChange(newValue);
+  };
 
   const handleDecrement = () => {
-    const newValue = powerOfTwo 
+    const newValue = powerOfTwo
       ? Math.max(min, value / 2)
-      : Math.max(min, value - step)
-    onChange(Math.round(newValue))
-  }
+      : Math.max(min, value - step);
+    onChange(Math.round(newValue));
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value
-    setLocalValue(inputValue)
-    
+    const inputValue = e.target.value;
+    setLocalValue(inputValue);
+
     // Only update parent if it's a valid number
-    const parsed = parseInt(inputValue, 10)
+    const parsed = parseInt(inputValue, 10);
     if (!isNaN(parsed)) {
-      onChange(parsed)
+      onChange(parsed);
     }
-  }
+  };
 
   const handleInputBlur = () => {
     // On blur, clamp to valid range and snap to step
-    const parsed = parseInt(localValue, 10)
+    const parsed = parseInt(localValue, 10);
     if (isNaN(parsed)) {
-      setLocalValue(value.toString())
+      setLocalValue(value.toString());
     } else {
-      const clamped = Math.max(min, Math.min(max, parsed))
-      let snapped: number
+      const clamped = Math.max(min, Math.min(max, parsed));
+      let snapped: number;
       if (powerOfTwo) {
-        snapped = snapToPowerOfTwo(clamped)
+        snapped = snapToPowerOfTwo(clamped);
       } else if (step > 1) {
         // Snap to nearest step value
-        snapped = Math.round(clamped / step) * step
+        snapped = Math.round(clamped / step) * step;
         // Ensure we don't go below min or above max after snapping
-        snapped = Math.max(min, Math.min(max, snapped))
+        snapped = Math.max(min, Math.min(max, snapped));
       } else {
-        snapped = clamped
+        snapped = clamped;
       }
-      onChange(snapped)
-      setLocalValue(snapped.toString())
+      onChange(snapped);
+      setLocalValue(snapped.toString());
     }
-  }
+  };
 
   const handleSliderChange = ([sliderValue]: number[]) => {
-    const snapped = powerOfTwo ? snapToPowerOfTwo(sliderValue) : sliderValue
-    onChange(snapped)
-  }
+    const snapped = powerOfTwo ? snapToPowerOfTwo(sliderValue) : sliderValue;
+    onChange(snapped);
+  };
 
   const handlePresetClick = (preset: number) => {
-    onChange(preset)
-  }
+    onChange(preset);
+  };
 
-  const isInvalid = !!error
-  const hasWarning = !!warning && !error
+  const isInvalid = !!error;
+  const hasWarning = !!warning && !error;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -159,9 +167,7 @@ export function NumericStepperInput({
               <TooltipTrigger type="button" tabIndex={-1}>
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                {tooltip}
-              </TooltipContent>
+              <TooltipContent className="max-w-xs">{tooltip}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
@@ -217,7 +223,13 @@ export function NumericStepperInput({
             hasWarning && "border-warning focus-visible:ring-warning"
           )}
           aria-invalid={isInvalid}
-          aria-describedby={error ? `${label}-error` : helperText ? `${label}-helper` : undefined}
+          aria-describedby={
+            error
+              ? `${label}-error`
+              : helperText
+              ? `${label}-helper`
+              : undefined
+          }
         />
 
         <Button
@@ -255,16 +267,18 @@ export function NumericStepperInput({
 
       {/* Error message */}
       {error && (
-        <p id={`${label}-error`} className="text-xs text-destructive" role="alert">
+        <p
+          id={`${label}-error`}
+          className="text-xs text-destructive"
+          role="alert"
+        >
           {error}
         </p>
       )}
 
       {/* Warning message */}
       {warning && !error && (
-        <p className="text-xs text-warning-foreground">
-          {warning}
-        </p>
+        <p className="text-xs text-warning-foreground">{warning}</p>
       )}
 
       {/* Helper text */}
@@ -274,17 +288,17 @@ export function NumericStepperInput({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
  * TrainingStepsIndicator - Shows real-time calculation of training steps
  */
 interface TrainingStepsIndicatorProps {
-  epochs: number
-  batchSize: number
-  maxSteps?: number
-  className?: string
+  epochs: number;
+  batchSize: number;
+  maxSteps?: number;
+  className?: string;
 }
 
 export function TrainingStepsIndicator({
@@ -293,18 +307,20 @@ export function TrainingStepsIndicator({
   maxSteps = 2_000_000,
   className,
 }: TrainingStepsIndicatorProps) {
-  const totalSteps = epochs * batchSize
-  const isWithinLimit = totalSteps <= maxSteps
-  const percentage = Math.min(100, (totalSteps / maxSteps) * 100)
+  const totalSteps = epochs * batchSize;
+  const isWithinLimit = totalSteps <= maxSteps;
+  const percentage = Math.min(100, (totalSteps / maxSteps) * 100);
 
   return (
     <div className={cn("space-y-1", className)}>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Training Steps</span>
-        <span className={cn(
-          "font-mono",
-          isWithinLimit ? "text-success" : "text-destructive"
-        )}>
+        <span
+          className={cn(
+            "font-mono",
+            isWithinLimit ? "text-success" : "text-destructive"
+          )}
+        >
           {totalSteps.toLocaleString()} / {maxSteps.toLocaleString()}
         </span>
       </div>
@@ -318,8 +334,9 @@ export function TrainingStepsIndicator({
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        {epochs.toLocaleString()} epochs × {batchSize.toLocaleString()} batch = {totalSteps.toLocaleString()} steps
+        {epochs.toLocaleString()} epochs × {batchSize.toLocaleString()} batch ={" "}
+        {totalSteps.toLocaleString()} steps
       </p>
     </div>
-  )
+  );
 }

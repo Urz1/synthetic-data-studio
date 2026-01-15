@@ -5,6 +5,7 @@ sources to reduce the number of API calls needed for dashboard views.
 """
 
 # Standard library
+# Standard library
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -24,7 +25,6 @@ from app.generators.models import Generator
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-
 
 @router.get("/summary")
 def get_dashboard_summary(
@@ -73,17 +73,24 @@ def get_dashboard_summary(
         # In the current model, existence of an Evaluation record implies it is completed
         completed_evaluation_count = evaluation_total
         
-        # Get average risk score (using risk_score as proxy for privacy metric)
-        avg_privacy_score = db.exec(
-            select(func.avg(Evaluation.risk_score))
+        # Get average privacy score from evaluation reports (0-1 range)
+        evaluations_with_privacy = db.exec(
+            select(Evaluation)
             .join(Generator, Evaluation.generator_id == Generator.id)
-            .where(
-                and_(
-                    Generator.created_by == current_user.id,
-                    Evaluation.risk_score.isnot(None)
-                )
-            )
-        ).one()
+            .where(Generator.created_by == current_user.id)
+        ).all()
+        
+        privacy_scores = []
+        for eval in evaluations_with_privacy:
+            if eval.report and isinstance(eval.report, dict):
+                # Extract privacy score from overall assessment
+                overall = eval.report.get('overall_assessment', {})
+                dimension_scores = overall.get('dimension_scores', {})
+                privacy_score = dimension_scores.get('privacy')
+                if privacy_score is not None:
+                    privacy_scores.append(float(privacy_score))
+        
+        avg_privacy_score = sum(privacy_scores) / len(privacy_scores) if privacy_scores else 0.0
         
         # Get recent generators (last 5, ordered by creation date)
         recent_generators = db.exec(
@@ -193,16 +200,24 @@ def get_dashboard_stats(
         # In current model, existance implies completion
         completed_evaluation_count = evaluation_total
         
-        avg_privacy_score = db.exec(
-            select(func.avg(Evaluation.risk_score))
+        # Get average privacy score from evaluation reports (0-1 range)
+        evaluations_with_privacy = db.exec(
+            select(Evaluation)
             .join(Generator, Evaluation.generator_id == Generator.id)
-            .where(
-                and_(
-                    Generator.created_by == current_user.id,
-                    Evaluation.risk_score.isnot(None)
-                )
-            )
-        ).one()
+            .where(Generator.created_by == current_user.id)
+        ).all()
+        
+        privacy_scores = []
+        for eval in evaluations_with_privacy:
+            if eval.report and isinstance(eval.report, dict):
+                # Extract privacy score from overall assessment
+                overall = eval.report.get('overall_assessment', {})
+                dimension_scores = overall.get('dimension_scores', {})
+                privacy_score = dimension_scores.get('privacy')
+                if privacy_score is not None:
+                    privacy_scores.append(float(privacy_score))
+        
+        avg_privacy_score = sum(privacy_scores) / len(privacy_scores) if privacy_scores else 0.0
         
         return {
             "total_datasets": dataset_count,

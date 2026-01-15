@@ -183,7 +183,7 @@ export function MetricsBreakdown({ metrics, distributions }: MetricsBreakdownPro
           <div className="flex items-center gap-2 mb-3">
             <Tag className="h-4 w-4 text-primary" />
             <h3 className="font-medium text-sm">Measurable Attributes</h3>
-            <span className="text-xs text-muted-foreground">— Overlap matters</span>
+            <span className="text-xs text-muted-foreground">  Overlap matters</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {measurableColumns.slice(0, 6).map(renderColumnCard)}
@@ -196,7 +196,7 @@ export function MetricsBreakdown({ metrics, distributions }: MetricsBreakdownPro
           <div className="flex items-center gap-2 mb-3">
             <User className="h-4 w-4 text-primary" />
             <h3 className="font-medium text-sm">Identifiers & Unique Values</h3>
-            <span className="text-xs text-muted-foreground">— Low overlap expected</span>
+            <span className="text-xs text-muted-foreground">  Low overlap expected</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {identifierColumns.slice(0, 6).map(renderColumnCard)}

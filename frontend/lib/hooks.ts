@@ -75,10 +75,16 @@ export function useMe() {
 // DATASET HOOKS
 // ============================================================================
 
-export function useDatasets(skip = 0, limit = 50) {
+export function useDatasets(
+  skip = 0,
+  limit = 50,
+  sortBy = "created_at",
+  sortOrder = "desc"
+) {
   return useQuery({
-    queryKey: [...queryKeys.datasets, { skip, limit }],
-    queryFn: () => api.listDatasets(undefined, skip, limit),
+    queryKey: [...queryKeys.datasets, { skip, limit, sortBy, sortOrder }],
+    queryFn: () =>
+      api.listDatasets(undefined, skip, limit, false, sortBy, sortOrder),
   });
 }
 
@@ -144,10 +150,16 @@ export function useDeleteDataset() {
 // GENERATOR HOOKS
 // ============================================================================
 
-export function useGenerators() {
+export function useGenerators(
+  skip = 0,
+  limit = 50,
+  sortBy = "created_at",
+  sortOrder = "desc"
+) {
   return useQuery({
-    queryKey: queryKeys.generators,
-    queryFn: () => api.listGenerators(),
+    queryKey: [...queryKeys.generators, { skip, limit, sortBy, sortOrder }],
+    queryFn: () =>
+      api.listGenerators(undefined, skip, limit, sortBy, sortOrder),
   });
 }
 

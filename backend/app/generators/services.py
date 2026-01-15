@@ -465,7 +465,20 @@ def _run_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) -> Da
     
     # Train model
     logger.info(f"Training CTGAN on {len(real_data)} rows...")
-    training_summary = ctgan_service.train(real_data, column_types=column_types)
+    
+    # CRITICAL: Close DB session during long training to prevent connection timeout
+    db.close()
+    
+    try:
+        training_summary = ctgan_service.train(real_data, column_types=column_types)
+    finally:
+        # Re-open DB session
+        from app.database.database import SessionLocal
+        db = SessionLocal()
+        # Re-fetch generator
+        generator = db.get(Generator, generator.id)
+        if not generator:
+            raise ValueError(f"Generator {params.get('id')} not found after re-connection")
     
     # Save model locally
     UPLOAD_DIR = Path(settings.upload_dir)
@@ -569,7 +582,20 @@ def _run_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> Dat
     
     # Train model
     logger.info(f"Training TVAE on {len(real_data)} rows...")
-    training_summary = tvae_service.train(real_data, column_types=column_types)
+    
+    # CRITICAL: Close DB session during long training to prevent connection timeout
+    db.close()
+    
+    try:
+        training_summary = tvae_service.train(real_data, column_types=column_types)
+    finally:
+        # Re-open DB session
+        from app.database.database import SessionLocal
+        db = SessionLocal()
+        # Re-fetch generator
+        generator = db.get(Generator, generator.id)
+        if not generator:
+            raise ValueError(f"Generator {params.get('id')} not found after re-connection")
     
     # Save model locally
     UPLOAD_DIR = Path(settings.upload_dir)
@@ -661,19 +687,51 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     column_types = params.get('column_types')
     conditions = params.get('conditions')
     
-    # Privacy parameters
-    target_epsilon = params.get('target_epsilon', 10.0)
+    # CRITICAL FIX #4.2: Require explicit DP parameters (no defaults)
+    # Backend should NOT apply defaults - they should come from frontend
+    # This ensures user intent is preserved and visible
+    target_epsilon = params.get('target_epsilon')
     target_delta = params.get('target_delta')
-    max_grad_norm = params.get('max_grad_norm', 1.0)
+    max_grad_norm = params.get('max_grad_norm')
     noise_multiplier = params.get('noise_multiplier')
     force = params.get('force', False)
+    
+    # Validate DP parameters were provided
+    if target_epsilon is None:
+        logger.error("CRITICAL: target_epsilon is required but missing from parameters")
+        raise ValueError(
+            "Differential Privacy requires target_epsilon. "
+            "This likely indicates a frontend/backend sync issue."
+        )
+    if target_delta is None:
+        logger.warning("target_delta is None - will default to 1/n during training")
+    if max_grad_norm is None:
+        logger.error("CRITICAL: max_grad_norm is required but missing from parameters")
+        raise ValueError(
+            "Differential Privacy requires max_grad_norm. "
+            "This likely indicates a frontend/backend sync issue."
+        )
     
     # Custom naming
     synthetic_dataset_name = params.get('dataset_name') or params.get('synthetic_dataset_name')
     if not synthetic_dataset_name:
         synthetic_dataset_name = f"{generator.name}_dp_ctgan_synthetic"
     
-    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, force={force}")
+    # LOG USER'S EXACT CONFIGURATION
+    logger.info("=" * 80)
+    logger.info("USER CONFIGURATION (Confirmed - NO silent defaults):")
+    logger.info(f"  • Model Type: DP-CTGAN")
+    logger.info(f"  • Epochs: {epochs}")
+    logger.info(f"  • Batch Size: {batch_size}")
+    logger.info(f"  • Rows to Generate: {num_rows}")
+    logger.info(f"  • Target Epsilon (ε): {target_epsilon}")
+    logger.info(f"  • Target Delta (δ): {target_delta or '1/n (auto)'}")
+    logger.info(f"  • Max Gradient Norm: {max_grad_norm} ✅ WILL BE APPLIED")
+    logger.info(f"  • Noise Multiplier: {noise_multiplier or 'auto-computed'}")
+    logger.info(f"  • Force Mode: {force}")
+    logger.info("=" * 80)
+    
+    logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, max_grad_norm={max_grad_norm}, force={force}")
     
     # Initialize DP-CTGAN service
     dp_ctgan_service = DPCTGANService(
@@ -693,8 +751,22 @@ def _run_dp_ctgan(generator: Generator, real_data: pd.DataFrame, db: Session) ->
     
     # Train model with DP
     logger.info(f"Training DP-CTGAN on {len(real_data)} rows with privacy guarantees...")
-    training_summary = dp_ctgan_service.train(real_data, column_types=column_types)
     
+    # CRITICAL: Close DB session during long training to prevent connection timeout
+    # The training process is CPU/GPU bound and doesn't need the DB
+    db.close()
+    
+    try:
+        training_summary = dp_ctgan_service.train(real_data, column_types=column_types)
+    finally:
+        # Re-open DB session regardless of success/failure
+        from app.database.database import SessionLocal
+        db = SessionLocal()
+        # Re-fetch generator as the old object is detached
+        generator = db.get(Generator, generator.id)
+        if not generator:
+            raise ValueError(f"Generator {params.get('id')} not found after re-connection")
+
     # Get privacy report
     privacy_report = dp_ctgan_service.get_privacy_report()
     
@@ -789,17 +861,49 @@ def _run_dp_tvae(generator: Generator, real_data: pd.DataFrame, db: Session) -> 
     column_types = params.get('column_types')
     conditions = params.get('conditions')
     
-    # Privacy parameters
-    target_epsilon = params.get('target_epsilon', 10.0)
+    # CRITICAL FIX #4.2: Require explicit DP parameters (no defaults)
+    # Backend should NOT apply defaults - they should come from frontend
+    # This ensures user intent is preserved and visible
+    target_epsilon = params.get('target_epsilon')
     target_delta = params.get('target_delta')
-    max_grad_norm = params.get('max_grad_norm', 1.0)
+    max_grad_norm = params.get('max_grad_norm')
     noise_multiplier = params.get('noise_multiplier')
     force = params.get('force', False)  # User acknowledged risks
+    
+    # Validate DP parameters were provided
+    if target_epsilon is None:
+        logger.error("CRITICAL: target_epsilon is required but missing from parameters")
+        raise ValueError(
+            "Differential Privacy requires target_epsilon. "
+            "This likely indicates a frontend/backend sync issue."
+        )
+    if target_delta is None:
+        logger.warning("target_delta is None - will default to 1/n during training")
+    if max_grad_norm is None:
+        logger.error("CRITICAL: max_grad_norm is required but missing from parameters")
+        raise ValueError(
+            "Differential Privacy requires max_grad_norm. "
+            "This likely indicates a frontend/backend sync issue."
+        )
     
     # Custom naming
     synthetic_dataset_name = params.get('dataset_name') or params.get('synthetic_dataset_name')
     if not synthetic_dataset_name:
         synthetic_dataset_name = f"{generator.name}_dp_tvae_synthetic"
+    
+    # LOG USER'S EXACT CONFIGURATION
+    logger.info("=" * 80)
+    logger.info("USER CONFIGURATION (Confirmed - NO silent defaults):")
+    logger.info(f"  • Model Type: DP-TVAE")
+    logger.info(f"  • Epochs: {epochs}")
+    logger.info(f"  • Batch Size: {batch_size}")
+    logger.info(f"  • Rows to Generate: {num_rows}")
+    logger.info(f"  • Target Epsilon (ε): {target_epsilon}")
+    logger.info(f"  • Target Delta (δ): {target_delta or '1/n (auto)'}")
+    logger.info(f"  • Max Gradient Norm: {max_grad_norm} ✅ WILL BE APPLIED")
+    logger.info(f"  • Noise Multiplier: {noise_multiplier or 'auto-computed'}")
+    logger.info(f"  • Force Mode: {force}")
+    logger.info("=" * 80)
     
     logger.info(f"Privacy target: ε={target_epsilon}, δ={target_delta or '1/n'}, force={force}")
     

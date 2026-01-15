@@ -36,12 +36,26 @@ celery_config = {
     "task_track_started": True,
     "task_time_limit": 3600 * 4,  # 4 hours max per task
     "worker_prefetch_multiplier": 1,  # One task at a time per worker process (for heavy ML tasks)
+    # Redis Connection Settings (Prevent timeouts during long tasks)
+    "broker_transport_options": {
+        "socket_keepalive": True,
+        "socket_timeout": 60,
+    },
+    "result_backend_transport_options": {
+        "socket_keepalive": True,
+        "socket_timeout": 60,
+    },
 }
 
 # Add SSL settings for broker and backend if using rediss://
 if ssl_settings:
     celery_config["broker_use_ssl"] = ssl_settings
     celery_config["redis_backend_use_ssl"] = ssl_settings
+
+# Windows Support: Force 'solo' pool to avoid multiprocessing issues
+import sys
+if sys.platform == "win32":
+    celery_config["worker_pool"] = "solo"
 
 celery_app.conf.update(**celery_config)
 

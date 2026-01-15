@@ -104,13 +104,19 @@ export async function middleware(request: NextRequest) {
   const upgradeInsecure =
     process.env.NODE_ENV === "production" ? "upgrade-insecure-requests;" : "";
 
+  // Include both localhost and 127.0.0.1 for development
+  const devConnectSrc =
+    process.env.NODE_ENV !== "production"
+      ? "http://localhost:8000 http://127.0.0.1:8000"
+      : "";
+
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: https://www.google-analytics.com https://*.githubusercontent.com https://*.googleusercontent.com https://api.qrserver.com;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' ${API_BASE} https://www.google-analytics.com;
+    connect-src 'self' ${API_BASE} ${devConnectSrc} https://www.google-analytics.com;
     frame-ancestors 'none';
     ${upgradeInsecure}
   `

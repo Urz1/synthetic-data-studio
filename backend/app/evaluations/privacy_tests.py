@@ -255,60 +255,98 @@ class PrivacyEvaluator:
                 "reason": f"Column '{target_column}' not found"
             }
         
+        if target_column not in self.synthetic_data.columns:
+            return {
+                "test": "Attribute Inference Attack",
+                "status": "skipped",
+                "reason": f"Column '{target_column}' not found in synthetic data"
+            }
+        
         # Prepare data
         real_df = self.real_data.copy()
         synth_df = self.synthetic_data.copy()
         
-        # Encode categorical
+        # Encode categorical - use fit on combined data to avoid unseen label errors
         from sklearn.preprocessing import LabelEncoder
-        for col in real_df.select_dtypes(include=['object', 'category']).columns:
-            le = LabelEncoder()
-            real_df[col] = le.fit_transform(real_df[col].astype(str))
-            if col in synth_df.columns:
+        
+        try:
+            for col in real_df.select_dtypes(include=['object', 'category']).columns:
+                if col not in synth_df.columns:
+                    continue
+                
+                le = LabelEncoder()
+                # Fit on combined vocabulary to handle all labels
+                combined_values = pd.concat([
+                    real_df[col].astype(str),
+                    synth_df[col].astype(str)
+                ]).unique()
+                le.fit(combined_values)
+                
+                # Transform both datasets
+                real_df[col] = le.transform(real_df[col].astype(str))
                 synth_df[col] = le.transform(synth_df[col].astype(str))
+            
+            # Prepare features and target
+            X_real = real_df.drop(columns=[target_column]).fillna(0)
+            y_real = real_df[target_column]
+            
+            X_synth = synth_df.drop(columns=[target_column]).fillna(0)
+            y_synth = synth_df[target_column]
+            
+            # Ensure same columns
+            common_cols = list(set(X_real.columns) & set(X_synth.columns))
+            X_real = X_real[common_cols]
+            X_synth = X_synth[common_cols]
+            
+            # Check if we have enough data
+            if len(X_synth) < 10 or len(X_real) < 10:
+                return {
+                    "test": "Attribute Inference Attack",
+                    "target_attribute": target_column,
+                    "status": "skipped",
+                    "reason": "Insufficient data for reliable inference test"
+                }
+            
+            # Train on synthetic, test on real
+            attacker = RandomForestClassifier(n_estimators=100, random_state=42)
+            attacker.fit(X_synth, y_synth)
+            
+            X_real_train, X_real_test, y_real_train, y_real_test = train_test_split(
+                X_real, y_real, test_size=0.3, random_state=42
+            )
+            
+            y_pred = attacker.predict(X_real_test)
+            accuracy = accuracy_score(y_real_test, y_pred)
+            
+            # Vulnerability assessment
+            # High accuracy = attribute can be inferred from other features
+            if accuracy > 0.8:
+                vulnerability = "High"
+                interpretation = f"WARNING: Attribute '{target_column}' can be inferred with {accuracy*100:.1f}% accuracy. High leakage risk."
+            elif accuracy > 0.7:
+                vulnerability = "Medium"
+                interpretation = f"CAUTION: Attribute '{target_column}' can be inferred with {accuracy*100:.1f}% accuracy."
+            else:
+                vulnerability = "Low"
+                interpretation = f"GOOD: Attribute '{target_column}' is difficult to infer ({accuracy*100:.1f}% accuracy)."
+            
+            return {
+                "test": "Attribute Inference Attack",
+                "target_attribute": target_column,
+                "inference_accuracy": float(accuracy),
+                "vulnerability": vulnerability,
+                "interpretation": interpretation
+            }
         
-        # Prepare features and target
-        X_real = real_df.drop(columns=[target_column]).fillna(0)
-        y_real = real_df[target_column]
-        
-        X_synth = synth_df.drop(columns=[target_column]).fillna(0)
-        y_synth = synth_df[target_column]
-        
-        # Ensure same columns
-        common_cols = list(set(X_real.columns) & set(X_synth.columns))
-        X_real = X_real[common_cols]
-        X_synth = X_synth[common_cols]
-        
-        # Train on synthetic, test on real
-        attacker = RandomForestClassifier(n_estimators=100, random_state=42)
-        attacker.fit(X_synth, y_synth)
-        
-        X_real_train, X_real_test, y_real_train, y_real_test = train_test_split(
-            X_real, y_real, test_size=0.3, random_state=42
-        )
-        
-        y_pred = attacker.predict(X_real_test)
-        accuracy = accuracy_score(y_real_test, y_pred)
-        
-        # Vulnerability assessment
-        # High accuracy = attribute can be inferred from other features
-        if accuracy > 0.8:
-            vulnerability = "High"
-            interpretation = f"WARNING: Attribute '{target_column}' can be inferred with {accuracy*100:.1f}% accuracy. High leakage risk."
-        elif accuracy > 0.7:
-            vulnerability = "Medium"
-            interpretation = f"CAUTION: Attribute '{target_column}' can be inferred with {accuracy*100:.1f}% accuracy."
-        else:
-            vulnerability = "Low"
-            interpretation = f"GOOD: Attribute '{target_column}' is difficult to infer ({accuracy*100:.1f}% accuracy)."
-        
-        return {
-            "test": "Attribute Inference Attack",
-            "target_attribute": target_column,
-            "inference_accuracy": float(accuracy),
-            "vulnerability": vulnerability,
-            "interpretation": interpretation
-        }
+        except Exception as e:
+            logger.warning(f"Attribute inference attack failed for '{target_column}': {e}")
+            return {
+                "test": "Attribute Inference Attack",
+                "target_attribute": target_column,
+                "status": "error",
+                "error": str(e),
+                "interpretation": f"Could not run inference attack: {str(e)}"
+            }
     
     def evaluate_all(self) -> Dict[str, Any]:
         """

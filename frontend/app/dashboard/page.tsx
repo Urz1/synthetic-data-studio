@@ -101,7 +101,8 @@ function getContextualTip(
   
   // Has evaluations - show privacy insights
   if (stats.completed_evaluations > 0 && stats.avg_privacy_score > 0) {
-    const privacyPercent = Math.round(stats.avg_privacy_score * 100)
+    // avg_privacy_score is 0-1 from backend, convert to percentage
+    const privacyPercent = Math.round(Math.min(stats.avg_privacy_score, 1) * 100)
     if (privacyPercent >= 80) {
       return `Strong privacy scores (${privacyPercent}%)! Your synthetic data is well-protected. Consider using differential privacy for even stronger guarantees.`
     } else if (privacyPercent >= 50) {

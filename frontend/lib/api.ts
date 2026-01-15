@@ -417,11 +417,15 @@ class ApiClient {
     projectId?: string,
     skip = 0,
     limit = 50,
-    forceRefresh = false
+    forceRefresh = false,
+    sortBy = "created_at",
+    sortOrder = "desc"
   ): Promise<{ datasets: Dataset[]; total: number }> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
+      sort_by: sortBy,
+      sort_order: sortOrder,
     });
     if (projectId) params.append("project_id", projectId);
     if (forceRefresh) params.append("_t", String(Date.now()));
@@ -535,12 +539,16 @@ class ApiClient {
   async listGenerators(
     datasetId?: string,
     skip = 0,
-    limit = 50
+    limit = 50,
+    sortBy = "created_at",
+    sortOrder = "desc"
   ): Promise<Generator[]> {
     const params = new URLSearchParams();
     if (skip > 0) params.append("skip", String(skip));
     if (limit !== 50) params.append("limit", String(limit));
     if (datasetId) params.append("dataset_id", datasetId);
+    params.append("sort_by", sortBy);
+    params.append("sort_order", sortOrder);
     const queryString = params.toString();
     return this.request(`/generators${queryString ? `?${queryString}` : ""}`);
   }
@@ -793,23 +801,12 @@ class ApiClient {
   async runEvaluation(data: {
     generator_id: string;
     dataset_id: string;
-    config: {
-      metrics?: {
-        statistical: boolean;
-        ml_utility: boolean;
-        privacy: boolean;
-      };
-      ml_utility_config?: {
-        target_column: string;
-        models: string[];
-        test_size: number;
-      };
-      privacy_config?: {
-        sensitive_columns: string[];
-        attacks: string[];
-      };
-      statistical_columns?: string[];
-    };
+    target_column?: string;
+    sensitive_columns?: string[];
+    include_statistical?: boolean;
+    include_ml_utility?: boolean;
+    include_privacy?: boolean;
+    statistical_columns?: string[];
   }): Promise<Evaluation> {
     return this.request("/evaluations/run", {
       method: "POST",

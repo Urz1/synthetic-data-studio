@@ -46,6 +46,47 @@ export default function NewEvaluationPage() {
     statistical_columns: [] as string[], // New state for statistical columns
   })
 
+  const extractColumns = React.useCallback((schemaData: any): string[] => {
+    if (!schemaData) return []
+    if (Array.isArray(schemaData)) return schemaData
+
+    // Common shapes
+    if (Array.isArray(schemaData?.columns)) {
+      const cols = schemaData.columns
+      // If columns are objects with name, pluck name
+      if (cols.length && typeof cols[0] === "object" && cols[0]?.name) {
+        return cols.map((c: any) => c.name).filter(Boolean)
+      }
+      return cols
+    }
+
+    // Nested schema object
+    if (schemaData.schema) {
+      if (Array.isArray(schemaData.schema?.columns)) {
+        return schemaData.schema.columns
+      }
+      if (typeof schemaData.schema === "object") {
+        return Object.keys(schemaData.schema).filter((k) => !k.startsWith("_"))
+      }
+    }
+
+    const metaKeys = new Set([
+      "schema",
+      "dtypes",
+      "num_rows",
+      "num_columns",
+      "pii_columns",
+      "missing_values",
+      "profile",
+      "stats",
+      "generation_method",
+    ])
+
+    return Object.keys(schemaData || {})
+      .filter((k) => !k.startsWith("_"))
+      .filter((k) => !metaKeys.has(k))
+  }, [])
+
   // Load Generators
   React.useEffect(() => {
     async function loadData() {
@@ -94,23 +135,17 @@ export default function NewEvaluationPage() {
         setDataset(datasetData)
 
         // Smart Default Selection for Statistical Columns
-        if (datasetData.schema_data) {
-             const allCols = Object.keys(datasetData.schema_data).filter(c => !c.startsWith('_'))
-             
-             // Filter out likely IDs and PII for statistical tests
-             const idPatterns = ['id', 'uuid', 'guid', 'key', 'hash', 'token', 'url', 'email', 'phone', 'created_at', 'updated_at', 'timestamp']
-             const defaultStatsCols = allCols.filter(col => {
-                 const colLower = col.toLowerCase()
-                 // Exclude if it perfectly matches an ID pattern or ends with _id
-                 if (colLower.endsWith('_id')) return false
-                 if (idPatterns.some(p => colLower.includes(p))) return false
-                 return true
-             })
-             
-             // If filter removes everything, specific fallback or keep all
-             const finalCols = defaultStatsCols.length > 0 ? defaultStatsCols : allCols
-             
-             setConfig(prev => ({ ...prev, statistical_columns: finalCols }))
+        const allCols = extractColumns(datasetData.schema_data)
+        if (allCols.length) {
+          const idPatterns = ['id', 'uuid', 'guid', 'key', 'hash', 'token', 'url', 'email', 'phone', 'created_at', 'updated_at', 'timestamp']
+          const defaultStatsCols = allCols.filter(col => {
+            const colLower = col.toLowerCase()
+            if (colLower.endsWith('_id')) return false
+            if (idPatterns.some(p => colLower.includes(p))) return false
+            return true
+          })
+          const finalCols = defaultStatsCols.length > 0 ? defaultStatsCols : allCols
+          setConfig(prev => ({ ...prev, statistical_columns: finalCols }))
         }
       } catch (err) {
         console.error("Failed to load dataset details:", err)
@@ -131,24 +166,12 @@ export default function NewEvaluationPage() {
       await api.runEvaluation({
         generator_id: selectedGenerator.id,
         dataset_id: dataset.id, // Compare against source dataset
-        config: {
-            metrics: {
-                statistical: config.include_statistical,
-                ml_utility: config.include_ml_utility,
-                privacy: config.include_privacy
-            },
-            ml_utility_config: config.include_ml_utility && config.target_column ? {
-                target_column: config.target_column,
-                models: ["lr", "rf"], // Default models
-                test_size: 0.2
-            } : undefined,
-
-            privacy_config: config.include_privacy && config.sensitive_columns.length > 0 ? {
-                sensitive_columns: config.sensitive_columns,
-                attacks: ["membership_inference"]
-            } : undefined,
-            statistical_columns: config.include_statistical ? config.statistical_columns : undefined
-        }
+        include_statistical: config.include_statistical,
+        include_ml_utility: config.include_ml_utility,
+        include_privacy: config.include_privacy,
+        target_column: config.include_ml_utility && config.target_column ? config.target_column : undefined,
+        sensitive_columns: config.include_privacy && config.sensitive_columns.length > 0 ? config.sensitive_columns : undefined,
+        statistical_columns: config.include_statistical ? config.statistical_columns : undefined,
       })
       
       // Success feedback before redirect
@@ -342,11 +365,10 @@ export default function NewEvaluationPage() {
                    </CardDescription>
                  </CardHeader>
                  <CardContent className="space-y-4">
-                     {dataset.schema_data && Object.keys(dataset.schema_data).length > 0 && (
-                     <div className="flex flex-wrap gap-2">
-                        {Object.keys(dataset.schema_data)
-                         .filter(col => !col.startsWith('_')) 
-                         .map((colName) => (
+                    {extractColumns(dataset?.schema_data).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {extractColumns(dataset?.schema_data)
+                       .map((colName) => (
                                  <Badge
                                  key={`stat-${colName}`}
                                  variant={config.statistical_columns.includes(colName) ? "secondary" : "outline"}
@@ -385,9 +407,8 @@ export default function NewEvaluationPage() {
                           <SelectValue placeholder="Select target column..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {dataset.schema_data && Object.keys(dataset.schema_data).length > 0 ? 
-                              Object.keys(dataset.schema_data)
-                                .filter(col => !col.startsWith('_')) // Hide system/internal columns
+                          {extractColumns(dataset?.schema_data).length > 0 ? 
+                              extractColumns(dataset?.schema_data)
                                 .map((colName) => (
                                 <SelectItem key={colName} value={colName}>
                                   {colName}
@@ -401,12 +422,11 @@ export default function NewEvaluationPage() {
                     </div>
                   )}
 
-                  {config.include_privacy && dataset.schema_data && Object.keys(dataset.schema_data).length > 0 && (
+                  {config.include_privacy && extractColumns(dataset?.schema_data).length > 0 && (
                     <div className="space-y-2">
                       <Label>Sensitive Columns (for privacy checks)</Label>
                       <div className="flex flex-wrap gap-2">
-                       {Object.keys(dataset.schema_data)
-                        .filter(col => !col.startsWith('_')) // Hide system/internal columns
+                       {extractColumns(dataset?.schema_data)
                         .map((colName) => (
                                 <Badge
                                 key={colName}
