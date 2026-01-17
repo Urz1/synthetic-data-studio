@@ -1189,7 +1189,13 @@ class ApiClient {
     skip = 0,
     limit = 50
   ): Promise<{ logs: AuditLog[]; total: number }> {
-    return this.request(`/audit?skip=${skip}&limit=${limit}`);
+    return this.request(`/audit-logs?skip=${skip}&limit=${limit}`);
+  }
+
+  async getMyActivity(limit = 10, offset = 0): Promise<AuditLog[]> {
+    return this.request(
+      `/audit-logs/my-activity?limit=${limit}&offset=${offset}`
+    );
   }
 
   async getAuditLog(id: string): Promise<AuditLog> {
