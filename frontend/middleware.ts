@@ -43,7 +43,7 @@ function isPublicPath(pathname: string): boolean {
 
 function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PATH_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 }
 
@@ -76,7 +76,7 @@ export async function middleware(request: NextRequest) {
     // This ensures the session is actually valid, not just that a cookie exists
     try {
       const baseUrl = request.nextUrl.origin;
-      const sessionResponse = await fetch(`${baseUrl}/api/auth/me`, {
+      const sessionResponse = await fetch(`${baseUrl}/api/auth/get-session`, {
         headers: {
           Cookie: request.headers.get("cookie") || "",
         },
@@ -86,7 +86,7 @@ export async function middleware(request: NextRequest) {
       // If session validation fails, redirect to login
       if (!sessionResponse.ok) {
         console.warn(
-          `[Middleware] Session validation failed for ${pathname}: ${sessionResponse.status}`
+          `[Middleware] Session validation failed for ${pathname}: ${sessionResponse.status}`,
         );
         return NextResponse.redirect(loginUrl, 303);
       }
@@ -130,14 +130,14 @@ export async function middleware(request: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    "camera=(), microphone=(), geolocation=()",
   );
 
   // Add Cache-Control: no-store on protected pages to prevent back-button issues
   if (isProtectedPath(pathname)) {
     response.headers.set(
       "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate"
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
     );
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
@@ -148,12 +148,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/_next/static/") ||
     pathname.startsWith("/static/") ||
     /\.(js|css|woff|woff2|ttf|eot|svg|png|jpg|jpeg|gif|webp|avif|ico)$/.test(
-      pathname
+      pathname,
     )
   ) {
     response.headers.set(
       "Cache-Control",
-      "public, max-age=31536000, immutable"
+      "public, max-age=31536000, immutable",
     );
   }
 

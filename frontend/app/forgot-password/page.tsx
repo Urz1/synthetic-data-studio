@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AuthFormEnhancer } from "@/components/auth/auth-form-enhancer"
+import { BetterAuthForgotPasswordForm } from "@/components/auth/better-auth-forgot-password-form"
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700", "800"] })
 
@@ -74,18 +74,7 @@ export default async function ForgotPasswordPage({
                 </Alert>
               )}
 
-              <form id="forgot-password-form" data-action={`${apiUrl}/auth/password-reset/request`} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
-                </div>
-
-                <Button type="submit" variant="secondary" className="w-full min-h-[44px] cursor-pointer">
-                  Send reset link
-                </Button>
-              </form>
-
-              <AuthFormEnhancer formId="forgot-password-form" mode="reset" apiUrl="/api/auth/password-reset/request" />
+              <BetterAuthForgotPasswordForm />
             </CardContent>
             <CardFooter className="flex justify-center border-t pt-6">
               <p className="text-sm text-muted-foreground">

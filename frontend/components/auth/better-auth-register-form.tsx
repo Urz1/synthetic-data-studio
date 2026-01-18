@@ -8,7 +8,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
-import { signInWithProvider, type SocialProvider } from "@/lib/auth-client";
+import { signInWithProvider, type SocialProvider, signUp } from "@/lib/auth-client";
 import { PasswordRequirements, usePasswordValidation } from "@/components/auth/password-requirements";
 
 interface BetterAuthRegisterFormProps {
@@ -65,43 +65,20 @@ export function BetterAuthRegisterForm({
     setLoadingProvider("email");
 
     try {
-      // Use FastAPI registration (sends verification email)
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          full_name: name,
-        }),
+      const { data, error } = await signUp.email({
+        email,
+        password,
+        name,
+        callbackURL: "/dashboard",
       });
 
-      if (!response.ok) {
-        let errorMessage = "Registration failed";
-        try {
-          const errorText = await response.text();
-          const errorData = JSON.parse(errorText);
-          // Handle different error formats: detail, error, message
-          if (typeof errorData.detail === "string") {
-            errorMessage = errorData.detail;
-          } else if (typeof errorData.error === "string") {
-            errorMessage = errorData.error;
-          } else if (Array.isArray(errorData.detail)) {
-            errorMessage = errorData.detail.map((e: { msg?: string }) => e.msg || String(e)).join(", ");
-          } else if (errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch {
-          // JSON parse failed - use default message
-        }
-        setError(errorMessage);
-        setIsLoading(false);
-        setLoadingProvider(null);
-        return;
+      if (error) {
+          setError(error.message || "Registration failed");
+          setIsLoading(false);
+          setLoadingProvider(null);
+      } else {
+          router.push(`/verify-email?sent=1&email=${encodeURIComponent(email)}`);
       }
-
-      // Success - redirect to verify email page
-      router.push(`/verify-email?sent=1&email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setIsLoading(false);

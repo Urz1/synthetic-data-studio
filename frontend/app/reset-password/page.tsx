@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ResetPasswordForm } from "@/components/auth/reset-password-form"
+import { BetterAuthResetPasswordForm } from "@/components/auth/better-auth-reset-password-form"
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700", "800"] })
 
@@ -64,7 +64,7 @@ export default async function ResetPasswordPage({
                 </Alert>
               )}
 
-              <ResetPasswordForm token={token} />
+              <BetterAuthResetPasswordForm token={token} />
             </CardContent>
             <CardFooter className="flex justify-center border-t pt-6">
               <p className="text-sm text-muted-foreground">
