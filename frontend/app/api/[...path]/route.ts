@@ -19,6 +19,12 @@ const API_BASE =
  */
 
 async function proxyRequest(request: NextRequest, path: string) {
+  // DO NOT proxy auth requests - they should be handled by api/auth/[...all]
+  if (path.startsWith("auth/")) {
+    console.log(`[Proxy] Skipping auth path: ${path}`);
+    return new NextResponse(null, { status: 404 });
+  }
+
   // Get Better Auth session
   const session = await auth.api.getSession({
     headers: request.headers,

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 const handler = toNextJsHandler(auth);
 
 export async function POST(request: NextRequest) {
+  console.log(`[Auth API] POST ${request.url}`);
   try {
     return await handler.POST(request);
   } catch (error) {

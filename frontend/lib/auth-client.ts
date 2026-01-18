@@ -32,6 +32,10 @@ export const {
   getSession,
   twoFactor,
   changePassword,
+  resetPassword,
+  requestPasswordReset,
+  sendVerificationEmail,
+  verifyEmail,
 } = authClient;
 
 // Export the full client for advanced usage
@@ -45,7 +49,7 @@ export type SocialProvider = "google" | "github";
  */
 export async function signInWithProvider(
   provider: SocialProvider,
-  callbackURL = "/dashboard"
+  callbackURL = "/dashboard",
 ) {
   return signIn.social({
     provider,
@@ -60,7 +64,7 @@ export async function signInWithProvider(
 export async function signInWithEmail(
   email: string,
   password: string,
-  callbackURL = "/dashboard"
+  callbackURL = "/dashboard",
 ) {
   return signIn.email({
     email,
@@ -76,7 +80,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   name: string,
-  callbackURL = "/dashboard"
+  callbackURL = "/dashboard",
 ) {
   return signUp.email({
     email,
