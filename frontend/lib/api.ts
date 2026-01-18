@@ -36,7 +36,7 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${API_BASE}${endpoint}`;
     const method = options.method || "GET";
@@ -88,12 +88,12 @@ class ApiClient {
             ];
             const currentPath = window.location.pathname;
             const isPublicPage = publicPaths.some(
-              (p) => currentPath === p || currentPath.startsWith(p + "/")
+              (p) => currentPath === p || currentPath.startsWith(p + "/"),
             );
 
             if (!isPublicPage) {
               const next = encodeURIComponent(
-                `${window.location.pathname}${window.location.search}`
+                `${window.location.pathname}${window.location.search}`,
               );
               window.location.href = `/login?next=${next}`;
             }
@@ -144,7 +144,7 @@ class ApiClient {
   // Auth
   async login(
     email: string,
-    password: string
+    password: string,
   ): Promise<{ access_token: string }> {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -178,7 +178,7 @@ class ApiClient {
   async register(
     email: string,
     password: string,
-    fullName: string
+    fullName: string,
   ): Promise<User> {
     return this.request("/auth/register", {
       method: "POST",
@@ -210,7 +210,7 @@ class ApiClient {
       "/auth/logout-all",
       {
         method: "POST",
-      }
+      },
     );
     return result;
   }
@@ -261,7 +261,7 @@ class ApiClient {
 
   // Two-Factor Authentication
   async setup2FA(
-    password: string
+    password: string,
   ): Promise<{ secret: string; otpauth_url: string; backupCodes?: string[] }> {
     return this.request("/auth/2fa/setup", {
       method: "POST",
@@ -285,7 +285,7 @@ class ApiClient {
 
   async handleGoogleCallback(
     code: string,
-    state: string
+    state: string,
   ): Promise<OAuthCallbackResponse> {
     const params = new URLSearchParams({ code, state });
     const response = await fetch(`${API_BASE}/auth/google/callback?${params}`, {
@@ -301,7 +301,7 @@ class ApiClient {
       throw new Error(
         typeof error.detail === "string"
           ? error.detail
-          : "OAuth authentication failed"
+          : "OAuth authentication failed",
       );
     }
 
@@ -311,7 +311,7 @@ class ApiClient {
 
   async handleGitHubCallback(
     code: string,
-    state: string
+    state: string,
   ): Promise<OAuthCallbackResponse> {
     const params = new URLSearchParams({ code, state });
     const response = await fetch(`${API_BASE}/auth/github/callback?${params}`, {
@@ -327,7 +327,7 @@ class ApiClient {
       throw new Error(
         typeof error.detail === "string"
           ? error.detail
-          : "OAuth authentication failed"
+          : "OAuth authentication failed",
       );
     }
 
@@ -366,7 +366,7 @@ class ApiClient {
   async listProjects(
     skip = 0,
     limit = 50,
-    forceRefresh = false
+    forceRefresh = false,
   ): Promise<Project[]> {
     const cacheBust = forceRefresh ? `&_t=${Date.now()}` : "";
     return this.request(`/projects?skip=${skip}&limit=${limit}${cacheBust}`);
@@ -419,7 +419,7 @@ class ApiClient {
     limit = 50,
     forceRefresh = false,
     sortBy = "created_at",
-    sortOrder = "desc"
+    sortOrder = "desc",
   ): Promise<{ datasets: Dataset[]; total: number }> {
     const params = new URLSearchParams({
       skip: String(skip),
@@ -458,13 +458,13 @@ class ApiClient {
   }
 
   async profileDataset(
-    id: string
+    id: string,
   ): Promise<{ dataset_id: string; profile: Dataset["profiling_data"] }> {
     return this.request(`/datasets/${id}/profile`, { method: "POST" });
   }
 
   async getProfile(
-    id: string
+    id: string,
   ): Promise<{ dataset_id: string; profile: Dataset["profiling_data"] }> {
     return this.request(`/datasets/${id}/profile`);
   }
@@ -498,7 +498,7 @@ class ApiClient {
   }
 
   async downloadDataset(
-    id: string
+    id: string,
   ): Promise<{ download_url: string; filename?: string; expires_in?: number }> {
     const response = await fetch(`${API_BASE}/datasets/${id}/download`, {
       headers: {},
@@ -541,7 +541,7 @@ class ApiClient {
     skip = 0,
     limit = 50,
     sortBy = "created_at",
-    sortOrder = "desc"
+    sortOrder = "desc",
   ): Promise<Generator[]> {
     const params = new URLSearchParams();
     if (skip > 0) params.append("skip", String(skip));
@@ -582,7 +582,7 @@ class ApiClient {
       target_delta?: number;
       max_grad_norm?: number;
       synthetic_dataset_name?: string;
-    }
+    },
   ): Promise<{ message: string; generator_id: string; job_id: string }> {
     return this.request(`/generators/dataset/${datasetId}/generate`, {
       method: "POST",
@@ -592,7 +592,7 @@ class ApiClient {
 
   async generateSchemaBased(
     config: SchemaGeneratorConfig,
-    numRows = 1000
+    numRows = 1000,
   ): Promise<{
     id: string;
     type: "schema";
@@ -611,7 +611,7 @@ class ApiClient {
       numRows?: number;
       datasetName?: string;
       projectId?: string;
-    }
+    },
   ): Promise<{ message: string; job_id: string }> {
     const body = params
       ? JSON.stringify({
@@ -627,7 +627,7 @@ class ApiClient {
   }
 
   async downloadModel(
-    id: string
+    id: string,
   ): Promise<{ download_url: string; expires_in: number }> {
     return this.request(`/generators/${id}/download-model`);
   }
@@ -638,7 +638,7 @@ class ApiClient {
       {
         headers: {},
         credentials: "include",
-      }
+      },
     );
 
     if (!response.ok) throw new Error("Download failed");
@@ -660,7 +660,7 @@ class ApiClient {
 
   async getRecommendedDpConfig(
     datasetId: string,
-    privacyLevel: "low" | "medium" | "high" | "very_high"
+    privacyLevel: "low" | "medium" | "high" | "very_high",
   ): Promise<{
     epsilon: number;
     delta: number;
@@ -668,7 +668,7 @@ class ApiClient {
     batch_size: number;
   }> {
     return this.request(
-      `/generators/dp/recommended-config?dataset_id=${datasetId}&privacy_level=${privacyLevel}`
+      `/generators/dp/recommended-config?dataset_id=${datasetId}&privacy_level=${privacyLevel}`,
     );
   }
 
@@ -707,11 +707,11 @@ class ApiClient {
 
   async generateComplianceReport(
     generatorId: string,
-    framework: "GDPR" | "HIPAA" | "CCPA" | "SOC2"
+    framework: "GDPR" | "HIPAA" | "CCPA" | "SOC2",
   ): Promise<ComplianceReport> {
     return this.request(
       `/generators/${generatorId}/compliance-report?framework=${framework}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
@@ -721,63 +721,6 @@ class ApiClient {
 
   async deleteGenerator(id: string): Promise<void> {
     return this.request(`/generators/${id}`, { method: "DELETE" });
-  }
-
-  // Synthetic Datasets
-  async listSyntheticDatasets(): Promise<SyntheticDataset[]> {
-    return this.request("/synthetic-datasets");
-  }
-
-  async getSyntheticDataset(id: string): Promise<Dataset> {
-    return this.request(`/synthetic-datasets/${id}`);
-  }
-
-  async getSyntheticDatasetDetails(id: string): Promise<{
-    dataset: Dataset;
-    generator: Generator | null;
-  }> {
-    return this.request(`/synthetic-datasets/${id}/details`);
-  }
-
-  async downloadSyntheticDataset(
-    id: string
-  ): Promise<{ download_url: string; filename?: string; expires_in?: number }> {
-    const response = await fetch(
-      `${API_BASE}/synthetic-datasets/${id}/download`,
-      {
-        headers: {},
-        credentials: "include",
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Download failed");
-    }
-
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return response.json();
-    } else {
-      // Handle file download (blob)
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      // Extract filename from Content-Disposition
-      const contentDisposition = response.headers.get("content-disposition");
-      let filename = "synthetic_dataset.csv";
-      if (contentDisposition) {
-        const matches = /filename="?([^"]+)"?/.exec(contentDisposition);
-        if (matches && matches[1]) {
-          filename = matches[1];
-        }
-      }
-
-      return { download_url: url, filename };
-    }
-  }
-
-  async deleteSyntheticDataset(id: string): Promise<void> {
-    return this.request(`/synthetic-datasets/${id}`, { method: "DELETE" });
   }
 
   // Evaluations
@@ -874,7 +817,7 @@ class ApiClient {
       evaluation_id?: string;
       generator_id?: string;
       history?: ChatMessage[];
-    }
+    },
   ): Promise<ChatResponse> {
     return this.request("/llm/chat", {
       method: "POST",
@@ -893,7 +836,7 @@ class ApiClient {
       evaluation_id?: string;
       generator_id?: string;
       history?: ChatMessage[];
-    }
+    },
   ): AsyncGenerator<string, void, unknown> {
     const response = await fetch(`${API_BASE}/llm/chat/stream`, {
       method: "POST",
@@ -948,7 +891,7 @@ class ApiClient {
 
   async explainMetric(
     metricName: string,
-    value?: number
+    value?: number,
   ): Promise<{
     metric_name: string;
     metric_value?: string;
@@ -979,7 +922,7 @@ class ApiClient {
     datasetId: string,
     generatorId?: string,
     format: "pdf" | "docx" = "pdf",
-    saveToS3 = true
+    saveToS3 = true,
   ): Promise<{
     message: string;
     export_id: string;
@@ -995,7 +938,7 @@ class ApiClient {
           dataset_id: datasetId,
           generator_id: generatorId,
         }),
-      }
+      },
     );
   }
 
@@ -1003,7 +946,7 @@ class ApiClient {
     generatorId: string,
     datasetId: string,
     format: "pdf" | "docx" = "pdf",
-    saveToS3 = true
+    saveToS3 = true,
   ): Promise<{
     message: string;
     export_id: string;
@@ -1019,13 +962,13 @@ class ApiClient {
           generator_id: generatorId,
           dataset_id: datasetId,
         }),
-      }
+      },
     );
   }
 
   async generateFeatures(
     schema: Record<string, unknown>,
-    context?: string
+    context?: string,
   ): Promise<{ features: string[] }> {
     return this.request("/llm/generate-features", {
       method: "POST",
@@ -1053,7 +996,7 @@ class ApiClient {
 
   async generatePrivacyReportJSON(
     datasetId: string,
-    generatorId?: string
+    generatorId?: string,
   ): Promise<any> {
     return this.request("/llm/privacy-report", {
       method: "POST",
@@ -1066,7 +1009,7 @@ class ApiClient {
 
   async generateModelCardJSON(
     generatorId: string,
-    datasetId: string
+    datasetId: string,
   ): Promise<any> {
     return this.request("/llm/model-card", {
       method: "POST",
@@ -1075,28 +1018,6 @@ class ApiClient {
         dataset_id: datasetId,
       }),
     });
-  }
-
-  // Exports
-  async listExports(
-    skip = 0,
-    limit = 50
-  ): Promise<{ exports: Export[]; total: number }> {
-    return this.request(`/exports?skip=${skip}&limit=${limit}`);
-  }
-
-  async getExport(id: string): Promise<Export> {
-    return this.request(`/exports/${id}`);
-  }
-
-  async downloadExport(
-    id: string
-  ): Promise<{ download_url: string; expires_in: number }> {
-    return this.request(`/exports/${id}/download`);
-  }
-
-  async deleteExport(id: string): Promise<void> {
-    return this.request(`/exports/${id}`, { method: "DELETE" });
   }
 
   // Billing
@@ -1140,7 +1061,7 @@ class ApiClient {
 
   async getUsageSummary(
     startDate?: string,
-    endDate?: string
+    endDate?: string,
   ): Promise<BillingReport> {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -1176,7 +1097,7 @@ class ApiClient {
 
   async getBillingReport(
     startDate?: string,
-    endDate?: string
+    endDate?: string,
   ): Promise<BillingReport> {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -1187,14 +1108,14 @@ class ApiClient {
   // Audit
   async listAuditLogs(
     skip = 0,
-    limit = 50
+    limit = 50,
   ): Promise<{ logs: AuditLog[]; total: number }> {
     return this.request(`/audit-logs?skip=${skip}&limit=${limit}`);
   }
 
   async getMyActivity(limit = 10, offset = 0): Promise<AuditLog[]> {
     return this.request(
-      `/audit-logs/my-activity?limit=${limit}&offset=${offset}`
+      `/audit-logs/my-activity?limit=${limit}&offset=${offset}`,
     );
   }
 
@@ -1208,7 +1129,7 @@ class ApiClient {
 
   async getResourceAuditLogs(
     resourceType: string,
-    resourceId: string
+    resourceId: string,
   ): Promise<AuditLog[]> {
     return this.request(`/audit/resource/${resourceType}/${resourceId}`);
   }

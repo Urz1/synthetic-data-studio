@@ -127,7 +127,7 @@ export default function SchemaGeneratorPage() {
 
   const columnNames = columns.map((c) => c.name.trim().toLowerCase());
   const duplicates = columnNames.filter(
-    (item, index) => columnNames.indexOf(item) !== index && item !== ""
+    (item, index) => columnNames.indexOf(item) !== index && item !== "",
   );
   const hasDuplicates = duplicates.length > 0;
 
@@ -169,7 +169,7 @@ export default function SchemaGeneratorPage() {
   const updateColumn = (
     index: number,
     field: keyof SchemaColumn,
-    value: string
+    value: string,
   ) => {
     const updated = [...columns];
     updated[index] = { ...updated[index], [field]: value };
@@ -205,7 +205,7 @@ export default function SchemaGeneratorPage() {
           type: config.type || "string",
           format: config.format,
           constraints: config.constraints,
-        })
+        }),
       );
 
       setColumns(newColumns);
@@ -271,7 +271,7 @@ export default function SchemaGeneratorPage() {
                 ...(col.format && { faker: col.format }),
                 ...(col.constraints && col.constraints),
               },
-            ])
+            ]),
           ),
           project_id: selectedProjectId,
           dataset_name: datasetName,
@@ -331,9 +331,7 @@ export default function SchemaGeneratorPage() {
 
     setDownloading(true);
     try {
-      const result = await api.downloadSyntheticDataset(
-        generatedData.output_dataset_id
-      );
+      const result = await api.downloadDataset(generatedData.output_dataset_id);
       if (result.download_url) {
         const link = document.createElement("a");
         link.href = result.download_url;
@@ -433,7 +431,7 @@ export default function SchemaGeneratorPage() {
                                   className={`w-full ${
                                     column.name.trim() &&
                                     duplicates.includes(
-                                      column.name.trim().toLowerCase()
+                                      column.name.trim().toLowerCase(),
                                     )
                                       ? "border-destructive focus-visible:ring-destructive"
                                       : ""
@@ -441,12 +439,12 @@ export default function SchemaGeneratorPage() {
                                 />
                                 {column.name.trim() &&
                                   duplicates.includes(
-                                    column.name.trim().toLowerCase()
+                                    column.name.trim().toLowerCase(),
                                   ) && (
-                                  <p className="text-[10px] text-destructive font-medium px-1">
-                                    Duplicate name
-                                  </p>
-                                )}
+                                    <p className="text-[10px] text-destructive font-medium px-1">
+                                      Duplicate name
+                                    </p>
+                                  )}
                               </div>
                               <div className="flex flex-wrap gap-2 items-center">
                                 <Select
@@ -562,7 +560,7 @@ export default function SchemaGeneratorPage() {
                         >
                           {preset >= 1000 ? `${preset / 1000}K` : preset}
                         </Button>
-                      )
+                      ),
                     )}
                   </div>
                   <Input
@@ -693,7 +691,7 @@ export default function SchemaGeneratorPage() {
                       num_rows: numRows,
                     },
                     null,
-                    2
+                    2,
                   )}
                 </pre>
               </CardContent>
@@ -744,7 +742,7 @@ export default function SchemaGeneratorPage() {
                       onClick={() => {
                         if (generatedData?.output_dataset_id) {
                           router.push(
-                            `/synthetic-datasets/${generatedData.output_dataset_id}`
+                            `/datasets/${generatedData.output_dataset_id}`,
                           );
                         }
                       }}

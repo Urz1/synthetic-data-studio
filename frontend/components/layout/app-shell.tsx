@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Database,
@@ -21,8 +21,8 @@ import {
   LogOut,
   HelpCircle,
   Loader2,
-} from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+} from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 import {
   Sidebar,
@@ -38,46 +38,76 @@ import {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { ThemeToggle } from "@/components/layout/theme-toggle"
-import { HelpButton } from "@/components/onboarding/help-button"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { HelpButton } from "@/components/onboarding/help-button";
+import { cn } from "@/lib/utils";
 
 // Regular user navigation items - Main Tools
 const mainNavItems = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourId: "dashboard" },
-  { title: "Datasets", href: "/datasets", icon: Database, tourId: "sidebar-datasets" },
-  { title: "Generators", href: "/generators", icon: Zap, tourId: "sidebar-generators" },
-  { title: "Evaluations", href: "/evaluations", icon: TestTube2, tourId: "sidebar-evaluations" },
-  { title: "Projects", href: "/projects", icon: FolderOpen, tourId: "sidebar-projects" },
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    tourId: "dashboard",
+  },
+  {
+    title: "Datasets",
+    href: "/datasets",
+    icon: Database,
+    tourId: "sidebar-datasets",
+  },
+  {
+    title: "Generators",
+    href: "/generators",
+    icon: Zap,
+    tourId: "sidebar-generators",
+  },
+  {
+    title: "Evaluations",
+    href: "/evaluations",
+    icon: TestTube2,
+    tourId: "sidebar-evaluations",
+  },
+  {
+    title: "Projects",
+    href: "/projects",
+    icon: FolderOpen,
+    tourId: "sidebar-projects",
+  },
   { title: "Jobs", href: "/jobs", icon: Workflow },
-]
+];
 
 // Meta / Secondary navigation
 const metaNavItems = [
-  { title: "AI Assistant", href: "/assistant", icon: MessageSquare, badge: "Beta" },
+  {
+    title: "AI Assistant",
+    href: "/assistant",
+    icon: MessageSquare,
+    badge: "Beta",
+  },
   { title: "Settings", href: "/settings", icon: Settings },
   { title: "Help & Docs", href: "/help", icon: HelpCircle },
-]
+];
 
 // Admin-only navigation items
 const adminNavItems = [
-  { title: "Exports", href: "/exports", icon: FileOutput },
-  { title: "Compliance", href: "/compliance", icon: ShieldCheck },
   { title: "Audit", href: "/audit", icon: ScrollText },
-  { title: "Billing", href: "/billing", icon: CreditCard },
-]
+  // Hidden for future release:
+  // { title: "Compliance", href: "/compliance", icon: ShieldCheck },
+  // { title: "Billing", href: "/billing", icon: CreditCard },
+];
 
 type AppShellProps = {
-  children: React.ReactNode
-  user?: { full_name?: string; email?: string; role?: string }
-}
+  children: React.ReactNode;
+  user?: { full_name?: string; email?: string; role?: string };
+};
 
 function MobileSidebarTrigger() {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar } = useSidebar();
   return (
     <Button
       variant="ghost"
@@ -88,30 +118,30 @@ function MobileSidebarTrigger() {
     >
       <Menu className="h-5 w-5" />
     </Button>
-  )
+  );
 }
 
 export function AppShell({ children, user }: AppShellProps) {
-  const pathname = usePathname()
-  const { logout } = useAuth()
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
-  const isAdmin = user?.role === "admin"
+  const pathname = usePathname();
+  const { logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const isAdmin = user?.role === "admin";
   const initials = (user?.full_name || user?.email || "?")
     .split(" ")
     .map((p) => p[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase()
+    .toUpperCase();
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
+    setIsLoggingOut(true);
     try {
-      await logout()
+      await logout();
     } catch (error) {
-      setIsLoggingOut(false)
-      console.error("Logout failed:", error)
+      setIsLoggingOut(false);
+      console.error("Logout failed:", error);
     }
-  }
+  };
 
   return (
     <SidebarProvider>
@@ -127,8 +157,12 @@ export function AppShell({ children, user }: AppShellProps) {
             />
           </div>
           <div className="flex flex-col leading-none gap-0.5">
-            <span className="text-sm font-semibold tracking-tight">Synth Studio</span>
-            <span className="text-[10px] text-muted-foreground font-medium">Privacy-first</span>
+            <span className="text-sm font-semibold tracking-tight">
+              Synth Studio
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium">
+              Privacy-first
+            </span>
           </div>
         </SidebarHeader>
 
@@ -139,13 +173,13 @@ export function AppShell({ children, user }: AppShellProps) {
             </SidebarGroupLabel>
             <SidebarMenu aria-label="Primary navigation" className="gap-0.5">
               {mainNavItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname?.startsWith(item.href)
+                const Icon = item.icon;
+                const isActive = pathname?.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={isActive} 
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
                       size="sm"
                       className="h-8 text-sm font-medium"
                     >
@@ -159,32 +193,35 @@ export function AppShell({ children, user }: AppShellProps) {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
+                );
               })}
             </SidebarMenu>
           </SidebarGroup>
-          
+
           <div className="px-4 my-2">
             <Separator className="bg-sidebar-border/50" />
           </div>
 
           <SidebarGroup>
-           <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-semibold px-2 mb-1">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-semibold px-2 mb-1">
               Tools
             </SidebarGroupLabel>
             <SidebarMenu aria-label="Secondary navigation" className="gap-0.5">
               {metaNavItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname?.startsWith(item.href)
+                const Icon = item.icon;
+                const isActive = pathname?.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={isActive} 
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
                       size="sm"
                       className="h-8 text-sm font-medium"
                     >
-                      <Link href={item.href} className="flex items-center gap-2.5">
+                      <Link
+                        href={item.href}
+                        className="flex items-center gap-2.5"
+                      >
                         <Icon className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity" />
                         <span>{item.title}</span>
                       </Link>
@@ -195,7 +232,7 @@ export function AppShell({ children, user }: AppShellProps) {
                       </span>
                     )}
                   </SidebarMenuItem>
-                )
+                );
               })}
             </SidebarMenu>
           </SidebarGroup>
@@ -208,13 +245,13 @@ export function AppShell({ children, user }: AppShellProps) {
               </SidebarGroupLabel>
               <SidebarMenu aria-label="Admin navigation" className="gap-0.5">
                 {adminNavItems.map((item) => {
-                  const Icon = item.icon
-                  const isActive = pathname?.startsWith(item.href)
+                  const Icon = item.icon;
+                  const isActive = pathname?.startsWith(item.href);
                   return (
                     <SidebarMenuItem key={item.href}>
-                       <SidebarMenuButton 
-                        asChild 
-                        isActive={isActive} 
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
                         size="sm"
                         className="h-8 text-sm font-medium"
                       >
@@ -228,7 +265,7 @@ export function AppShell({ children, user }: AppShellProps) {
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  )
+                  );
                 })}
               </SidebarMenu>
             </SidebarGroup>
@@ -243,8 +280,12 @@ export function AppShell({ children, user }: AppShellProps) {
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{user?.full_name || "User"}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email || "Signed in"}</p>
+                <p className="text-sm font-medium truncate">
+                  {user?.full_name || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email || "Signed in"}
+                </p>
               </div>
             </div>
             <Button
@@ -274,10 +315,15 @@ export function AppShell({ children, user }: AppShellProps) {
         <header className="sticky top-0 z-40 border-b bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/70">
           <div className="mx-auto flex w-full max-w-screen-2xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <MobileSidebarTrigger />
-            <SidebarTrigger className="hidden md:inline-flex" aria-label="Toggle sidebar" />
+            <SidebarTrigger
+              className="hidden md:inline-flex"
+              aria-label="Toggle sidebar"
+            />
             <Separator orientation="vertical" className="h-6" />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="hidden sm:inline">Secure synthetic data platform</span>
+              <span className="hidden sm:inline">
+                Secure synthetic data platform
+              </span>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <HelpButton />
@@ -287,8 +333,12 @@ export function AppShell({ children, user }: AppShellProps) {
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="text-xs font-medium leading-none truncate max-w-[14rem]">{user?.full_name || "User"}</p>
-                  <p className="text-[11px] text-muted-foreground leading-none truncate max-w-[14rem]">{user?.email || ""}</p>
+                  <p className="text-xs font-medium leading-none truncate max-w-[14rem]">
+                    {user?.full_name || "User"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-none truncate max-w-[14rem]">
+                    {user?.email || ""}
+                  </p>
                 </div>
               </div>
               <Avatar className="h-9 w-9 md:hidden">
@@ -297,12 +347,17 @@ export function AppShell({ children, user }: AppShellProps) {
             </div>
           </div>
         </header>
-        <main id="app-main" className="flex-1 overflow-auto px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-screen-2xl space-y-6">{children}</div>
+        <main
+          id="app-main"
+          className="flex-1 overflow-auto px-4 pb-10 pt-6 sm:px-6 lg:px-8"
+        >
+          <div className="mx-auto w-full max-w-screen-2xl space-y-6">
+            {children}
+          </div>
         </main>
       </div>
     </SidebarProvider>
-  )
+  );
 }
 
-export default AppShell
+export default AppShell;
