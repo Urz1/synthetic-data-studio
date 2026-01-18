@@ -46,10 +46,6 @@ export const queryKeys = {
   evaluations: ["evaluations"] as const,
   evaluation: (id: string) => ["evaluations", id] as const,
 
-  // Synthetic Datasets
-  syntheticDatasets: ["syntheticDatasets"] as const,
-  syntheticDataset: (id: string) => ["syntheticDatasets", id] as const,
-
   // Jobs
   jobs: ["jobs"] as const,
   job: (id: string) => ["jobs", id] as const,
@@ -79,7 +75,7 @@ export function useDatasets(
   skip = 0,
   limit = 50,
   sortBy = "created_at",
-  sortOrder = "desc"
+  sortOrder = "desc",
 ) {
   return useQuery({
     queryKey: [...queryKeys.datasets, { skip, limit, sortBy, sortOrder }],
@@ -125,7 +121,7 @@ export function useDeleteDataset() {
             };
           }
           return old;
-        }
+        },
       );
 
       // Return context with snapshot for rollback
@@ -154,7 +150,7 @@ export function useGenerators(
   skip = 0,
   limit = 50,
   sortBy = "created_at",
-  sortOrder = "desc"
+  sortOrder = "desc",
 ) {
   return useQuery({
     queryKey: [...queryKeys.generators, { skip, limit, sortBy, sortOrder }],
@@ -198,7 +194,7 @@ export function useDeleteGenerator() {
             return old.filter((g: Generator) => g.id !== id);
           }
           return old;
-        }
+        },
       );
 
       return { previousGenerators };
@@ -260,7 +256,7 @@ export function useDeleteProject() {
             };
           }
           return old;
-        }
+        },
       );
 
       return { previousProjects };
@@ -319,12 +315,12 @@ export function useDeleteEvaluation() {
             return {
               ...old,
               evaluations: old.evaluations.filter(
-                (e: Evaluation) => e.id !== id
+                (e: Evaluation) => e.id !== id,
               ),
             };
           }
           return old;
-        }
+        },
       );
 
       return { previousEvaluations };
@@ -343,63 +339,6 @@ export function useDeleteEvaluation() {
 }
 
 // ============================================================================
-// SYNTHETIC DATASET HOOKS
-// ============================================================================
-
-export function useSyntheticDatasets() {
-  return useQuery({
-    queryKey: queryKeys.syntheticDatasets,
-    queryFn: () => api.listSyntheticDatasets(),
-  });
-}
-
-export function useSyntheticDataset(id: string) {
-  return useQuery({
-    queryKey: queryKeys.syntheticDataset(id),
-    queryFn: () => api.getSyntheticDataset(id),
-    enabled: !!id,
-  });
-}
-
-export function useDeleteSyntheticDataset() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => api.deleteSyntheticDataset(id),
-    onMutate: async (id: string) => {
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.syntheticDatasets,
-      });
-      const previousDatasets = queryClient.getQueriesData({
-        queryKey: queryKeys.syntheticDatasets,
-      });
-
-      queryClient.setQueriesData(
-        { queryKey: queryKeys.syntheticDatasets },
-        (old: any) => {
-          if (!old) return old;
-          if (Array.isArray(old)) {
-            return old.filter((d: SyntheticDataset) => d.id !== id);
-          }
-          return old;
-        }
-      );
-
-      return { previousDatasets };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.previousDatasets) {
-        context.previousDatasets.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data);
-        });
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.syntheticDatasets });
-    },
-  });
-}
-
 // ============================================================================
 // JOB HOOKS
 // ============================================================================

@@ -25,15 +25,15 @@ const PROTECTED_PATH_PREFIXES = [
   "/datasets",
   "/projects",
   "/generators",
-  "/synthetic-datasets",
   "/evaluations",
-  "/exports",
   "/jobs",
   "/settings",
-  "/billing",
   "/audit",
   "/assistant",
   "/llm",
+  // Hidden for future release
+  // "/compliance",
+  // "/billing",
 ];
 
 function isPublicPath(pathname: string): boolean {

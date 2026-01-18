@@ -107,7 +107,7 @@ function getContextualTip(
     completed_evaluations: number;
     avg_privacy_score: number;
   },
-  recentGenerators: Generator[]
+  recentGenerators: Generator[],
 ): string {
   // New user - no datasets yet
   if (stats.total_datasets === 0) {
@@ -133,7 +133,7 @@ function getContextualTip(
 
   // Has completed generators - check recent status
   const completedGenerators = recentGenerators.filter(
-    (g) => g.status === "completed"
+    (g) => g.status === "completed",
   );
   if (completedGenerators.length > 0 && stats.completed_evaluations === 0) {
     return `"${completedGenerators[0].name}" finished training! Run an evaluation or download your synthetic dataset.`;
@@ -143,7 +143,7 @@ function getContextualTip(
   if (stats.completed_evaluations > 0 && stats.avg_privacy_score > 0) {
     // avg_privacy_score is 0-1 from backend, convert to percentage
     const privacyPercent = Math.round(
-      Math.min(stats.avg_privacy_score, 1) * 100
+      Math.min(stats.avg_privacy_score, 1) * 100,
     );
     if (privacyPercent >= 80) {
       return `Strong privacy scores (${privacyPercent}%)! Your synthetic data is well-protected. Consider using differential privacy for even stronger guarantees.`;
@@ -203,7 +203,7 @@ export default function DashboardPage() {
         ) {
           if (process.env.NODE_ENV === "development") {
             console.warn(
-              "Dashboard summary endpoint not available, falling back to individual calls"
+              "Dashboard summary endpoint not available, falling back to individual calls",
             );
           }
 
@@ -227,17 +227,17 @@ export default function DashboardPage() {
             total_datasets: (datasetsData as any[]).length,
             total_generators: (generatorsData as any[]).length,
             active_generators: (generatorsData as any[]).filter(
-              (g) => g.status === "training" || g.status === "pending"
+              (g) => g.status === "training" || g.status === "pending",
             ).length,
             total_evaluations: (evaluationsData as any[]).length,
             completed_evaluations: (evaluationsData as any[]).filter(
-              (e) => e.status === "completed"
+              (e) => e.status === "completed",
             ).length,
             avg_privacy_score:
               (evaluationsData as any[]).length > 0
                 ? (evaluationsData as any[]).reduce(
                     (acc, e) => acc + (e.summary?.overall_score ?? 0),
-                    0
+                    0,
                   ) / (evaluationsData as any[]).length
                 : 0,
           };
@@ -536,7 +536,7 @@ export default function DashboardPage() {
                                 className="h-9 w-9 sm:h-11 sm:w-11"
                                 onClick={() =>
                                   router.push(
-                                    `/synthetic-datasets/${gen.output_dataset_id}`
+                                    `/datasets/${gen.output_dataset_id}`,
                                   )
                                 }
                                 title="Download Dataset"
